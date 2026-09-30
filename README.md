@@ -386,34 +386,34 @@ docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_2
 src/scripts/run_notebook.sh --to notebook --execute \
   --ExecutePreprocessor.kernel_name=python3 \
   --ExecutePreprocessor.timeout=600 \
-  --output executed_extended_data_figure_5.ipynb \
-  notebooks/figures/extended_data_figure_5/Extended_Data_Figure_5.ipynb
+  --output executed_extended_data_figure_7.ipynb \
+  notebooks/figures/extended_data_figure_7/Extended_Data_Figure_7.ipynb
 ```
 
 #### Extended Data Figures 6, 6alt, 6alt missense, 8, 8alt, 9alt, 11, 12 (`Extended_data_figures.Rmd`)
 
 ```bash
-docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_4_6_7_8_9 \
+docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_6_8_9_11_12 \
   r-figures -e 'rmarkdown::render("Extended_data_figures.Rmd")'
 ```
 
 #### Extended Data Figure 9 (candidate replacement for Fig. 9alt)
 
 ```bash
-src/scripts/run_make_extended_data_figure_7alt.sh
+src/scripts/run_make_extended_data_figure_9.sh
 
 # Optional: same chart, restricted to missense_variant rows only. Writes to
 # extended_data_figure_9_missense/ instead, so it doesn't overwrite the
 # all-consequences run above.
-src/scripts/run_make_extended_data_figure_7alt.sh --consequence-filter missense
+src/scripts/run_make_extended_data_figure_9.sh --consequence-filter missense
 ```
 
 OddsPath-calibrated variant, visualizing `Supplementary_Data_6.xlsx`'s
 VUS/gnomAD/Unobserved sheets instead (see
-[`docs/figures.md`](docs/figures.md#extended-data-figure-9-oddspath-variant-srcmake_extended_data_figure_7alt_oppy)):
+[`docs/figures.md`](docs/figures.md#extended-data-figure-9-oddspath-variant-srcmake_extended_data_figure_9_oppy)):
 
 ```bash
-src/scripts/run_make_extended_data_figure_7alt_op.sh
+src/scripts/run_make_extended_data_figure_9_op.sh
 ```
 
 #### Extended Data Figure 10 (functional-vs-predictor evidence ablation)

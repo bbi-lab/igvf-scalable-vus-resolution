@@ -3,7 +3,7 @@
 9: a calibrated (exact-print-size) heatmap of final variant classifications
 across VUS, gnomAD, and unobserved variants.
 
-Identical layout to `make_extended_data_figure_7alt.py` (9 rows: three
+Identical layout to `make_extended_data_figure_9.py` (9 rows: three
 REVEL/AM/MP2 rows per variant-set group, with a gap between groups, x 5
 classification columns P/LP/VUS/LB/B, plus a Total column; each cell shows
 its count and row-wise percentage on a shared monochromatic 0-100% scale),
@@ -30,13 +30,13 @@ VUS/gnomAD/Unobserved row in Supplementary_Data_6.xlsx ever reaches the
 "Pathogenic" bucket (genome-wide REVEL/AM/MP2 top out at PP3_Strong = +4,
 and few if any variants in these already-uncertain categories also draw
 the full +8 PS3_very_strong from OddsPath) -- so, unlike
-`make_extended_data_figure_7alt.py`, a category absent from a sheet is
+`make_extended_data_figure_9.py`, a category absent from a sheet is
 plotted as a genuine zero rather than treated as a schema error; only a
 category outside the five expected labels raises.
 
 --consequence-filter missense restricts every sheet to simplified_consequence
 == "missense_variant" rows (same idea and column as
-`make_extended_data_figure_7alt.py`'s own option) and defaults the output
+`make_extended_data_figure_9.py`'s own option) and defaults the output
 path to extended_data_figure_9_op_missense/new_classification_heatmap_op_missense.pdf
 instead of extended_data_figure_9_op/new_classification_heatmap_op.pdf, so it
 doesn't overwrite the all-consequences run.

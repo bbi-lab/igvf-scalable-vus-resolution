@@ -84,7 +84,7 @@ RUN install2.r --error --skipinstalled --repos https://p3m.dev/cran/2025-10-15 \
     remotes
 
 # ggsankey has no CRAN release; install from GitHub (per
-# notebooks/figures/extended_data_figure_4_6_7_8_9/README_Extended_data_figures.md).
+# notebooks/figures/extended_data_figure_6_8_9_11_12/README_Extended_data_figures.md).
 RUN Rscript -e 'remotes::install_github("davidsjoberg/ggsankey")'
 
 # figure_3/curation_summary_figure3.Rmd's sunburst panel calls plotly's

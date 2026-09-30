@@ -265,13 +265,13 @@ matches how a given panel was assembled by hand.
 ## Extended Data Figures
 
 Directories: `notebooks/figures/extended_data_figure_2/`,
-`notebooks/figures/extended_data_figure_5/`, and
-`notebooks/figures/extended_data_figure_4_6_7_8_9/`. Ext. Data Figs 2 and 7 are
+`notebooks/figures/extended_data_figure_7/`, and
+`notebooks/figures/extended_data_figure_6_8_9_11_12/`. Ext. Data Figs 2 and 7 are
 standalone scripts, documented in their own subsections below;
 `Extended_data_figures.Rmd` covers Figs 6, 6alt, 6alt missense, 8, 8alt,
 9alt, 11, and 12, and is documented further down.
 Ext. Data Fig 9 and Ext. Data Fig 10 are standalone Python scripts under
-`src/` instead (`src/make_extended_data_figure_7alt.py`,
+`src/` instead (`src/make_extended_data_figure_9.py`,
 `src/ablation_variant_reclassification.py`), also documented in their own
 subsections below.
 
@@ -296,7 +296,7 @@ Saves `data/output/figures/assets/extended_data_figure_2.pdf`.
 
 ### Extended Data Figure 7
 
-`Extended_Data_Figure_5.ipynb` -- a Python notebook (unlike everything else
+`Extended_Data_Figure_7.ipynb` -- a Python notebook (unlike everything else
 in this directory), not R. Flags genes with excess ClinVar pathogenic/benign
 discordance against each predictor's gene-specific calls (REVEL, AlphaMissense,
 MutPred2): computes each gene's leave-one-out background discordance rate,
@@ -323,19 +323,19 @@ mkdir -p data/output/figures/assets/extended_data_figure_7
 src/scripts/run_notebook.sh --to notebook --execute \
   --ExecutePreprocessor.kernel_name=python3 \
   --ExecutePreprocessor.timeout=600 \
-  --output executed_extended_data_figure_5.ipynb \
-  notebooks/figures/extended_data_figure_5/Extended_Data_Figure_5.ipynb
+  --output executed_extended_data_figure_7.ipynb \
+  notebooks/figures/extended_data_figure_7/Extended_Data_Figure_7.ipynb
 ```
 
 The notebook resolves its own `PROJECT_ROOT` as `../../..` relative to the
 kernel's working directory; `nbconvert` sets that to the notebook's own
-directory (`notebooks/figures/extended_data_figure_5/`) automatically, so
+directory (`notebooks/figures/extended_data_figure_7/`) automatically, so
 `PROJECT_ROOT` lands on the repo root without needing to set the env var it
 also supports. Writes `clinvar_discordance_per_gene_REVEL.png`,
 `clinvar_discordance_per_gene_AM.png`, and `clinvar_discordance_per_gene_MP2.png`
 to `data/output/figures/assets/extended_data_figure_7/`, plus a side-effect
-`executed_extended_data_figure_5.ipynb` (nbconvert's copy of the notebook
-with outputs attached) in `notebooks/figures/extended_data_figure_5/` --
+`executed_extended_data_figure_7.ipynb` (nbconvert's copy of the notebook
+with outputs attached) in `notebooks/figures/extended_data_figure_7/` --
 gitignored, so no need to delete it.
 
 ### Extended Data Figures 6, 6alt, 6alt missense, 8, 8alt, 9alt, 11, 12 (`Extended_data_figures.Rmd`)
@@ -361,7 +361,7 @@ docker compose build r-figures
 
 # Render the whole .Rmd -- knits every chunk in order and writes each
 # figure's PNGs via ggsave()/save_my_plot()
-docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_4_6_7_8_9 \
+docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_6_8_9_11_12 \
   r-figures -e 'rmarkdown::render("Extended_data_figures.Rmd")'
 ```
 
@@ -454,7 +454,7 @@ ExCALIBR/GeneSpecific Fig 6alt portions removed), so the only functional
 difference is the input workbook. Run it the same way as the main `.Rmd`:
 
 ```bash
-docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_4_6_7_8_9 \
+docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_6_8_9_11_12 \
   r-figures -e 'rmarkdown::render("Extended_data_figures_gene_specific.Rmd")'
 ```
 
@@ -496,7 +496,7 @@ Writes 24 PDFs to `data/output/figures/assets/extended_data_figure_6/`, named
 like `sankey_clinvar_ExOP_REVEL_GeneSpecific_missense_calibrated.pdf` /
 `cm_clingen_ExOP_MP2_GeneSpecific_all_calibrated.pdf`.
 
-### Extended Data Figure 9 (`src/make_extended_data_figure_7alt.py`)
+### Extended Data Figure 9 (`src/make_extended_data_figure_9.py`)
 
 A candidate replacement for Extended Data Figure 9alt: a single calibrated
 (exact-print-size) heatmap superseding the classification info spread across
@@ -512,10 +512,10 @@ Unlike the rest of Extended Data Figs 6, 6alt, 6alt missense, 8, 8alt, 9alt,
 11, 12, this one is a standalone Python
 script (matplotlib) rather than an `Extended_data_figures.Rmd` chunk, and
 reads `Supplementary_Data_5.xlsx` directly -- no R required, via the
-`make-extended-data-figure-7alt` Compose service:
+`make-extended-data-figure-9` Compose service:
 
 ```bash
-src/scripts/run_make_extended_data_figure_7alt.sh
+src/scripts/run_make_extended_data_figure_9.sh
 ```
 
 Writes `data/output/figures/assets/extended_data_figure_9/new_classification_heatmap.pdf`
@@ -527,7 +527,7 @@ by default; see `--input`/`--output` (`--help`) to override either path.
 `extended_data_figure_9_missense/new_classification_heatmap_missense.pdf`
 instead, so it doesn't overwrite the all-consequences run.
 
-### Extended Data Figure 9, OddsPath variant (`src/make_extended_data_figure_7alt_op.py`)
+### Extended Data Figure 9, OddsPath variant (`src/make_extended_data_figure_9_op.py`)
 
 No figure anywhere in this repo previously visualized
 `Supplementary_Data_6.xlsx`'s own OddsPath-based VUS/gnomAD/Unobserved
@@ -548,21 +548,21 @@ detail): the Unobserved group's MutPred2 sheet is spelled
 Supplementary Data 5's classification, no row in these OP sheets ever
 reaches "Pathogenic" (genome-wide REVEL/AM/MP2 top out at PP3_Strong = +4),
 so a category absent from a sheet is plotted as a genuine zero rather than
-raising, unlike `make_extended_data_figure_7alt.py`'s stricter check.
+raising, unlike `make_extended_data_figure_9.py`'s stricter check.
 
 ```bash
-src/scripts/run_make_extended_data_figure_7alt_op.sh
+src/scripts/run_make_extended_data_figure_9_op.sh
 ```
 
 Writes `data/output/figures/assets/extended_data_figure_9_op/new_classification_heatmap_op.pdf`
 by default; same `--input`/`--output`/`--consequence-filter` options as
-`make_extended_data_figure_7alt.py` (`--help` for details). To build the
+`make_extended_data_figure_9.py` (`--help` for details). To build the
 gene-specific variant (Supplementary Data 6, gene-specific -- see
 `notebooks/analysis/README_OddsPath_classifications.md`'s "Reviewer-only
 variant" section) instead of the standard one:
 
 ```bash
-src/scripts/run_make_extended_data_figure_7alt_op.sh \
+src/scripts/run_make_extended_data_figure_9_op.sh \
   --input data/output/supplementary_data/Supplementary_Data_6_gene_specific.xlsx \
   --output data/output/figures/assets/extended_data_figure_9_op_gene_specific/new_classification_heatmap_op_gene_specific.pdf
 ```

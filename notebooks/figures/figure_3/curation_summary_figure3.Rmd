@@ -9,7 +9,7 @@ output: html_document
 
 # Output/intermediate directories, relative to this .Rmd's own location --
 # matches the convention in
-# notebooks/figures/extended_data_figure_4_6_7_8_9/Extended_data_figures.Rmd.
+# notebooks/figures/extended_data_figure_6_8_9_11_12/Extended_data_figures.Rmd.
 OUT_DIR = "../../../data/output/figures/assets/figure_3"
 # Figure3c.csv.gz/Figure3d.csv.gz live here, rebuilt via
 # `poetry run python -m src.build_figure3_data` -- see docs/build_figure3_data.md.

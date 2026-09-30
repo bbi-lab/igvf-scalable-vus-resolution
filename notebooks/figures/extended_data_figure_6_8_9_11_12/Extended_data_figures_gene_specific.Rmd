@@ -422,7 +422,7 @@ for (nm in names(clinvar_oddspath)) {
 source("../../../src/lib/figures/sankey_calibrated.R", local = .sankey_lib)
 make_sankey_calibrated <- .sankey_lib$make_sankey_calibrated
 
-levels_order_extdata_4_6 <- c(
+levels_order_extdata_6alt_8alt <- c(
   'Benign', "Likely benign", "Likely Benign",
   'Uncertain', "No Classification",
   "Likely pathogenic", "Likely Pathogenic", "Pathogenic"
@@ -443,19 +443,19 @@ clinvar_MP2_OP <- add_clinvar(clinvar_MP2_OP)
 
 sankey_clinvar_REVEL_OP_calibrated <- make_sankey_calibrated(
   clinvar_REVEL_OP, source_col = clinvar, points_col = Class_OP_REVEL,
-  colors_custom = colors_custom, levels_order = levels_order_extdata_4_6,
+  colors_custom = colors_custom, levels_order = levels_order_extdata_6alt_8alt,
   width_mm = 37, height_mm = 64, label_pt = 6, show_count = FALSE,
   wrap_destination_labels = TRUE
 )
 sankey_clinvar_AM_OP_calibrated <- make_sankey_calibrated(
   clinvar_AM_OP, source_col = clinvar, points_col = Class_OP_AM,
-  colors_custom = colors_custom, levels_order = levels_order_extdata_4_6,
+  colors_custom = colors_custom, levels_order = levels_order_extdata_6alt_8alt,
   width_mm = 37, height_mm = 64, label_pt = 6, show_count = FALSE,
   wrap_destination_labels = TRUE
 )
 sankey_clinvar_MP2_OP_calibrated <- make_sankey_calibrated(
   clinvar_MP2_OP, source_col = clinvar, points_col = Class_OP_MP2,
-  colors_custom = colors_custom, levels_order = levels_order_extdata_4_6,
+  colors_custom = colors_custom, levels_order = levels_order_extdata_6alt_8alt,
   width_mm = 37, height_mm = 64, label_pt = 6, show_count = FALSE,
   wrap_destination_labels = TRUE
 )
@@ -769,7 +769,7 @@ for (nm in names(clingen_oddspath)) {
 # Calibrated versions: real print size, baked-in name-only labels, 6pt
 # Arial, 37 x 64mm excluding label overflow (see lib/sankey_calibrated.R
 # and the clinvar panel above, which sources it and defines
-# levels_order_extdata_4_6). make_sankey_clingen() only excludes VUS rows
+# levels_order_extdata_6alt_8alt). make_sankey_clingen() only excludes VUS rows
 # and fixes classification naming on its own local copy of the data, so
 # that's repeated here for our own calls.
 ClinGen_REVEL_OP_det <- ClinGen_REVEL_OP %>% filter(Updated_Classification_ClinGen_repo != "VUS")
@@ -787,19 +787,19 @@ ClinGen_MP2_OP_det <- fix_clingen_naming(ClinGen_MP2_OP_det)
 
 sankey_clingen_REVEL_OP_calibrated <- make_sankey_calibrated(
   ClinGen_REVEL_OP_det, source_col = Updated_Classification_ClinGen_repo, points_col = Class_OP_REVEL,
-  colors_custom = colors_custom, levels_order = levels_order_extdata_4_6,
+  colors_custom = colors_custom, levels_order = levels_order_extdata_6alt_8alt,
   width_mm = 37, height_mm = 64, label_pt = 6, show_count = FALSE,
   wrap_destination_labels = TRUE
 )
 sankey_clingen_AM_OP_calibrated <- make_sankey_calibrated(
   ClinGen_AM_OP_det, source_col = Updated_Classification_ClinGen_repo, points_col = Class_OP_AM,
-  colors_custom = colors_custom, levels_order = levels_order_extdata_4_6,
+  colors_custom = colors_custom, levels_order = levels_order_extdata_6alt_8alt,
   width_mm = 37, height_mm = 64, label_pt = 6, show_count = FALSE,
   wrap_destination_labels = TRUE
 )
 sankey_clingen_MP2_OP_calibrated <- make_sankey_calibrated(
   ClinGen_MP2_OP_det, source_col = Updated_Classification_ClinGen_repo, points_col = Class_OP_MP2,
-  colors_custom = colors_custom, levels_order = levels_order_extdata_4_6,
+  colors_custom = colors_custom, levels_order = levels_order_extdata_6alt_8alt,
   width_mm = 37, height_mm = 64, label_pt = 6, show_count = FALSE,
   wrap_destination_labels = TRUE
 )
@@ -851,14 +851,14 @@ ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8_gene_specific/cm_clin
 # from the original chunk. Writes to extended_data_figure_8alt_gene_specific/
 # instead of extended_data_figure_8/.
 
-EXT_DATA_FIG_6ALT_DIR <- file.path(dirname(OUT_DIR), "extended_data_figure_8alt_gene_specific")
+EXT_DATA_FIG_8_DIR <- file.path(dirname(OUT_DIR), "extended_data_figure_8alt_gene_specific")
 
-SANKEY_6ALT_WIDTH_MM <- 18.5
-SANKEY_6ALT_HEIGHT_MM <- 32
-CM_6ALT_WIDTH_MM <- 13
-CM_6ALT_HEIGHT_MM <- 11.5
+SANKEY_8_WIDTH_MM <- 18.5
+SANKEY_8_HEIGHT_MM <- 32
+CM_8_WIDTH_MM <- 13
+CM_8_HEIGHT_MM <- 11.5
 
-label_overrides_6alt <- c(
+label_overrides_8 <- c(
   "Benign" = "B", "Likely benign" = "LB", "Likely Benign" = "LB",
   "Uncertain" = "VUS", "No Classification" = "VUS",
   "Likely pathogenic" = "LP", "Likely Pathogenic" = "LP", "Pathogenic" = "P"
@@ -867,9 +867,9 @@ label_overrides_6alt <- c(
 # simplified_consequence lives on every OP sheet (same column Figure5_6.Rmd's
 # own consequence_filter param uses) -- no filtering infrastructure needed
 # beyond this.
-filter_missense_6alt <- function(df) df[df$simplified_consequence == "missense_variant", ]
+filter_missense_8 <- function(df) df[df$simplified_consequence == "missense_variant", ]
 
-PREDICTORS_6ALT <- list(
+PREDICTORS_8 <- list(
   REVEL = list(class_col = "Class_OP_REVEL", pred_col = "Points_REVEL_GenomeWide"),
   AM    = list(class_col = "Class_OP_AM",    pred_col = "Points_AM_GenomeWide"),
   MP2   = list(class_col = "Class_OP_MP2",   pred_col = "Points_MP2_GenomeWide")
@@ -877,12 +877,12 @@ PREDICTORS_6ALT <- list(
 
 # ---- ClinVar controls ----
 
-clinvar_op_raw_6alt <- list(REVEL = clinvar_REVEL_OP, AM = clinvar_AM_OP, MP2 = clinvar_MP2_OP)
+clinvar_op_raw_8 <- list(REVEL = clinvar_REVEL_OP, AM = clinvar_AM_OP, MP2 = clinvar_MP2_OP)
 
-build_clinvar_op_6alt <- function(predictor_name, consequence) {
-  spec <- PREDICTORS_6ALT[[predictor_name]]
-  df <- clinvar_op_raw_6alt[[predictor_name]]
-  if (consequence == "missense") df <- filter_missense_6alt(df)
+build_clinvar_op_8 <- function(predictor_name, consequence) {
+  spec <- PREDICTORS_8[[predictor_name]]
+  df <- clinvar_op_raw_8[[predictor_name]]
+  if (consequence == "missense") df <- filter_missense_8(df)
 
   cm <- make_confusion_matrix_clinvar_chek2(
     df, spec$class_col, "clnsig_group_18_25", paste0(predictor_name, "_OP"),
@@ -890,31 +890,31 @@ build_clinvar_op_6alt <- function(predictor_name, consequence) {
   )
   cm_calibrated <- make_confusion_matrix_calibrated(
     TP = cm$metrics$TP, TN = cm$metrics$TN, FP = cm$metrics$FP, FN = cm$metrics$FN,
-    total_n = cm$total_n, matrix_width_mm = CM_6ALT_WIDTH_MM, matrix_height_mm = CM_6ALT_HEIGHT_MM,
+    total_n = cm$total_n, matrix_width_mm = CM_8_WIDTH_MM, matrix_height_mm = CM_8_HEIGHT_MM,
     x_label = "ClinVar classification", y_label = NULL
   )
 
   df_sankey <- add_clinvar(df)
   sankey_calibrated <- make_sankey_calibrated(
     df_sankey, source_col = clinvar, points_col = !!rlang::sym(spec$class_col),
-    colors_custom = colors_custom, levels_order = levels_order_extdata_4_6,
-    width_mm = SANKEY_6ALT_WIDTH_MM, height_mm = SANKEY_6ALT_HEIGHT_MM, label_pt = 6,
-    show_count = FALSE, wrap_destination_labels = TRUE, label_overrides = label_overrides_6alt
+    colors_custom = colors_custom, levels_order = levels_order_extdata_6alt_8alt,
+    width_mm = SANKEY_8_WIDTH_MM, height_mm = SANKEY_8_HEIGHT_MM, label_pt = 6,
+    show_count = FALSE, wrap_destination_labels = TRUE, label_overrides = label_overrides_8
   )
 
   list(cm = cm_calibrated, sankey = sankey_calibrated)
 }
 
-for (predictor_name in names(PREDICTORS_6ALT)) {
+for (predictor_name in names(PREDICTORS_8)) {
   for (consequence in c("all", "missense")) {
-    panel <- build_clinvar_op_6alt(predictor_name, consequence)
+    panel <- build_clinvar_op_8(predictor_name, consequence)
     ggsave(
-      file.path(EXT_DATA_FIG_6ALT_DIR, sprintf("sankey_clinvar_OP_%s_Universal_%s_calibrated.pdf", predictor_name, consequence)),
+      file.path(EXT_DATA_FIG_8_DIR, sprintf("sankey_clinvar_OP_%s_Universal_%s_calibrated.pdf", predictor_name, consequence)),
       panel$sankey$plot, width = panel$sankey$width_mm, height = panel$sankey$height_mm,
       units = 'mm', device = cairo_pdf, create.dir = TRUE
     )
     ggsave(
-      file.path(EXT_DATA_FIG_6ALT_DIR, sprintf("cm_clinvar_OP_%s_Universal_%s_calibrated.pdf", predictor_name, consequence)),
+      file.path(EXT_DATA_FIG_8_DIR, sprintf("cm_clinvar_OP_%s_Universal_%s_calibrated.pdf", predictor_name, consequence)),
       panel$cm$plot, width = panel$cm$width_mm, height = panel$cm$height_mm,
       units = 'mm', device = cairo_pdf, create.dir = TRUE
     )
@@ -923,12 +923,12 @@ for (predictor_name in names(PREDICTORS_6ALT)) {
 
 # ---- ClinGen Evidence Repository ----
 
-clingen_op_raw_6alt <- list(REVEL = ClinGen_REVEL_OP, AM = ClinGen_AM_OP, MP2 = ClinGen_MP2_OP)
+clingen_op_raw_8 <- list(REVEL = ClinGen_REVEL_OP, AM = ClinGen_AM_OP, MP2 = ClinGen_MP2_OP)
 
-build_clingen_op_6alt <- function(predictor_name, consequence) {
-  spec <- PREDICTORS_6ALT[[predictor_name]]
-  df <- clingen_op_raw_6alt[[predictor_name]]
-  if (consequence == "missense") df <- filter_missense_6alt(df)
+build_clingen_op_8 <- function(predictor_name, consequence) {
+  spec <- PREDICTORS_8[[predictor_name]]
+  df <- clingen_op_raw_8[[predictor_name]]
+  if (consequence == "missense") df <- filter_missense_8(df)
 
   cm <- make_confusion_matrix_clingen(
     df, spec$class_col, "Updated_Classification_ClinGen_repo", paste0(predictor_name, "_OP"),
@@ -936,7 +936,7 @@ build_clingen_op_6alt <- function(predictor_name, consequence) {
   )
   cm_calibrated <- make_confusion_matrix_calibrated(
     TP = cm$metrics$TP, TN = cm$metrics$TN, FP = cm$metrics$FP, FN = cm$metrics$FN,
-    total_n = cm$total_n, matrix_width_mm = CM_6ALT_WIDTH_MM, matrix_height_mm = CM_6ALT_HEIGHT_MM,
+    total_n = cm$total_n, matrix_width_mm = CM_8_WIDTH_MM, matrix_height_mm = CM_8_HEIGHT_MM,
     x_label = "ClinGen classification", y_label = NULL
   )
 
@@ -944,24 +944,24 @@ build_clingen_op_6alt <- function(predictor_name, consequence) {
   df_sankey <- fix_clingen_naming(df_sankey)
   sankey_calibrated <- make_sankey_calibrated(
     df_sankey, source_col = Updated_Classification_ClinGen_repo, points_col = !!rlang::sym(spec$class_col),
-    colors_custom = colors_custom, levels_order = levels_order_extdata_4_6,
-    width_mm = SANKEY_6ALT_WIDTH_MM, height_mm = SANKEY_6ALT_HEIGHT_MM, label_pt = 6,
-    show_count = FALSE, wrap_destination_labels = TRUE, label_overrides = label_overrides_6alt
+    colors_custom = colors_custom, levels_order = levels_order_extdata_6alt_8alt,
+    width_mm = SANKEY_8_WIDTH_MM, height_mm = SANKEY_8_HEIGHT_MM, label_pt = 6,
+    show_count = FALSE, wrap_destination_labels = TRUE, label_overrides = label_overrides_8
   )
 
   list(cm = cm_calibrated, sankey = sankey_calibrated)
 }
 
-for (predictor_name in names(PREDICTORS_6ALT)) {
+for (predictor_name in names(PREDICTORS_8)) {
   for (consequence in c("all", "missense")) {
-    panel <- build_clingen_op_6alt(predictor_name, consequence)
+    panel <- build_clingen_op_8(predictor_name, consequence)
     ggsave(
-      file.path(EXT_DATA_FIG_6ALT_DIR, sprintf("sankey_clingen_OP_%s_Universal_%s_calibrated.pdf", predictor_name, consequence)),
+      file.path(EXT_DATA_FIG_8_DIR, sprintf("sankey_clingen_OP_%s_Universal_%s_calibrated.pdf", predictor_name, consequence)),
       panel$sankey$plot, width = panel$sankey$width_mm, height = panel$sankey$height_mm,
       units = 'mm', device = cairo_pdf, create.dir = TRUE
     )
     ggsave(
-      file.path(EXT_DATA_FIG_6ALT_DIR, sprintf("cm_clingen_OP_%s_Universal_%s_calibrated.pdf", predictor_name, consequence)),
+      file.path(EXT_DATA_FIG_8_DIR, sprintf("cm_clingen_OP_%s_Universal_%s_calibrated.pdf", predictor_name, consequence)),
       panel$cm$plot, width = panel$cm$width_mm, height = panel$cm$height_mm,
       units = 'mm', device = cairo_pdf, create.dir = TRUE
     )

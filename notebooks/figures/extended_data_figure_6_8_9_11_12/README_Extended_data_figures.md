@@ -136,11 +136,11 @@ Figures are saved to subdirectories within `OUT_DIR`:
 
 | Figure | Description | Key Visualizations |
 |--------|-------------|-------------------|
-| **ED Fig 4** | Controls/Clingen performance (AM, MP2) | Sankey diagrams, confusion matrices |
-| **ED Fig 6** | Controls/Clingen performance OddsPath | Sankey diagrams, confusion matrices |
-| **ED Fig 7** | VUS reclassification (AM, MP2) | Sankey diagrams, reclassification bars |
-| **ED Fig 8** | Per-gene VUS analysis | Rank plot, heatmap |
-| **ED Fig 9** | Evidence source breakdown | Three-ring donut plots for gnomAD, VUS, unobserved |
+| **ED Fig 6alt** | Controls/Clingen performance (AM, MP2) | Sankey diagrams, confusion matrices |
+| **ED Fig 8alt** | Controls/Clingen performance OddsPath | Sankey diagrams, confusion matrices |
+| **ED Fig 9alt** | VUS reclassification (AM, MP2) | Sankey diagrams, reclassification bars |
+| **ED Fig 12** | Per-gene VUS analysis | Rank plot, heatmap |
+| **ED Fig 11** | Evidence source breakdown | Three-ring donut plots for gnomAD, VUS, unobserved |
 
 ## Figure Dimensions
 

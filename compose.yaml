@@ -201,7 +201,7 @@ services:
   # (notebooks/analysis/OddsPath_calculations.ipynb,
   # OddsPath_classifications.ipynb, Variant_Classification_analysis.ipynb)
   # and the Stage 3 Python figure notebooks (notebooks/figures/figure_2/*.ipynb,
-  # figure_4/figure4.ipynb, extended_data_figure_5/Extended_Data_Figure_5.ipynb).
+  # figure_4/figure4.ipynb, extended_data_figure_7/Extended_Data_Figure_7.ipynb).
   # Unlike the R figure scripts below, `jupyter nbconvert --execute`'s
   # ExecutePreprocessor already defaults the *kernel's* cwd to the notebook's
   # own directory regardless of the invoking shell's cwd, so -- unlike
@@ -248,24 +248,24 @@ services:
     volumes:
       - .:/usr/src/app
 
-  # Extended Data Figure 7alt (candidate replacement for Fig. 7). All CLI
+  # Extended Data Figure 9 (candidate replacement for Fig. 9alt). All CLI
   # args have defaults, so a bare invocation is useful.
-  make-extended-data-figure-7alt:
+  make-extended-data-figure-9:
     <<: *tools-image
     profiles:
       - tools
-    entrypoint: ["python", "-m", "src.make_extended_data_figure_7alt"]
+    entrypoint: ["python", "-m", "src.make_extended_data_figure_9"]
     command: []
     volumes:
       - .:/usr/src/app
 
-  # Extended Data Figure 7alt, OddsPath-calibrated variant -- same reasoning
-  # as make-extended-data-figure-7alt above.
-  make-extended-data-figure-7alt-op:
+  # Extended Data Figure 9, OddsPath-calibrated variant -- same reasoning
+  # as make-extended-data-figure-9 above.
+  make-extended-data-figure-9-op:
     <<: *tools-image
     profiles:
       - tools
-    entrypoint: ["python", "-m", "src.make_extended_data_figure_7alt_op"]
+    entrypoint: ["python", "-m", "src.make_extended_data_figure_9_op"]
     command: []
     volumes:
       - .:/usr/src/app

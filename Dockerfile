@@ -2,7 +2,7 @@ FROM python:3.12-slim
 
 # cabextract + ttf-mscorefonts-installer provide real Arial, matching the
 # Python figure scripts' matplotlib styling (e.g.
-# src/make_extended_data_figure_7alt.py's Arial-based rcParams) -- the
+# src/make_extended_data_figure_9.py's Arial-based rcParams) -- the
 # figures were designed/reviewed on macOS, where Arial ships as a system
 # font, rather than a metric-compatible substitute. Same reasoning as
 # Dockerfile.r's ttf-mscorefonts-installer step. ttf-mscorefonts-installer

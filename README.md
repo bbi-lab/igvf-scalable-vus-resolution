@@ -259,7 +259,7 @@ the repo depends on a particular kernel name.
 
 Outputs land under `data/output/supplementary_data/` (`Supplementary_Data_4.xlsx`,
 `Supplementary_Data_5.xlsx`), `data/output/predictor_calibration/` (the
-per-gene control files also used by Extended Data Figure 5), and
+per-gene control files also used by Extended Data Figure 7), and
 `data/output/reclassification/integrated_variant_effect_biobank_input_data.tsv.gz`
 (the biobank-analysis export from step 5 above).
 
@@ -329,7 +329,7 @@ docker compose run --rm -w /usr/src/app/notebooks/figures/figure_2 \
 src/scripts/run_build_figure3_data.sh
 
 # Writes executed_curation_summary_figure3.html next to the .Rmd (gitignored)
-# and PNGs/an SVG to data/output/figures/figure_3/.
+# and PNGs/an SVG to data/output/figures/assets/figure_3/.
 docker compose run --rm -w /usr/src/app/notebooks/figures/figure_3 \
   r-figures -e 'rmarkdown::render("curation_summary_figure3.Rmd", output_file = "executed_curation_summary_figure3.html")'
 ```
@@ -346,7 +346,7 @@ pipeline behind it.
 src/scripts/run_build_figure4_data.sh \
   --cached-json notebooks/figures/figure_4/old_figure4_data.json.gz
 
-# 2. Execute the notebook to produce data/output/figures/figure_4.png
+# 2. Execute the notebook to produce data/output/figures/assets/figure_4.png
 src/scripts/run_notebook.sh --to notebook --execute \
   --ExecutePreprocessor.kernel_name=python3 \
   --ExecutePreprocessor.timeout=600 \
@@ -380,7 +380,7 @@ docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_2
   r-figures Extended_Data_Figure_2.R
 ```
 
-#### Extended Data Figure 5
+#### Extended Data Figure 7
 
 ```bash
 src/scripts/run_notebook.sh --to notebook --execute \
@@ -390,27 +390,27 @@ src/scripts/run_notebook.sh --to notebook --execute \
   notebooks/figures/extended_data_figure_5/Extended_Data_Figure_5.ipynb
 ```
 
-#### Extended Data Figures 4-9 (`Extended_data_figures.Rmd`)
+#### Extended Data Figures 6, 6alt, 6alt missense, 8, 8alt, 9alt, 11, 12 (`Extended_data_figures.Rmd`)
 
 ```bash
 docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_4_6_7_8_9 \
   r-figures -e 'rmarkdown::render("Extended_data_figures.Rmd")'
 ```
 
-#### Extended Data Figure 7alt (candidate replacement for Fig. 7)
+#### Extended Data Figure 9 (candidate replacement for Fig. 9alt)
 
 ```bash
 src/scripts/run_make_extended_data_figure_7alt.sh
 
 # Optional: same chart, restricted to missense_variant rows only. Writes to
-# extended_data_figure_7alt_missense/ instead, so it doesn't overwrite the
+# extended_data_figure_9_missense/ instead, so it doesn't overwrite the
 # all-consequences run above.
 src/scripts/run_make_extended_data_figure_7alt.sh --consequence-filter missense
 ```
 
 OddsPath-calibrated variant, visualizing `Supplementary_Data_6.xlsx`'s
 VUS/gnomAD/Unobserved sheets instead (see
-[`docs/figures.md`](docs/figures.md#extended-data-figure-7alt-oddspath-variant-srcmake_extended_data_figure_7alt_oppy)):
+[`docs/figures.md`](docs/figures.md#extended-data-figure-9-oddspath-variant-srcmake_extended_data_figure_7alt_oppy)):
 
 ```bash
 src/scripts/run_make_extended_data_figure_7alt_op.sh
@@ -420,14 +420,14 @@ src/scripts/run_make_extended_data_figure_7alt_op.sh
 
 ```bash
 src/scripts/run_ablation_variant_reclassification.sh \
-  --calibrated-figure data/output/figures/extended_data_figure_10/ablation.pdf
+  --calibrated-figure data/output/figures/assets/extended_data_figure_10/ablation.pdf
 
 # Optional: same figure, restricted to missense-only variants. Writes to
 # ablation_missense.pdf instead, so it doesn't overwrite the all-variants
 # run above.
 src/scripts/run_ablation_variant_reclassification.sh \
   --consequence missense_only \
-  --calibrated-figure data/output/figures/extended_data_figure_10/ablation_missense.pdf
+  --calibrated-figure data/output/figures/assets/extended_data_figure_10/ablation_missense.pdf
 ```
 
 Every `nbconvert --execute` call above leaves a side-effect `executed_<name>.ipynb`

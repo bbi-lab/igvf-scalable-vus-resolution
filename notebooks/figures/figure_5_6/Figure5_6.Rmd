@@ -15,7 +15,7 @@ params:
 ```{r}
 
 DATA_DIR = "/usr/src/app/data/output"
-OUT_DIR = "/usr/src/app/data/output/figures"
+OUT_DIR = "/usr/src/app/data/output/figures/assets"
 ```
 
 ```{r}

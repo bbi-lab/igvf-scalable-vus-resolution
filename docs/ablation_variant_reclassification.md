@@ -304,7 +304,7 @@ poetry run python -m src.ablation_variant_reclassification --document ablation_d
 poetry run python -m src.ablation_variant_reclassification --output data/output/reclassification/ablation_variant_reclassification.txt
 poetry run python -m src.ablation_variant_reclassification --plot data/output/reclassification/ablation_variant_reclassification.png
 poetry run python -m src.ablation_variant_reclassification --consequence missense_only --output ablation_missense_only.txt
-poetry run python -m src.ablation_variant_reclassification --document-split-dir data/output/figures/extended_data_figure_10
+poetry run python -m src.ablation_variant_reclassification --document-split-dir data/output/figures/assets/extended_data_figure_10
 ```
 
 Output is plain text to stdout, and optionally also written to `--output`.
@@ -789,10 +789,10 @@ Usage:
 
 ```bash
 poetry run python -m src.ablation_variant_reclassification \
-  --document-split-dir data/output/figures/extended_data_figure_10
+  --document-split-dir data/output/figures/assets/extended_data_figure_10
 poetry run python -m src.ablation_variant_reclassification \
   --document-chart ablation --document-chart gain \
-  --document-split-dir data/output/figures/extended_data_figure_10/ablation_and_gain_only
+  --document-split-dir data/output/figures/assets/extended_data_figure_10/ablation_and_gain_only
 ```
 
 See [`docs/figures.md`](figures.md) for the full Extended Data Figure 10

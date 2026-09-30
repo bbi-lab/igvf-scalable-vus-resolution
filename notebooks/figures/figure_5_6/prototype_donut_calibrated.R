@@ -31,7 +31,7 @@ WRAP_LABEL_MM <- WRAP_LABEL_PT * point_in_mm
 FONT_FAMILY <- "Arial"
 
 DATA_DIR <- "../../../data/output"
-OUT_DIR <- "../../../data/output/figures"
+OUT_DIR <- "../../../data/output/figures/assets"
 
 # The outer circle's own placed diameter in the assembled figure (mm) --
 # not the panel/canvas width, just the ring itself.

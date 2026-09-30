@@ -19,7 +19,7 @@ options(warn = 0)
 ```{r}
 
 DATA_DIR = "../../../data/output"
-OUT_DIR = "../../../data/output/figures/extended_data_figures"
+OUT_DIR = "../../../data/output/figures/assets/extended_data_figures"
 ```
 
 ```{r}
@@ -101,7 +101,7 @@ colors_custom <- c(
 
 ```{r}
 
-#Extended Data Figure 4 and 6
+#Extended Data Figure 6alt and 8alt
 
 #AM and MP2
 
@@ -384,8 +384,8 @@ save_my_plot <- function(plot, filename, folder,
 
 # Reclassification sankeys + confusion matrices, split by predictor
 # calibration method into the extended data figure each belongs to: AM/MP2
-# via ExCALIBR (GeneSpecific) -> Extended Data Figure 4, REVEL/AM/MP2 via
-# OddsPath -> Extended Data Figure 6 (matching the equivalent split below
+# via ExCALIBR (GeneSpecific) -> Extended Data Figure 6alt, REVEL/AM/MP2 via
+# OddsPath -> Extended Data Figure 8alt (matching the equivalent split below
 # for the ClinGen panel).
 clinvar_excalibr <- list(
   "cm_clinvar_ExOP_AM_GeneSpecific.png" = cm_clinvar_AM_YP_1star$plot,
@@ -428,7 +428,7 @@ for (nm in names(clinvar_excalibr)) {
   save_my_plot(
     plot = clinvar_excalibr[[nm]],
     filename = nm,
-    folder = file.path(dirname(OUT_DIR), "extended_data_figure_4"),
+    folder = file.path(dirname(OUT_DIR), "extended_data_figure_6alt"),
     width = w,
     height = h
   )
@@ -446,7 +446,7 @@ for (nm in names(clinvar_oddspath)) {
   save_my_plot(
     plot = clinvar_oddspath[[nm]],
     filename = nm,
-    folder = file.path(dirname(OUT_DIR), "extended_data_figure_6"),
+    folder = file.path(dirname(OUT_DIR), "extended_data_figure_8alt"),
     width = w,
     height = h
   )
@@ -459,7 +459,7 @@ for (nm in names(clinvar_oddspath)) {
 # sankey_calibrated.R again into its own fresh environment).
 #
 # Sourced into its own environment -- this file and lib/three_ring_donut.R
-# (sourced later, for the Fig 9 donuts) declare colliding same-named globals
+# (sourced later, for the Fig 11 donuts) declare colliding same-named globals
 # (LABEL_PT, FONT_FAMILY, point_in_mm, ...) with different values; see the
 # matching comment in Figure5_6.Rmd for the reproduced bug this avoids.
 .sankey_lib <- new.env(parent = globalenv())
@@ -508,8 +508,8 @@ sankey_clinvar_MP2_calibrated <- make_sankey_calibrated(
   wrap_destination_labels = TRUE
 )
 
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_4/sankey_clinvar_ExOP_AM_GeneSpecific_calibrated.pdf"), sankey_clinvar_AM_calibrated$plot, width = sankey_clinvar_AM_calibrated$width_mm, height = sankey_clinvar_AM_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_4/sankey_clinvar_ExOP_MP2_GeneSpecific_calibrated.pdf"), sankey_clinvar_MP2_calibrated$plot, width = sankey_clinvar_MP2_calibrated$width_mm, height = sankey_clinvar_MP2_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_6alt/sankey_clinvar_ExOP_AM_GeneSpecific_calibrated.pdf"), sankey_clinvar_AM_calibrated$plot, width = sankey_clinvar_AM_calibrated$width_mm, height = sankey_clinvar_AM_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_6alt/sankey_clinvar_ExOP_MP2_GeneSpecific_calibrated.pdf"), sankey_clinvar_MP2_calibrated$plot, width = sankey_clinvar_MP2_calibrated$width_mm, height = sankey_clinvar_MP2_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
 
 sankey_clinvar_REVEL_OP_calibrated <- make_sankey_calibrated(
   clinvar_REVEL_OP, source_col = clinvar, points_col = Class_OP_REVEL,
@@ -530,13 +530,13 @@ sankey_clinvar_MP2_OP_calibrated <- make_sankey_calibrated(
   wrap_destination_labels = TRUE
 )
 
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_6/sankey_clinvar_OP_REVEL_Universal_calibrated.pdf"), sankey_clinvar_REVEL_OP_calibrated$plot, width = sankey_clinvar_REVEL_OP_calibrated$width_mm, height = sankey_clinvar_REVEL_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_6/sankey_clinvar_OP_AM_Universal_calibrated.pdf"), sankey_clinvar_AM_OP_calibrated$plot, width = sankey_clinvar_AM_OP_calibrated$width_mm, height = sankey_clinvar_AM_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_6/sankey_clinvar_OP_MP2_Universal_calibrated.pdf"), sankey_clinvar_MP2_OP_calibrated$plot, width = sankey_clinvar_MP2_OP_calibrated$width_mm, height = sankey_clinvar_MP2_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8alt/sankey_clinvar_OP_REVEL_Universal_calibrated.pdf"), sankey_clinvar_REVEL_OP_calibrated$plot, width = sankey_clinvar_REVEL_OP_calibrated$width_mm, height = sankey_clinvar_REVEL_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8alt/sankey_clinvar_OP_AM_Universal_calibrated.pdf"), sankey_clinvar_AM_OP_calibrated$plot, width = sankey_clinvar_AM_OP_calibrated$width_mm, height = sankey_clinvar_AM_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8alt/sankey_clinvar_OP_MP2_Universal_calibrated.pdf"), sankey_clinvar_MP2_OP_calibrated$plot, width = sankey_clinvar_MP2_OP_calibrated$width_mm, height = sankey_clinvar_MP2_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
 
 # Calibrated confusion matrices: real print size, 6pt Arial regular (see
 # lib/confusion_matrix_calibrated.R) -- 31 x 27mm matrix for the ExCALIBR
-# (Ext. Data Fig 4) pair, 26 x 23mm for the OddsPath (Ext. Data Fig 6) trio.
+# (Ext. Data Fig 6alt) pair, 26 x 23mm for the OddsPath (Ext. Data Fig 8alt) trio.
 .cm_lib <- new.env(parent = globalenv())
 source("../../../src/lib/figures/confusion_matrix_calibrated.R", local = .cm_lib)
 make_confusion_matrix_calibrated <- .cm_lib$make_confusion_matrix_calibrated
@@ -554,8 +554,8 @@ cm_clinvar_MP2_calibrated <- make_confusion_matrix_calibrated(
   matrix_width_mm = 31, matrix_height_mm = 27, x_label = "ClinVar classification"
 )
 
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_4/cm_clinvar_ExOP_AM_GeneSpecific_calibrated.pdf"), cm_clinvar_AM_calibrated$plot, width = cm_clinvar_AM_calibrated$width_mm, height = cm_clinvar_AM_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_4/cm_clinvar_ExOP_MP2_GeneSpecific_calibrated.pdf"), cm_clinvar_MP2_calibrated$plot, width = cm_clinvar_MP2_calibrated$width_mm, height = cm_clinvar_MP2_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_6alt/cm_clinvar_ExOP_AM_GeneSpecific_calibrated.pdf"), cm_clinvar_AM_calibrated$plot, width = cm_clinvar_AM_calibrated$width_mm, height = cm_clinvar_AM_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_6alt/cm_clinvar_ExOP_MP2_GeneSpecific_calibrated.pdf"), cm_clinvar_MP2_calibrated$plot, width = cm_clinvar_MP2_calibrated$width_mm, height = cm_clinvar_MP2_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
 
 cm_clinvar_REVEL_OP_calibrated <- make_confusion_matrix_calibrated(
   TP = cm_clinvar_REVEL_OP_1star$metrics$TP, TN = cm_clinvar_REVEL_OP_1star$metrics$TN,
@@ -576,9 +576,9 @@ cm_clinvar_MP2_OP_calibrated <- make_confusion_matrix_calibrated(
   matrix_width_mm = 26, matrix_height_mm = 23, x_label = "ClinVar classification"
 )
 
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_6/cm_clinvar_OP_REVEL_Universal_calibrated.pdf"), cm_clinvar_REVEL_OP_calibrated$plot, width = cm_clinvar_REVEL_OP_calibrated$width_mm, height = cm_clinvar_REVEL_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_6/cm_clinvar_OP_AM_Universal_calibrated.pdf"), cm_clinvar_AM_OP_calibrated$plot, width = cm_clinvar_AM_OP_calibrated$width_mm, height = cm_clinvar_AM_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_6/cm_clinvar_OP_MP2_Universal_calibrated.pdf"), cm_clinvar_MP2_OP_calibrated$plot, width = cm_clinvar_MP2_OP_calibrated$width_mm, height = cm_clinvar_MP2_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8alt/cm_clinvar_OP_REVEL_Universal_calibrated.pdf"), cm_clinvar_REVEL_OP_calibrated$plot, width = cm_clinvar_REVEL_OP_calibrated$width_mm, height = cm_clinvar_REVEL_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8alt/cm_clinvar_OP_AM_Universal_calibrated.pdf"), cm_clinvar_AM_OP_calibrated$plot, width = cm_clinvar_AM_OP_calibrated$width_mm, height = cm_clinvar_AM_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8alt/cm_clinvar_OP_MP2_Universal_calibrated.pdf"), cm_clinvar_MP2_OP_calibrated$plot, width = cm_clinvar_MP2_OP_calibrated$width_mm, height = cm_clinvar_MP2_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
 
 
  
@@ -589,9 +589,9 @@ ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_6/cm_clinvar_OP_MP2_Uni
 ```
 
 ```{r}
-#extended data fig 6 
+#extended data fig 8alt
 
-#AM and MP2 
+#AM and MP2
 
 ClinGen_AM_YP  = read_excel(file.path(DATA_DIR, "supplementary_data/Supplementary_Data_5.xlsx"), sheet = "ClinGen_Repo_AM_GeneSpecific")
 ClinGen_MP2_YP  = read_excel(file.path(DATA_DIR, "supplementary_data/Supplementary_Data_5.xlsx"), sheet = "ClinGen_Repo_MP2_GeneSpecific")
@@ -852,8 +852,8 @@ cm_ClinGen_AM_OP <- make_confusion_matrix_clingen(ClinGen_AM_OP, "Class_OP_AM", 
 cm_ClinGen_MP2_OP <- make_confusion_matrix_clingen(ClinGen_MP2_OP, "Class_OP_MP2", "Updated_Classification_ClinGen_repo", "MP2_OP","OP_points", "Points_MP2_GenomeWide")
 
 # Split the same way as the clinvar panel above: AM/MP2 via ExCALIBR
-# (GeneSpecific) -> Extended Data Figure 4, REVEL/AM/MP2 via OddsPath ->
-# Extended Data Figure 6.
+# (GeneSpecific) -> Extended Data Figure 6alt, REVEL/AM/MP2 via OddsPath ->
+# Extended Data Figure 8alt.
 clingen_excalibr <- list(
    "cm_clingen_ExOP_MP2_GeneSpecific.png" = cm_ClinGen_MP2_YP$plot,
    "cm_clingen_ExOP_AM_GeneSpecific.png" = cm_ClinGen_AM_YP$plot,
@@ -895,7 +895,7 @@ for (nm in names(clingen_excalibr)) {
   save_my_plot(
     plot = clingen_excalibr[[nm]],
     filename = nm,
-    folder = file.path(dirname(OUT_DIR), "extended_data_figure_4"),
+    folder = file.path(dirname(OUT_DIR), "extended_data_figure_6alt"),
     width = w,
     height = h
   )
@@ -913,7 +913,7 @@ for (nm in names(clingen_oddspath)) {
   save_my_plot(
     plot = clingen_oddspath[[nm]],
     filename = nm,
-    folder = file.path(dirname(OUT_DIR), "extended_data_figure_6"),
+    folder = file.path(dirname(OUT_DIR), "extended_data_figure_8alt"),
     width = w,
     height = h
   )
@@ -955,8 +955,8 @@ sankey_clingen_MP2_calibrated <- make_sankey_calibrated(
   wrap_destination_labels = TRUE
 )
 
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_4/sankey_clingen_ExOP_AM_GeneSpecific_calibrated.pdf"), sankey_clingen_AM_calibrated$plot, width = sankey_clingen_AM_calibrated$width_mm, height = sankey_clingen_AM_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_4/sankey_clingen_ExOP_MP2_GeneSpecific_calibrated.pdf"), sankey_clingen_MP2_calibrated$plot, width = sankey_clingen_MP2_calibrated$width_mm, height = sankey_clingen_MP2_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_6alt/sankey_clingen_ExOP_AM_GeneSpecific_calibrated.pdf"), sankey_clingen_AM_calibrated$plot, width = sankey_clingen_AM_calibrated$width_mm, height = sankey_clingen_AM_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_6alt/sankey_clingen_ExOP_MP2_GeneSpecific_calibrated.pdf"), sankey_clingen_MP2_calibrated$plot, width = sankey_clingen_MP2_calibrated$width_mm, height = sankey_clingen_MP2_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
 
 sankey_clingen_REVEL_OP_calibrated <- make_sankey_calibrated(
   ClinGen_REVEL_OP_det, source_col = Updated_Classification_ClinGen_repo, points_col = Class_OP_REVEL,
@@ -977,13 +977,13 @@ sankey_clingen_MP2_OP_calibrated <- make_sankey_calibrated(
   wrap_destination_labels = TRUE
 )
 
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_6/sankey_clingen_OP_REVEL_Universal_calibrated.pdf"), sankey_clingen_REVEL_OP_calibrated$plot, width = sankey_clingen_REVEL_OP_calibrated$width_mm, height = sankey_clingen_REVEL_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_6/sankey_clingen_OP_AM_Universal_calibrated.pdf"), sankey_clingen_AM_OP_calibrated$plot, width = sankey_clingen_AM_OP_calibrated$width_mm, height = sankey_clingen_AM_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_6/sankey_clingen_OP_MP2_Universal_calibrated.pdf"), sankey_clingen_MP2_OP_calibrated$plot, width = sankey_clingen_MP2_OP_calibrated$width_mm, height = sankey_clingen_MP2_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8alt/sankey_clingen_OP_REVEL_Universal_calibrated.pdf"), sankey_clingen_REVEL_OP_calibrated$plot, width = sankey_clingen_REVEL_OP_calibrated$width_mm, height = sankey_clingen_REVEL_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8alt/sankey_clingen_OP_AM_Universal_calibrated.pdf"), sankey_clingen_AM_OP_calibrated$plot, width = sankey_clingen_AM_OP_calibrated$width_mm, height = sankey_clingen_AM_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8alt/sankey_clingen_OP_MP2_Universal_calibrated.pdf"), sankey_clingen_MP2_OP_calibrated$plot, width = sankey_clingen_MP2_OP_calibrated$width_mm, height = sankey_clingen_MP2_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
 
 # Calibrated confusion matrices: real print size, 6pt Arial regular (see
 # lib/confusion_matrix_calibrated.R and the clinvar panel above, which
-# sources it) -- 31 x 27mm for Ext. Data Fig 4, 26 x 23mm for Fig 6.
+# sources it) -- 31 x 27mm for Ext. Data Fig 6alt, 26 x 23mm for Fig 8alt.
 cm_clingen_AM_calibrated <- make_confusion_matrix_calibrated(
   TP = cm_ClinGen_AM_YP$metrics$TP, TN = cm_ClinGen_AM_YP$metrics$TN,
   FP = cm_ClinGen_AM_YP$metrics$FP, FN = cm_ClinGen_AM_YP$metrics$FN,
@@ -997,8 +997,8 @@ cm_clingen_MP2_calibrated <- make_confusion_matrix_calibrated(
   matrix_width_mm = 31, matrix_height_mm = 27, x_label = "ClinGen classification"
 )
 
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_4/cm_clingen_ExOP_AM_GeneSpecific_calibrated.pdf"), cm_clingen_AM_calibrated$plot, width = cm_clingen_AM_calibrated$width_mm, height = cm_clingen_AM_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_4/cm_clingen_ExOP_MP2_GeneSpecific_calibrated.pdf"), cm_clingen_MP2_calibrated$plot, width = cm_clingen_MP2_calibrated$width_mm, height = cm_clingen_MP2_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_6alt/cm_clingen_ExOP_AM_GeneSpecific_calibrated.pdf"), cm_clingen_AM_calibrated$plot, width = cm_clingen_AM_calibrated$width_mm, height = cm_clingen_AM_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_6alt/cm_clingen_ExOP_MP2_GeneSpecific_calibrated.pdf"), cm_clingen_MP2_calibrated$plot, width = cm_clingen_MP2_calibrated$width_mm, height = cm_clingen_MP2_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
 
 cm_clingen_REVEL_OP_calibrated <- make_confusion_matrix_calibrated(
   TP = cm_ClinGen_REVEL_OP$metrics$TP, TN = cm_ClinGen_REVEL_OP$metrics$TN,
@@ -1019,43 +1019,43 @@ cm_clingen_MP2_OP_calibrated <- make_confusion_matrix_calibrated(
   matrix_width_mm = 26, matrix_height_mm = 23, x_label = "ClinGen classification"
 )
 
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_6/cm_clingen_OP_REVEL_Universal_calibrated.pdf"), cm_clingen_REVEL_OP_calibrated$plot, width = cm_clingen_REVEL_OP_calibrated$width_mm, height = cm_clingen_REVEL_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_6/cm_clingen_OP_AM_Universal_calibrated.pdf"), cm_clingen_AM_OP_calibrated$plot, width = cm_clingen_AM_OP_calibrated$width_mm, height = cm_clingen_AM_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_6/cm_clingen_OP_MP2_Universal_calibrated.pdf"), cm_clingen_MP2_OP_calibrated$plot, width = cm_clingen_MP2_OP_calibrated$width_mm, height = cm_clingen_MP2_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8alt/cm_clingen_OP_REVEL_Universal_calibrated.pdf"), cm_clingen_REVEL_OP_calibrated$plot, width = cm_clingen_REVEL_OP_calibrated$width_mm, height = cm_clingen_REVEL_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8alt/cm_clingen_OP_AM_Universal_calibrated.pdf"), cm_clingen_AM_OP_calibrated$plot, width = cm_clingen_AM_OP_calibrated$width_mm, height = cm_clingen_AM_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8alt/cm_clingen_OP_MP2_Universal_calibrated.pdf"), cm_clingen_MP2_OP_calibrated$plot, width = cm_clingen_MP2_OP_calibrated$width_mm, height = cm_clingen_MP2_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
 ```
 
 ```{r}
 
-#Extended Data Figure 4 missense
+#Extended Data Figure 6alt missense
 
-# Missense-only companion to Extended Data Figure 4 (AlphaMissense/MutPred2
+# Missense-only companion to Extended Data Figure 6alt (AlphaMissense/MutPred2
 # x ClinVar controls/ClinGen Evidence Repository, via ExCALIBR/GeneSpecific
 # calibration): adds a missense-only variant of every panel, doubling the
 # current 8 sankeys+confusion-matrices to 16, so an All-variants block and
 # a Missense-only block can sit side by side -- the same idea as Extended
-# Data Figure 6alt above, applied to Figure 4's own AM/MP2 GeneSpecific
+# Data Figure 8 above, applied to Figure 6alt's own AM/MP2 GeneSpecific
 # panels instead of the OddsPath/Universal REVEL/AM/MP2 panels. All charts
-# are shrunk 50% linearly from Ext. Data Fig 4's own calibrated core
+# are shrunk 50% linearly from Ext. Data Fig 6alt's own calibrated core
 # dimensions (sankey 37x64mm -> 18.5x32mm, confusion matrix 31x27mm ->
 # 15.5x13.5mm); font sizes stay the same (label_pt = 6 throughout, matching
 # the panel above) -- each chart's own *returned* width/height (which
 # includes label/title overflow beyond that core, same as every other
 # calibrated chart in this project) ends up larger than the core size
 # alone, since the same-size text no longer shrinks with the box. Sankey
-# node labels are abbreviated to P/LP/VUS/LB/B, same as Ext. Data Fig 6alt.
+# node labels are abbreviated to P/LP/VUS/LB/B, same as Ext. Data Fig 8.
 #
 # Entirely new, isolated code -- doesn't reuse or modify any object from
-# the Ext. Data Fig 4 block above, so that figure's own output can't
+# the Ext. Data Fig 6alt block above, so that figure's own output can't
 # regress. Does reuse this document's already-defined
 # make_confusion_matrix_clinvar_chek2()/make_confusion_matrix_clingen()/
 # add_clinvar()/fix_clingen_naming() helpers and colors_custom/
 # levels_order_extdata_4_6/make_sankey_calibrated()/
 # make_confusion_matrix_calibrated(), all already in scope from the Ext.
-# Data Fig 4/6 chunk above -- but defines its own label_overrides/filter
-# helper rather than depending on Ext. Data Figure 6alt's (below), so this
+# Data Fig 6alt/8alt chunk above -- but defines its own label_overrides/filter
+# helper rather than depending on Ext. Data Figure 8's (below), so this
 # chunk doesn't need to run in any particular order relative to that one.
 
-EXT_DATA_FIG_4_MISSENSE_DIR <- file.path(dirname(OUT_DIR), "extended_data_figure_4_missense")
+EXT_DATA_FIG_4_MISSENSE_DIR <- file.path(dirname(OUT_DIR), "extended_data_figure_6alt_missense")
 
 SANKEY_4_MISSENSE_WIDTH_MM <- 18.5
 SANKEY_4_MISSENSE_HEIGHT_MM <- 32
@@ -1069,7 +1069,7 @@ label_overrides_4_missense <- c(
 )
 
 # simplified_consequence lives on every GeneSpecific sheet too (same column
-# Figure5_6.Rmd's own consequence_filter param and Ext. Data Figure 6alt use).
+# Figure5_6.Rmd's own consequence_filter param and Ext. Data Figure 8 use).
 filter_missense_4 <- function(df) df[df$simplified_consequence == "missense_variant", ]
 
 PREDICTORS_4_MISSENSE <- list(
@@ -1173,15 +1173,15 @@ for (predictor_name in names(PREDICTORS_4_MISSENSE)) {
 
 ```{r}
 
-#Extended Data Figure 6alt
+#Extended Data Figure 8
 
-# Alternate version of Extended Data Figure 6 (REVEL/AlphaMissense/MutPred2
+# Alternate version of Extended Data Figure 8alt (REVEL/AlphaMissense/MutPred2
 # x ClinVar controls/ClinGen Evidence Repository, all via OddsPath/
 # "Universal" calibration): adds a missense-only variant of every panel,
 # doubling the current 12 sankeys+confusion-matrices to 24, so an
 # All-variants block and a Missense-only block can sit side by side --
 # essentially the current 3-column layout, repeated to the right. All
-# charts are shrunk 50% linearly from Ext. Data Fig 6's own calibrated
+# charts are shrunk 50% linearly from Ext. Data Fig 8alt's own calibrated
 # core dimensions (sankey 37x64mm -> 18.5x32mm, confusion matrix
 # 26x23mm -> 13x11.5mm); font sizes stay the same (label_pt = 6
 # throughout, matching the panel above) -- each chart's own *returned*
@@ -1196,7 +1196,7 @@ for (predictor_name in names(PREDICTORS_4_MISSENSE)) {
 # role.
 #
 # Entirely new, isolated code -- doesn't reuse or modify any object from
-# the Ext. Data Fig 6 block above, so that figure's own output can't
+# the Ext. Data Fig 8alt block above, so that figure's own output can't
 # regress. Does reuse this document's already-defined
 # make_confusion_matrix_clinvar_chek2()/make_confusion_matrix_clingen()/
 # add_clinvar()/fix_clingen_naming() helpers and colors_custom/
@@ -1204,7 +1204,7 @@ for (predictor_name in names(PREDICTORS_4_MISSENSE)) {
 # make_confusion_matrix_calibrated(), all already in scope from earlier
 # chunks in this document.
 
-EXT_DATA_FIG_6ALT_DIR <- file.path(dirname(OUT_DIR), "extended_data_figure_6alt")
+EXT_DATA_FIG_6ALT_DIR <- file.path(dirname(OUT_DIR), "extended_data_figure_8")
 
 SANKEY_6ALT_WIDTH_MM <- 18.5
 SANKEY_6ALT_HEIGHT_MM <- 32
@@ -1324,30 +1324,30 @@ for (predictor_name in names(PREDICTORS_6ALT)) {
 
 ```{r}
 
-#Extended Data Figure 4alt
+#Extended Data Figure 6
 
-# Alternate version of Extended Data Figure 4 (AlphaMissense/MutPred2 x
+# Alternate version of Extended Data Figure 6alt (AlphaMissense/MutPred2 x
 # ClinVar controls/ClinGen Evidence Repository, via ExCALIBR/GeneSpecific
 # calibration): adds REVEL/GeneSpecific as a third predictor -- Ext. Data
-# Fig 4 (and the Ext. Data Figure 4 missense chunk above) only ever loaded
+# Fig 6alt (and the Ext. Data Figure 6alt missense chunk above) only ever loaded
 # AM/MP2 GeneSpecific sheets, even though Supplementary_Data_5.xlsx's
 # controls_REVEL_GeneSpecific/ClinGen_Repo_REVEL_GeneSpecific sheets have
 # the identical column shape (Class_REVEL/
 # Points_REVEL_GeneSpecific_GenomeWide) as the AM/MP2 sheets -- and adds a
 # missense-only variant of every panel, exactly mirroring Ext. Data Figure
-# 6alt's own REVEL/AM/MP2 x All/Missense structure but for
+# 8's own REVEL/AM/MP2 x All/Missense structure but for
 # ExCALIBR/GeneSpecific instead of OddsPath/Universal calibration: 3
 # predictors x 2 consequence scopes x 2 truth sources (ClinVar controls /
 # ClinGen Evidence Repository) x {sankey, confusion matrix} = 24 PDFs. All
-# charts use the same shrunk-50% core dimensions as Ext. Data Figure 4
+# charts use the same shrunk-50% core dimensions as Ext. Data Figure 6alt
 # missense (sankey 37x64mm -> 18.5x32mm, confusion matrix 31x27mm ->
-# 15.5x13.5mm, i.e. Ext. Data Fig 4's own calibrated core, not Fig 6's);
+# 15.5x13.5mm, i.e. Ext. Data Fig 6alt's own calibrated core, not Fig 8alt's);
 # font sizes stay the same (label_pt = 6). Sankey node labels are
-# abbreviated to P/LP/VUS/LB/B, same as Ext. Data Figure 6alt/Fig 4
+# abbreviated to P/LP/VUS/LB/B, same as Ext. Data Figure 8/Fig 6alt
 # missense.
 #
 # Entirely new, isolated code -- doesn't reuse or modify any object from
-# the Ext. Data Fig 4 block or the Ext. Data Figure 4 missense chunk above,
+# the Ext. Data Fig 6alt block or the Ext. Data Figure 6alt missense chunk above,
 # so neither figure's own output can regress. Reads its own fresh
 # controls_REVEL_GeneSpecific/ClinGen_Repo_REVEL_GeneSpecific sheets (never
 # read elsewhere in this document), but reuses the already-loaded
@@ -1356,7 +1356,7 @@ for (predictor_name in names(PREDICTORS_6ALT)) {
 # make_confusion_matrix_clingen()/add_clinvar()/fix_clingen_naming()
 # helpers and colors_custom/levels_order_extdata_4_6/
 # make_sankey_calibrated()/make_confusion_matrix_calibrated(), all already
-# in scope from the Ext. Data Fig 4/6 chunk above -- but defines its own
+# in scope from the Ext. Data Fig 6alt/8alt chunk above -- but defines its own
 # label_overrides/filter helper rather than depending on either earlier
 # chunk's, so this chunk doesn't need to run in any particular order
 # relative to them.
@@ -1364,7 +1364,7 @@ for (predictor_name in names(PREDICTORS_6ALT)) {
 clinvar_REVEL_YP_4alt <- read_excel(file.path(DATA_DIR, "supplementary_data/Supplementary_Data_5.xlsx"), sheet = "controls_REVEL_GeneSpecific")
 ClinGen_REVEL_YP_4alt <- read_excel(file.path(DATA_DIR, "supplementary_data/Supplementary_Data_5.xlsx"), sheet = "ClinGen_Repo_REVEL_GeneSpecific")
 
-EXT_DATA_FIG_4ALT_DIR <- file.path(dirname(OUT_DIR), "extended_data_figure_4alt")
+EXT_DATA_FIG_4ALT_DIR <- file.path(dirname(OUT_DIR), "extended_data_figure_6")
 
 SANKEY_4ALT_WIDTH_MM <- 18.5
 SANKEY_4ALT_HEIGHT_MM <- 32
@@ -1484,7 +1484,7 @@ for (predictor_name in names(PREDICTORS_4ALT)) {
 
 ```{r}
 
-#Extended Data Figure 7 (VUS AM and MP2)
+#Extended Data Figure 9alt (VUS AM and MP2)
 
 VUS_AM_YP =read_excel(file.path(DATA_DIR, "supplementary_data/Supplementary_Data_5.xlsx"), sheet = "VUS_AM")
 
@@ -1603,7 +1603,7 @@ sankey_VUS_MP2_YP <- make_sankey_VUS(VUS_MP2_YP, Class_MP2, colors_custom)
 # variant_classification.md) into NA, since as.integer() can't parse that
 # string (reproduced: this rendered as a mislabeled/unlabeled node in both
 # the PNG below and the calibrated PDF further down). Use the same
-# regex-guarded normalizer as the Extended Data Figure 9 points charts
+# regex-guarded normalizer as the Extended Data Figure 11 points charts
 # below instead: it cleans up numeric-looking strings (dropping a
 # trailing ".0") while leaving "Conflicting evidence" untouched.
 vus_revel_conflicting_raw <- as.character(VUS_REVEL_YP$Conflicting_REVEL)
@@ -1618,18 +1618,18 @@ cm_AM_VUS_YP <- make_uncertain_confusion(VUS_AM_YP, Class_AM, "AM_GeneSpecific")
 
 cm_MP2_VUS_YP <- make_uncertain_confusion(VUS_MP2_YP, Class_MP2, "MP2_GeneSpecific")
 
-ggsave("../../../data/output/figures/extended_data_figure_7/sankey_VUS_ExOP_AM_GeneSpecific.png",sankey_VUS_AM_YP, dpi = 300, device = 'png', bg = 'transparent', create.dir = TRUE)
+ggsave("../../../data/output/figures/assets/extended_data_figure_9alt/sankey_VUS_ExOP_AM_GeneSpecific.png",sankey_VUS_AM_YP, dpi = 300, device = 'png', bg = 'transparent', create.dir = TRUE)
 
-ggsave("../../../data/output/figures/extended_data_figure_7/sankey_VUS_ExOP_MP2_GeneSpecific.png",sankey_VUS_MP2_YP, dpi = 300, device = 'png', bg = 'transparent', create.dir = TRUE)
+ggsave("../../../data/output/figures/assets/extended_data_figure_9alt/sankey_VUS_ExOP_MP2_GeneSpecific.png",sankey_VUS_MP2_YP, dpi = 300, device = 'png', bg = 'transparent', create.dir = TRUE)
 
 sankey_VUS_REVEL_YP_points <- make_sankey_VUS(VUS_REVEL_YP, Conflicting_REVEL, colors_custom)
 
-ggsave("../../../data/output/figures/extended_data_figure_7/sankey_VUS_ExOP_REVEL_GeneSpecific_points.png",sankey_VUS_REVEL_YP_points, dpi = 300, device = 'png', bg = 'transparent', create.dir = TRUE)
+ggsave("../../../data/output/figures/assets/extended_data_figure_9alt/sankey_VUS_ExOP_REVEL_GeneSpecific_points.png",sankey_VUS_REVEL_YP_points, dpi = 300, device = 'png', bg = 'transparent', create.dir = TRUE)
 
 # Calibrated versions: real print size, 6pt Arial, 31 x 54mm excluding label
 # overflow (see lib/sankey_calibrated.R; make_sankey_calibrated() is already
-# in scope from the Extended Data Figure 4/6 chunk above, sourced into its
-# own environment there). Unlike Fig 4/6, these keep count labels
+# in scope from the Extended Data Figure 6alt/8alt chunk above, sourced into its
+# own environment there). Unlike Fig 6alt/8alt, these keep count labels
 # (show_count defaults to TRUE) since no confusion matrix is shown
 # alongside them here.
 levels_order_extdata_7_vus <- c(
@@ -1659,15 +1659,15 @@ sankey_VUS_REVEL_points_calibrated <- make_sankey_calibrated(
   label_box_height_scale = 1.1
 )
 
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_7/sankey_VUS_ExOP_AM_GeneSpecific_calibrated.pdf"), sankey_VUS_AM_calibrated$plot, width = sankey_VUS_AM_calibrated$width_mm, height = sankey_VUS_AM_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_7/sankey_VUS_ExOP_MP2_GeneSpecific_calibrated.pdf"), sankey_VUS_MP2_calibrated$plot, width = sankey_VUS_MP2_calibrated$width_mm, height = sankey_VUS_MP2_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_7/sankey_VUS_ExOP_REVEL_GeneSpecific_points_calibrated.pdf"), sankey_VUS_REVEL_points_calibrated$plot, width = sankey_VUS_REVEL_points_calibrated$width_mm, height = sankey_VUS_REVEL_points_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_9alt/sankey_VUS_ExOP_AM_GeneSpecific_calibrated.pdf"), sankey_VUS_AM_calibrated$plot, width = sankey_VUS_AM_calibrated$width_mm, height = sankey_VUS_AM_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_9alt/sankey_VUS_ExOP_MP2_GeneSpecific_calibrated.pdf"), sankey_VUS_MP2_calibrated$plot, width = sankey_VUS_MP2_calibrated$width_mm, height = sankey_VUS_MP2_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_9alt/sankey_VUS_ExOP_REVEL_GeneSpecific_points_calibrated.pdf"), sankey_VUS_REVEL_points_calibrated$plot, width = sankey_VUS_REVEL_points_calibrated$width_mm, height = sankey_VUS_REVEL_points_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
 
 ```
 
 ```{r}
 
-#extended data fig 8
+#extended data fig 12
 
 library(dplyr)
 library(ggplot2)
@@ -1734,7 +1734,7 @@ rank_chart <- plot_vus_rank_calibrated(plot_df)
 rank_chart$plot
 
 ggsave(
-  '../../../data/output/figures/extended_data_figure_8/rank_based_plot_calibrated.pdf',
+  '../../../data/output/figures/assets/extended_data_figure_12/rank_based_plot_calibrated.pdf',
   rank_chart$plot,
   width = rank_chart$width_mm, height = rank_chart$height_mm, units = 'mm',
   device = cairo_pdf, create.dir = TRUE
@@ -1744,7 +1744,7 @@ ggsave(
 
 
 ```{r}
-#extended data fig 8
+#extended data fig 12
 
 library(dplyr)
 library(ggplot2)
@@ -1809,7 +1809,7 @@ heatmap_chart <- plot_vus_heatmap_calibrated(heat_df_all, target_bottom_chrome_m
 heatmap_chart$plot
 
 ggsave(
-  '../../../data/output/figures/extended_data_figure_8/points_heatmap_calibrated.pdf',
+  '../../../data/output/figures/assets/extended_data_figure_12/points_heatmap_calibrated.pdf',
   heatmap_chart$plot,
   width = heatmap_chart$width_mm, height = heatmap_chart$height_mm, units = 'mm',
   device = cairo_pdf, create.dir = TRUE
@@ -1821,7 +1821,7 @@ ggsave(
 ```
 
 ```{r}
-#Extended Data Figure 9 
+#Extended Data Figure 11
 
 VUS_REVEL_YP = read_excel(file.path(DATA_DIR, "supplementary_data/Supplementary_Data_5.xlsx"), sheet = "VUS_REVEL", col_types = 'text')
 
@@ -1835,7 +1835,7 @@ VUS_REVEL_YP$Conflicting_REVEL <- ifelse(
 
 sankey_VUS_REVEL_YP_points <- make_sankey_VUS(VUS_REVEL_YP, Conflicting_REVEL, colors_custom)
 
-ggsave('../../../data/output/figures/extended_data_figure_9/sankey_VUS_ExOP_REVEL_GeneSpecific_points.png',sankey_VUS_REVEL_YP_points, dpi = 300, device = 'png', bg = 'transparent', create.dir = TRUE)
+ggsave('../../../data/output/figures/assets/extended_data_figure_11/sankey_VUS_ExOP_REVEL_GeneSpecific_points.png',sankey_VUS_REVEL_YP_points, dpi = 300, device = 'png', bg = 'transparent', create.dir = TRUE)
 
 
 #gnomAD points sankey
@@ -1907,7 +1907,7 @@ gnomad_REVEL_YP$Conflicting_REVEL <- ifelse(
 
 sankey_gnomad_REVEL_YP_points = make_sankey_gnomad(gnomad_REVEL_YP, Conflicting_REVEL, colors_custom)
 
-ggsave('../../../data/output/figures/extended_data_figure_9/sankey_gnomAD_ExOP_REVEL_GeneSpecific_points.png',sankey_gnomad_REVEL_YP_points, dpi = 300, device = 'png', bg = 'transparent', create.dir = TRUE)
+ggsave('../../../data/output/figures/assets/extended_data_figure_11/sankey_gnomAD_ExOP_REVEL_GeneSpecific_points.png',sankey_gnomad_REVEL_YP_points, dpi = 300, device = 'png', bg = 'transparent', create.dir = TRUE)
 
 #unobserved
 
@@ -1978,11 +1978,11 @@ unseen_REVEL_YP$Conflicting_REVEL <- ifelse(
 
 sankey_unseen_REVEL_YP_points = make_sankey_unseen(unseen_REVEL_YP, Conflicting_REVEL, colors_custom)
 
-ggsave('../../../data/output/figures/extended_data_figure_9/sankey_unseen_ExOP_REVEL_GeneSpecific_points.png',sankey_unseen_REVEL_YP_points, dpi = 300, device = 'png', bg = 'transparent', create.dir = TRUE)
+ggsave('../../../data/output/figures/assets/extended_data_figure_11/sankey_unseen_ExOP_REVEL_GeneSpecific_points.png',sankey_unseen_REVEL_YP_points, dpi = 300, device = 'png', bg = 'transparent', create.dir = TRUE)
 
 # Calibrated versions: real print size, 5.5pt Arial, 47 x 86mm excluding
 # label overflow (see lib/sankey_calibrated.R; make_sankey_calibrated() is
-# already in scope from the Extended Data Figure 4/6 chunk above). No count
+# already in scope from the Extended Data Figure 6alt/8alt chunk above). No count
 # labels here (show_count = FALSE) -- just node names, which for these
 # three charts are mostly the raw REVEL point values themselves (an
 # integer, e.g. "-6"/"6") rather than a Pathogenic/Benign-style category,
@@ -2030,15 +2030,15 @@ sankey_unseen_REVEL_YP_points_calibrated <- make_sankey_calibrated(
   clamp_label_right_edge = TRUE, show_target_percent = TRUE
 )
 
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_9/sankey_VUS_ExOP_REVEL_GeneSpecific_points_calibrated.pdf"), sankey_VUS_REVEL_YP_points_calibrated$plot, width = sankey_VUS_REVEL_YP_points_calibrated$width_mm, height = sankey_VUS_REVEL_YP_points_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_9/sankey_gnomAD_ExOP_REVEL_GeneSpecific_points_calibrated.pdf"), sankey_gnomad_REVEL_YP_points_calibrated$plot, width = sankey_gnomad_REVEL_YP_points_calibrated$width_mm, height = sankey_gnomad_REVEL_YP_points_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_9/sankey_unseen_ExOP_REVEL_GeneSpecific_points_calibrated.pdf"), sankey_unseen_REVEL_YP_points_calibrated$plot, width = sankey_unseen_REVEL_YP_points_calibrated$width_mm, height = sankey_unseen_REVEL_YP_points_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_11/sankey_VUS_ExOP_REVEL_GeneSpecific_points_calibrated.pdf"), sankey_VUS_REVEL_YP_points_calibrated$plot, width = sankey_VUS_REVEL_YP_points_calibrated$width_mm, height = sankey_VUS_REVEL_YP_points_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_11/sankey_gnomAD_ExOP_REVEL_GeneSpecific_points_calibrated.pdf"), sankey_gnomad_REVEL_YP_points_calibrated$plot, width = sankey_gnomad_REVEL_YP_points_calibrated$width_mm, height = sankey_gnomad_REVEL_YP_points_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_11/sankey_unseen_ExOP_REVEL_GeneSpecific_points_calibrated.pdf"), sankey_unseen_REVEL_YP_points_calibrated$plot, width = sankey_unseen_REVEL_YP_points_calibrated$width_mm, height = sankey_unseen_REVEL_YP_points_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
 
 ```
 
 ```{r}
 
-#donut plots extended figure 9
+#donut plots extended figure 11
 
 #Donut plots Figure
 
@@ -2166,28 +2166,28 @@ ben_plot
 # plot data (pie_ben_..._nolab.png held the uncertain plot and vice versa);
 # fixed here to match, alongside adding the previously-ungenerated lab
 # versions and the new calibrated (real-print-size) versions.
-ggsave('../../../data/output/figures/extended_data_figure_9/pie_path_gnomAD_ExOP_REVEL_GeneSpecific_nolab.png',path_plot_no_lab, dpi = 300, device = 'png', bg = 'transparent', width = 7, height = 7, create.dir = TRUE)
-ggsave('../../../data/output/figures/extended_data_figure_9/pie_ben_gnomAD_ExOP_REVEL_GeneSpecific_nolab.png',ben_plot_no_lab, dpi = 300, device = 'png', bg = 'transparent', width = 7, height = 7, create.dir = TRUE)
-ggsave('../../../data/output/figures/extended_data_figure_9/pie_unc_gnomAD_ExOP_REVEL_GeneSpecific_nolab.png',unc_plot_no_lab, dpi = 300, device = 'png', bg = 'transparent', width = 7, height = 7, create.dir = TRUE)
+ggsave('../../../data/output/figures/assets/extended_data_figure_11/pie_path_gnomAD_ExOP_REVEL_GeneSpecific_nolab.png',path_plot_no_lab, dpi = 300, device = 'png', bg = 'transparent', width = 7, height = 7, create.dir = TRUE)
+ggsave('../../../data/output/figures/assets/extended_data_figure_11/pie_ben_gnomAD_ExOP_REVEL_GeneSpecific_nolab.png',ben_plot_no_lab, dpi = 300, device = 'png', bg = 'transparent', width = 7, height = 7, create.dir = TRUE)
+ggsave('../../../data/output/figures/assets/extended_data_figure_11/pie_unc_gnomAD_ExOP_REVEL_GeneSpecific_nolab.png',unc_plot_no_lab, dpi = 300, device = 'png', bg = 'transparent', width = 7, height = 7, create.dir = TRUE)
 
-ggsave('../../../data/output/figures/extended_data_figure_9/pie_path_gnomAD_ExOP_REVEL_GeneSpecific_lab.png',path_plot, dpi = 300, device = 'png', bg = 'transparent', width = 7, height = 7, create.dir = TRUE)
-ggsave('../../../data/output/figures/extended_data_figure_9/pie_ben_gnomAD_ExOP_REVEL_GeneSpecific_lab.png',ben_plot, dpi = 300, device = 'png', bg = 'transparent', width = 7, height = 7, create.dir = TRUE)
-ggsave('../../../data/output/figures/extended_data_figure_9/pie_unc_gnomAD_ExOP_REVEL_GeneSpecific_lab.png',unc_plot, dpi = 300, device = 'png', bg = 'transparent', width = 7, height = 7, create.dir = TRUE)
+ggsave('../../../data/output/figures/assets/extended_data_figure_11/pie_path_gnomAD_ExOP_REVEL_GeneSpecific_lab.png',path_plot, dpi = 300, device = 'png', bg = 'transparent', width = 7, height = 7, create.dir = TRUE)
+ggsave('../../../data/output/figures/assets/extended_data_figure_11/pie_ben_gnomAD_ExOP_REVEL_GeneSpecific_lab.png',ben_plot, dpi = 300, device = 'png', bg = 'transparent', width = 7, height = 7, create.dir = TRUE)
+ggsave('../../../data/output/figures/assets/extended_data_figure_11/pie_unc_gnomAD_ExOP_REVEL_GeneSpecific_lab.png',unc_plot, dpi = 300, device = 'png', bg = 'transparent', width = 7, height = 7, create.dir = TRUE)
 
 # Calibrated versions: real print size, baked-in labels (see lib/three_ring_donut.R)
 path_calibrated <- make_three_ring_plot_calibrated(pathogenic)
 unc_calibrated  <- make_three_ring_plot_calibrated(uncertain)
 ben_calibrated  <- make_three_ring_plot_calibrated(benign)
 
-ggsave('../../../data/output/figures/extended_data_figure_9/pie_path_gnomAD_ExOP_REVEL_GeneSpecific_calibrated.pdf', path_calibrated$plot, width = path_calibrated$width_mm, height = path_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave('../../../data/output/figures/extended_data_figure_9/pie_unc_gnomAD_ExOP_REVEL_GeneSpecific_calibrated.pdf', unc_calibrated$plot, width = unc_calibrated$width_mm, height = unc_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave('../../../data/output/figures/extended_data_figure_9/pie_ben_gnomAD_ExOP_REVEL_GeneSpecific_calibrated.pdf', ben_calibrated$plot, width = ben_calibrated$width_mm, height = ben_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave('../../../data/output/figures/assets/extended_data_figure_11/pie_path_gnomAD_ExOP_REVEL_GeneSpecific_calibrated.pdf', path_calibrated$plot, width = path_calibrated$width_mm, height = path_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave('../../../data/output/figures/assets/extended_data_figure_11/pie_unc_gnomAD_ExOP_REVEL_GeneSpecific_calibrated.pdf', unc_calibrated$plot, width = unc_calibrated$width_mm, height = unc_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave('../../../data/output/figures/assets/extended_data_figure_11/pie_ben_gnomAD_ExOP_REVEL_GeneSpecific_calibrated.pdf', ben_calibrated$plot, width = ben_calibrated$width_mm, height = ben_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
 
 
 ```
 
 ```{r}
-#Extended data fig 9 
+#Extended data fig 11
 
 ###----- 1. Load and filter the dataset----
 
@@ -2267,22 +2267,22 @@ ben_plot_pc
 # plot data, same as the gnomad block above; fixed here too, alongside
 # adding the previously-ungenerated lab versions and the new calibrated
 # (real-print-size) versions.
-ggsave('../../../data/output/figures/extended_data_figure_9/pie_path_unseen_ExOP_REVEL_GeneSpecific_nolab.png',path_plot_no_lab_pc, dpi = 300, device = 'png', bg = 'transparent', width = 7, height = 7, create.dir = TRUE)
-ggsave('../../../data/output/figures/extended_data_figure_9/pie_ben_unseen_ExOP_REVEL_GeneSpecific_nolab.png',ben_plot_no_lab_pc, dpi = 300, device = 'png', bg = 'transparent', width = 7, height = 7, create.dir = TRUE)
-ggsave('../../../data/output/figures/extended_data_figure_9/pie_unc_unseen_ExOP_REVEL_GeneSpecific_nolab.png',unc_plot_no_lab_pc, dpi = 300, device = 'png', bg = 'transparent', width = 7, height = 7, create.dir = TRUE)
+ggsave('../../../data/output/figures/assets/extended_data_figure_11/pie_path_unseen_ExOP_REVEL_GeneSpecific_nolab.png',path_plot_no_lab_pc, dpi = 300, device = 'png', bg = 'transparent', width = 7, height = 7, create.dir = TRUE)
+ggsave('../../../data/output/figures/assets/extended_data_figure_11/pie_ben_unseen_ExOP_REVEL_GeneSpecific_nolab.png',ben_plot_no_lab_pc, dpi = 300, device = 'png', bg = 'transparent', width = 7, height = 7, create.dir = TRUE)
+ggsave('../../../data/output/figures/assets/extended_data_figure_11/pie_unc_unseen_ExOP_REVEL_GeneSpecific_nolab.png',unc_plot_no_lab_pc, dpi = 300, device = 'png', bg = 'transparent', width = 7, height = 7, create.dir = TRUE)
 
-ggsave('../../../data/output/figures/extended_data_figure_9/pie_path_unseen_ExOP_REVEL_GeneSpecific_lab.png',path_plot_pc, dpi = 300, device = 'png', bg = 'transparent', width = 7, height = 7, create.dir = TRUE)
-ggsave('../../../data/output/figures/extended_data_figure_9/pie_ben_unseen_ExOP_REVEL_GeneSpecific_lab.png',ben_plot_pc, dpi = 300, device = 'png', bg = 'transparent', width = 7, height = 7, create.dir = TRUE)
-ggsave('../../../data/output/figures/extended_data_figure_9/pie_unc_unseen_ExOP_REVEL_GeneSpecific_lab.png',unc_plot_pc, dpi = 300, device = 'png', bg = 'transparent', width = 7, height = 7, create.dir = TRUE)
+ggsave('../../../data/output/figures/assets/extended_data_figure_11/pie_path_unseen_ExOP_REVEL_GeneSpecific_lab.png',path_plot_pc, dpi = 300, device = 'png', bg = 'transparent', width = 7, height = 7, create.dir = TRUE)
+ggsave('../../../data/output/figures/assets/extended_data_figure_11/pie_ben_unseen_ExOP_REVEL_GeneSpecific_lab.png',ben_plot_pc, dpi = 300, device = 'png', bg = 'transparent', width = 7, height = 7, create.dir = TRUE)
+ggsave('../../../data/output/figures/assets/extended_data_figure_11/pie_unc_unseen_ExOP_REVEL_GeneSpecific_lab.png',unc_plot_pc, dpi = 300, device = 'png', bg = 'transparent', width = 7, height = 7, create.dir = TRUE)
 
 # Calibrated versions: real print size, baked-in labels (see lib/three_ring_donut.R)
 path_calibrated_pc <- make_three_ring_plot_calibrated(pathogenic_pc)
 unc_calibrated_pc  <- make_three_ring_plot_calibrated(uncertain_pc)
 ben_calibrated_pc  <- make_three_ring_plot_calibrated(benign_pc)
 
-ggsave('../../../data/output/figures/extended_data_figure_9/pie_path_unseen_ExOP_REVEL_GeneSpecific_calibrated.pdf', path_calibrated_pc$plot, width = path_calibrated_pc$width_mm, height = path_calibrated_pc$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave('../../../data/output/figures/extended_data_figure_9/pie_unc_unseen_ExOP_REVEL_GeneSpecific_calibrated.pdf', unc_calibrated_pc$plot, width = unc_calibrated_pc$width_mm, height = unc_calibrated_pc$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave('../../../data/output/figures/extended_data_figure_9/pie_ben_unseen_ExOP_REVEL_GeneSpecific_calibrated.pdf', ben_calibrated_pc$plot, width = ben_calibrated_pc$width_mm, height = ben_calibrated_pc$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave('../../../data/output/figures/assets/extended_data_figure_11/pie_path_unseen_ExOP_REVEL_GeneSpecific_calibrated.pdf', path_calibrated_pc$plot, width = path_calibrated_pc$width_mm, height = path_calibrated_pc$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave('../../../data/output/figures/assets/extended_data_figure_11/pie_unc_unseen_ExOP_REVEL_GeneSpecific_calibrated.pdf', unc_calibrated_pc$plot, width = unc_calibrated_pc$width_mm, height = unc_calibrated_pc$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave('../../../data/output/figures/assets/extended_data_figure_11/pie_ben_unseen_ExOP_REVEL_GeneSpecific_calibrated.pdf', ben_calibrated_pc$plot, width = ben_calibrated_pc$width_mm, height = ben_calibrated_pc$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
 
 
 

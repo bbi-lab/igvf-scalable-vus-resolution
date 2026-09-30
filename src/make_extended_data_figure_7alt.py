@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Build Extended Data Figure 7alt: a calibrated (exact-print-size) heatmap of
+"""Build Extended Data Figure 9: a calibrated (exact-print-size) heatmap of
 final variant classifications across VUS, gnomAD, and unobserved variants.
 
 Supersedes the information in Figure 6 (VUS/gnomAD/unobserved x REVEL only)
-and Extended Data Figure 7 (VUS x REVEL/AM/MP2) with all nine combinations of
+and Extended Data Figure 9alt (VUS x REVEL/AM/MP2) with all nine combinations of
 variant set x predictor in one chart: 9 rows (three REVEL/AM/MP2 rows per
 variant-set group, with a gap between groups) x 5 classification columns
 (P/LP/VUS/LB/B, reading `Class_{REVEL,AM,MP2}` from
@@ -11,15 +11,15 @@ variant-set group, with a gap between groups) x 5 classification columns
 sheets -- the same "functional data calibrated using ExCALIBR, with OddsPath
 for selected genes, plus predictive data calibrated gene-specifically with a
 universal-calibration fallback" classification already used throughout Figure
-6/Extended Data Figure 7), plus a Total column. Each cell shows its count and
+6/Extended Data Figure 9alt), plus a Total column. Each cell shows its count and
 (in parentheses) its row-wise percentage, colored on a single monochromatic
 0-100% scale (with a legend) shared across every cell.
 
 --consequence-filter missense restricts every sheet to simplified_consequence
 == "missense_variant" rows (same idea and column as Figure5_6.Rmd's own
 consequence_filter param) and defaults the output path to
-extended_data_figure_7alt_missense/new_classification_heatmap_missense.pdf
-instead of extended_data_figure_7alt/new_classification_heatmap.pdf, so it
+extended_data_figure_9_missense/new_classification_heatmap_missense.pdf
+instead of extended_data_figure_9/new_classification_heatmap.pdf, so it
 doesn't overwrite the all-consequences run.
 """
 
@@ -48,9 +48,9 @@ CONSEQUENCE_FILTERS = {
 
 def default_output_path(consequence_filter):
     suffix = "" if consequence_filter == "all" else f"_{consequence_filter}"
-    dirname = f"extended_data_figure_7alt{suffix}"
+    dirname = f"extended_data_figure_9{suffix}"
     filename = f"new_classification_heatmap{suffix}"
-    return Path("data/output/figures") / dirname / f"{filename}.pdf"
+    return Path("data/output/figures/assets") / dirname / f"{filename}.pdf"
 
 
 GROUPS = ["VUS", "gnomAD", "Unobserved"]

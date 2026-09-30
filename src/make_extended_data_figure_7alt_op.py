@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Build the OddsPath/Universal-calibration counterpart of Extended Data Figure
-7alt: a calibrated (exact-print-size) heatmap of final variant classifications
+9: a calibrated (exact-print-size) heatmap of final variant classifications
 across VUS, gnomAD, and unobserved variants.
 
 Identical layout to `make_extended_data_figure_7alt.py` (9 rows: three
@@ -37,8 +37,8 @@ category outside the five expected labels raises.
 --consequence-filter missense restricts every sheet to simplified_consequence
 == "missense_variant" rows (same idea and column as
 `make_extended_data_figure_7alt.py`'s own option) and defaults the output
-path to extended_data_figure_7alt_op_missense/new_classification_heatmap_op_missense.pdf
-instead of extended_data_figure_7alt_op/new_classification_heatmap_op.pdf, so it
+path to extended_data_figure_9_op_missense/new_classification_heatmap_op_missense.pdf
+instead of extended_data_figure_9_op/new_classification_heatmap_op.pdf, so it
 doesn't overwrite the all-consequences run.
 """
 
@@ -67,9 +67,9 @@ CONSEQUENCE_FILTERS = {
 
 def default_output_path(consequence_filter):
     suffix = "" if consequence_filter == "all" else f"_{consequence_filter}"
-    dirname = f"extended_data_figure_7alt_op{suffix}"
+    dirname = f"extended_data_figure_9_op{suffix}"
     filename = f"new_classification_heatmap_op{suffix}"
-    return Path("data/output/figures") / dirname / f"{filename}.pdf"
+    return Path("data/output/figures/assets") / dirname / f"{filename}.pdf"
 
 
 GROUPS = ["VUS", "gnomAD", "Unobserved"]

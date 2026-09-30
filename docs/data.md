@@ -184,7 +184,7 @@ Gitignored except per-directory `.gitkeep` placeholders (see `.gitignore`).
 | `data/output/supplementary_data/Supplementary_Data_5.with_secondary_variants.xlsx(.gz)` | Same, but every candidate NT variant kept (`Variant_Role` column) instead of just the aa-stage tie-break winner -- see [`docs/variant_classification.md`](variant_classification.md#aa-stage-tie-break-clinvarclingen-evidence-quality) | `Variant_Classification_analysis.ipynb` |
 | `data/output/supplementary_data/Supplementary_Data_6.xlsx(.gz)` | Genome-wide OddsPath-based classification results, combined into Excel -- one row per variant | `OddsPath_classifications.ipynb` |
 | `data/output/supplementary_data/Supplementary_Data_6.with_secondary_variants.xlsx(.gz)` | Same, but every candidate NT variant kept (`Variant_Role` column) | `OddsPath_classifications.ipynb` |
-| `data/output/figures/` | Manuscript figure outputs (SVG/PNG), one subdirectory per figure | `notebooks/figures/*` notebooks/scripts |
+| `data/output/figures/assets/` | Manuscript figure outputs (SVG/PNG), one subdirectory per figure | `notebooks/figures/*` notebooks/scripts |
 | `stats.txt` (or wherever `--output` points) | Dataset/measurement/variant counts, predictor score coverage, clinical-attribute breakdowns, ExCALIBR calibration coverage, reclassification agreement | `src/mave_dataset_stats.py` |
 
 ## Roadmap
@@ -220,7 +220,7 @@ priority order:
    instead. The `.gitignore` comment above `data/intermediate/` ("Staging
    copy of `data/raw_mave_data/`...") should be corrected too.
 4. **Remove `data/figures/`.** It's an untracked, byte-for-byte duplicate of
-   `data/output/figures/extended_data_figures/Ext_Figure3_5/` and isn't
+   `data/output/figures/assets/extended_data_figures/Ext_Figure3_5/` and isn't
    referenced by any script, notebook, or doc — looks like a stray copy left
    over from a manual run.
 5. **Clean up `data/to organize/`.** Contains a stale `stats.txt` (referencing

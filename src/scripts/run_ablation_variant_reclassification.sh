@@ -6,11 +6,11 @@ Usage: src/scripts/run_ablation_variant_reclassification.sh --calibrated-figure 
 
 Examples:
   src/scripts/run_ablation_variant_reclassification.sh \
-    --calibrated-figure data/output/figures/extended_data_figure_10/ablation.pdf
+    --calibrated-figure data/output/figures/assets/extended_data_figure_10/ablation.pdf
 
   src/scripts/run_ablation_variant_reclassification.sh \
     --consequence missense_only \
-    --calibrated-figure data/output/figures/extended_data_figure_10/ablation_missense.pdf
+    --calibrated-figure data/output/figures/assets/extended_data_figure_10/ablation_missense.pdf
 
 Notes:
   - --calibrated-figure has no default; the figure is the whole point of

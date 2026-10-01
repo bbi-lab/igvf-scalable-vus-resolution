@@ -13,9 +13,10 @@ Notes:
     /usr/src/app since this service only reads/writes this repo's own
     tree, unlike flag-variants).
   - Paths are interpreted relative to /usr/src/app in the container.
-  - --consequence-filter missense writes to a
-    extended_data_figure_9_missense/ output dir instead, so it doesn't
-    overwrite the all-consequences run.
+  - --consequence-filter missense writes
+    new_classification_heatmap_missense.pdf into the same
+    extended_data_figure_9/ output dir, so it doesn't overwrite the
+    all-consequences run's new_classification_heatmap.pdf.
   - Add --rebuild-image to force rebuilding the image.
   - Add --no-build-cache with --rebuild-image for a clean rebuild.
 EOF

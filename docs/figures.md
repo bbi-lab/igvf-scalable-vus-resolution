@@ -524,8 +524,9 @@ by default; see `--input`/`--output` (`--help`) to override either path.
 `--consequence-filter missense` restricts every sheet to `simplified_consequence
 == "missense_variant"` rows (the same column/idea as `Figure5_6.Rmd`'s own
 `consequence_filter` param) and writes to
-`extended_data_figure_9_missense/new_classification_heatmap_missense.pdf`
-instead, so it doesn't overwrite the all-consequences run.
+`extended_data_figure_9/new_classification_heatmap_missense.pdf` -- the
+same directory as the all-consequences run, distinguished only by the
+filename's own `_missense` suffix.
 
 ### Extended Data Figure 9, OddsPath variant (`src/make_extended_data_figure_9_op.py`)
 

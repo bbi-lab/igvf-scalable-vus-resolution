@@ -402,9 +402,10 @@ docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_6
 ```bash
 src/scripts/run_make_extended_data_figure_9.sh
 
-# Optional: same chart, restricted to missense_variant rows only. Writes to
-# extended_data_figure_9_missense/ instead, so it doesn't overwrite the
-# all-consequences run above.
+# Optional: same chart, restricted to missense_variant rows only. Writes
+# new_classification_heatmap_missense.pdf into the same
+# extended_data_figure_9/ dir, so it doesn't overwrite the all-consequences
+# run above.
 src/scripts/run_make_extended_data_figure_9.sh --consequence-filter missense
 ```
 

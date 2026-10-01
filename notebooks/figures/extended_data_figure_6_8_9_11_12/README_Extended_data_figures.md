@@ -142,6 +142,28 @@ Figures are saved to subdirectories within `OUT_DIR`:
 | **ED Fig 12** | Per-gene VUS analysis | Rank plot, heatmap |
 | **ED Fig 11** | Evidence source breakdown | Three-ring donut plots for gnomAD, VUS, unobserved |
 
+## Reviewer-only gene-specific variant (ED Fig 8alt/8)
+
+`Extended_data_figures_gene_specific.Rmd` rebuilds ED Fig 8alt and ED Fig 8
+-- the only two figures here derived from `Supplementary_Data_6.xlsx` --
+from `Supplementary_Data_6_gene_specific.xlsx` instead (the variant
+`OddsPath_classifications.ipynb` produces with
+`ONLY_ODDSPATH_CALIBRATED_DATASETS = True` and
+`USE_GENE_SPECIFIC_PREDICTOR_CALIBRATIONS = True`; see
+`notebooks/analysis/README_OddsPath_classifications.md`'s "Reviewer-only
+variant" section). Not used in the paper. Render it the same way as the
+main `.Rmd`:
+
+```r
+rmarkdown::render("Extended_data_figures_gene_specific.Rmd")
+```
+
+Writes to `extended_data_figure_8alt_gene_specific/` and
+`extended_data_figure_8_gene_specific/` under `OUT_DIR` -- distinct
+folders so nothing here can collide with or overwrite the standard ED
+Fig 8alt/8 outputs. See [`docs/figures.md`](../../../docs/figures.md#extended-data-figure-8alt8-gene-specific-reviewer-only)
+for the full write-up, including exact output filenames.
+
 ## Figure Dimensions
 
 All figures are saved at 300 DPI with transparent backgrounds.

@@ -458,9 +458,9 @@ docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_6
   r-figures -e 'rmarkdown::render("Extended_data_figures_gene_specific.Rmd")'
 ```
 
-Writes to `data/output/figures/assets/extended_data_figure_8_gene_specific/` (PNGs
+Writes to `data/output/figures/assets/extended_data_figure_8alt_gene_specific/` (PNGs
 + calibrated PDFs, mirroring Extended Data Figure 8alt's own file names) and
-`data/output/figures/assets/extended_data_figure_8alt_gene_specific/` (24
+`data/output/figures/assets/extended_data_figure_8_gene_specific/` (24
 calibrated PDFs, mirroring Extended Data Figure 8's own file names) --
 distinct folders so nothing here can collide with or overwrite the
 standard Extended Data Figure 8alt/8 outputs.

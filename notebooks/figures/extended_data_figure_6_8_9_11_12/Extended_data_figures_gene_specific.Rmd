@@ -407,7 +407,7 @@ for (nm in names(clinvar_oddspath)) {
   save_my_plot(
     plot = clinvar_oddspath[[nm]],
     filename = nm,
-    folder = file.path(dirname(OUT_DIR), "extended_data_figure_8_gene_specific"),
+    folder = file.path(dirname(OUT_DIR), "extended_data_figure_8alt_gene_specific"),
     width = w,
     height = h
   )
@@ -460,9 +460,9 @@ sankey_clinvar_MP2_OP_calibrated <- make_sankey_calibrated(
   wrap_destination_labels = TRUE
 )
 
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8_gene_specific/sankey_clinvar_OP_REVEL_Universal_calibrated.pdf"), sankey_clinvar_REVEL_OP_calibrated$plot, width = sankey_clinvar_REVEL_OP_calibrated$width_mm, height = sankey_clinvar_REVEL_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8_gene_specific/sankey_clinvar_OP_AM_Universal_calibrated.pdf"), sankey_clinvar_AM_OP_calibrated$plot, width = sankey_clinvar_AM_OP_calibrated$width_mm, height = sankey_clinvar_AM_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8_gene_specific/sankey_clinvar_OP_MP2_Universal_calibrated.pdf"), sankey_clinvar_MP2_OP_calibrated$plot, width = sankey_clinvar_MP2_OP_calibrated$width_mm, height = sankey_clinvar_MP2_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8alt_gene_specific/sankey_clinvar_OP_REVEL_Universal_calibrated.pdf"), sankey_clinvar_REVEL_OP_calibrated$plot, width = sankey_clinvar_REVEL_OP_calibrated$width_mm, height = sankey_clinvar_REVEL_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8alt_gene_specific/sankey_clinvar_OP_AM_Universal_calibrated.pdf"), sankey_clinvar_AM_OP_calibrated$plot, width = sankey_clinvar_AM_OP_calibrated$width_mm, height = sankey_clinvar_AM_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8alt_gene_specific/sankey_clinvar_OP_MP2_Universal_calibrated.pdf"), sankey_clinvar_MP2_OP_calibrated$plot, width = sankey_clinvar_MP2_OP_calibrated$width_mm, height = sankey_clinvar_MP2_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
 
 # Calibrated confusion matrices: real print size, 6pt Arial regular (see
 # lib/confusion_matrix_calibrated.R) -- 26 x 23mm, matching Extended Data
@@ -490,9 +490,9 @@ cm_clinvar_MP2_OP_calibrated <- make_confusion_matrix_calibrated(
   matrix_width_mm = 26, matrix_height_mm = 23, x_label = "ClinVar classification"
 )
 
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8_gene_specific/cm_clinvar_OP_REVEL_Universal_calibrated.pdf"), cm_clinvar_REVEL_OP_calibrated$plot, width = cm_clinvar_REVEL_OP_calibrated$width_mm, height = cm_clinvar_REVEL_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8_gene_specific/cm_clinvar_OP_AM_Universal_calibrated.pdf"), cm_clinvar_AM_OP_calibrated$plot, width = cm_clinvar_AM_OP_calibrated$width_mm, height = cm_clinvar_AM_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8_gene_specific/cm_clinvar_OP_MP2_Universal_calibrated.pdf"), cm_clinvar_MP2_OP_calibrated$plot, width = cm_clinvar_MP2_OP_calibrated$width_mm, height = cm_clinvar_MP2_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8alt_gene_specific/cm_clinvar_OP_REVEL_Universal_calibrated.pdf"), cm_clinvar_REVEL_OP_calibrated$plot, width = cm_clinvar_REVEL_OP_calibrated$width_mm, height = cm_clinvar_REVEL_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8alt_gene_specific/cm_clinvar_OP_AM_Universal_calibrated.pdf"), cm_clinvar_AM_OP_calibrated$plot, width = cm_clinvar_AM_OP_calibrated$width_mm, height = cm_clinvar_AM_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8alt_gene_specific/cm_clinvar_OP_MP2_Universal_calibrated.pdf"), cm_clinvar_MP2_OP_calibrated$plot, width = cm_clinvar_MP2_OP_calibrated$width_mm, height = cm_clinvar_MP2_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
 
 ```
 
@@ -760,7 +760,7 @@ for (nm in names(clingen_oddspath)) {
   save_my_plot(
     plot = clingen_oddspath[[nm]],
     filename = nm,
-    folder = file.path(dirname(OUT_DIR), "extended_data_figure_8_gene_specific"),
+    folder = file.path(dirname(OUT_DIR), "extended_data_figure_8alt_gene_specific"),
     width = w,
     height = h
   )
@@ -804,9 +804,9 @@ sankey_clingen_MP2_OP_calibrated <- make_sankey_calibrated(
   wrap_destination_labels = TRUE
 )
 
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8_gene_specific/sankey_clingen_OP_REVEL_Universal_calibrated.pdf"), sankey_clingen_REVEL_OP_calibrated$plot, width = sankey_clingen_REVEL_OP_calibrated$width_mm, height = sankey_clingen_REVEL_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8_gene_specific/sankey_clingen_OP_AM_Universal_calibrated.pdf"), sankey_clingen_AM_OP_calibrated$plot, width = sankey_clingen_AM_OP_calibrated$width_mm, height = sankey_clingen_AM_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8_gene_specific/sankey_clingen_OP_MP2_Universal_calibrated.pdf"), sankey_clingen_MP2_OP_calibrated$plot, width = sankey_clingen_MP2_OP_calibrated$width_mm, height = sankey_clingen_MP2_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8alt_gene_specific/sankey_clingen_OP_REVEL_Universal_calibrated.pdf"), sankey_clingen_REVEL_OP_calibrated$plot, width = sankey_clingen_REVEL_OP_calibrated$width_mm, height = sankey_clingen_REVEL_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8alt_gene_specific/sankey_clingen_OP_AM_Universal_calibrated.pdf"), sankey_clingen_AM_OP_calibrated$plot, width = sankey_clingen_AM_OP_calibrated$width_mm, height = sankey_clingen_AM_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8alt_gene_specific/sankey_clingen_OP_MP2_Universal_calibrated.pdf"), sankey_clingen_MP2_OP_calibrated$plot, width = sankey_clingen_MP2_OP_calibrated$width_mm, height = sankey_clingen_MP2_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
 
 # Calibrated confusion matrices: real print size, 6pt Arial regular (see
 # lib/confusion_matrix_calibrated.R and the clinvar panel above, which
@@ -831,9 +831,9 @@ cm_clingen_MP2_OP_calibrated <- make_confusion_matrix_calibrated(
   matrix_width_mm = 26, matrix_height_mm = 23, x_label = "ClinGen classification"
 )
 
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8_gene_specific/cm_clingen_OP_REVEL_Universal_calibrated.pdf"), cm_clingen_REVEL_OP_calibrated$plot, width = cm_clingen_REVEL_OP_calibrated$width_mm, height = cm_clingen_REVEL_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8_gene_specific/cm_clingen_OP_AM_Universal_calibrated.pdf"), cm_clingen_AM_OP_calibrated$plot, width = cm_clingen_AM_OP_calibrated$width_mm, height = cm_clingen_AM_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
-ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8_gene_specific/cm_clingen_OP_MP2_Universal_calibrated.pdf"), cm_clingen_MP2_OP_calibrated$plot, width = cm_clingen_MP2_OP_calibrated$width_mm, height = cm_clingen_MP2_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8alt_gene_specific/cm_clingen_OP_REVEL_Universal_calibrated.pdf"), cm_clingen_REVEL_OP_calibrated$plot, width = cm_clingen_REVEL_OP_calibrated$width_mm, height = cm_clingen_REVEL_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8alt_gene_specific/cm_clingen_OP_AM_Universal_calibrated.pdf"), cm_clingen_AM_OP_calibrated$plot, width = cm_clingen_AM_OP_calibrated$width_mm, height = cm_clingen_AM_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8alt_gene_specific/cm_clingen_OP_MP2_Universal_calibrated.pdf"), cm_clingen_MP2_OP_calibrated$plot, width = cm_clingen_MP2_OP_calibrated$width_mm, height = cm_clingen_MP2_OP_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
 ```
 
 ```{r}
@@ -848,10 +848,10 @@ ggsave(file.path(dirname(OUT_DIR), "extended_data_figure_8_gene_specific/cm_clin
 # (loaded from Supplementary_Data_6_gene_specific.xlsx above) instead of
 # Extended_data_figures.Rmd's standard-Supplementary-Data-6 objects. All
 # calibrated dimensions, label overrides, and helper reuse are unchanged
-# from the original chunk. Writes to extended_data_figure_8alt_gene_specific/
+# from the original chunk. Writes to extended_data_figure_8_gene_specific/
 # instead of extended_data_figure_8/.
 
-EXT_DATA_FIG_8_DIR <- file.path(dirname(OUT_DIR), "extended_data_figure_8alt_gene_specific")
+EXT_DATA_FIG_8_DIR <- file.path(dirname(OUT_DIR), "extended_data_figure_8_gene_specific")
 
 SANKEY_8_WIDTH_MM <- 18.5
 SANKEY_8_HEIGHT_MM <- 32

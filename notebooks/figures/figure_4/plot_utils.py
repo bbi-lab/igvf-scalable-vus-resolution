@@ -410,11 +410,15 @@ def plot_panel_b(gs_spec, scoreset, all_scores, point_ranges, score_range, flipp
     intervals_sorted = sorted(intervals, key=lambda x: x[1])
     
     for point_val, start, end in intervals_sorted:
-        ax_excalibr.axvspan(start, end, color=STRENGTH_COLOR[point_val], alpha=1.0)
+        # The outermost bins are unbounded (+/-inf); axvspan/text silently fail to
+        # render at infinite coordinates, so clip to the visible axis range for
+        # drawing/labeling while keeping the true bounds for the count itself.
+        plot_start, plot_end = max(start, x_min), min(end, x_max)
+        ax_excalibr.axvspan(plot_start, plot_end, color=STRENGTH_COLOR[point_val], alpha=1.0)
         count = ((all_scores >= start) & (all_scores < end)).sum()
-        if (end - start) > 0.3:
+        if (plot_end - plot_start) > 0.3:
             text_color = 'white' if abs(point_val) >= 7 else 'black'
-            ax_excalibr.text((start + end) / 2, 0.5, f'{count:,}',
+            ax_excalibr.text((plot_start + plot_end) / 2, 0.5, f'{count:,}',
                            ha='center', va='center', fontsize=FONTSIZE_ANNOTATION, color=text_color)
     
     ax_excalibr.set_xlim(x_min, x_max)

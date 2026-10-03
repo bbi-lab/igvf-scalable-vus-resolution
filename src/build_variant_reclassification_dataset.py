@@ -41,8 +41,14 @@ Six points columns are added:
 
 - `ExCALIBR_points`: the literal ExCALIBR score-interval calibration value
   (`ExC_points_2018`, falling back to `ExC_points_2025`, for `BRCA1`/
-  `PTEN`/`MSH2`; `ExC_points_2025` for every other gene) -- independent of
-  whether ExCALIBR is what's actually used for a given gene's evidence.
+  `PTEN`/`MSH2`/`TP53`; `ExC_points_2025` for every other gene) --
+  independent of whether ExCALIBR is what's actually used for a given
+  gene's evidence. TP53's on-file ExCALIBR calibrations are all
+  2018-vintage, same reason as BRCA1/PTEN/MSH2 -- it has no effect on the
+  official checkpoint today (the only TP53 dataset there with any ExCALIBR
+  calibration, `TP53_Funk_2025`, was moved into the "not the meta analysis"
+  exclusion list below alongside its true F9/TP53 assay peers), but matters
+  for checkpoints that restore those per-assay TP53 datasets (see below).
 - `OddsPath_points`: `OP_points` verbatim.
 - `Functional_points`: `Fxn_points` verbatim -- the pipeline's own choice of
   `ExCALIBR_points` or `OddsPath_points` per gene (`F9`/`TP53` use
@@ -68,6 +74,15 @@ excludes bare `conflicting_fxn_data` rows -- see above.
 
 Output columns are `integrated_variant_effect_dataset.tsv`'s full schema,
 in its column order, with the six new points columns appended at the end.
+
+To score F9/TP53 off ExCALIBR instead of OddsPath (so `Functional_points`
+is ExCALIBR-based for every gene), pass a *checkpoint_file* built by
+`notebooks/analysis/Variant_Classification_analysis_ExCALIBR_all_genes.ipynb`
+(a copy of the main notebook that stops overriding F9/TP53's `Fxn_points`
+with `OP_points`, and restores the per-assay F9/TP53 datasets the main
+notebook drops -- `TP53_Fayer_2021_meta` and `F9_Popp_2025_model`, the
+datasets the main notebook keeps, have no ExCALIBR calibration on file at
+all).
 """
 
 from pathlib import Path
@@ -81,11 +96,17 @@ DEFAULT_CHECKPOINT_FILE = Path("data/output/reclassification/integrated_variant_
 DEFAULT_CHEK2_FILE = Path("data/input/maves/CHEK2_Gebbia_2024.xlsx")
 DEFAULT_OUTPUT_FILE = Path("data/output/reclassification/integrated_variant_effect_biobank_input_data.tsv.gz")
 
-# ExC_points vintage override for ExCALIBR_points. Deliberately excludes
-# TP53 -- unlike BRCA1/PTEN/MSH2, TP53's Functional_points come entirely
-# from OddsPath, not a 2018-vs-2025 ExCALIBR choice (see
-# Variant_Classification_analysis.ipynb cell 19).
-EXCALIBR_VINTAGE_OVERRIDE_GENES = frozenset({"BRCA1", "PTEN", "MSH2"})
+# ExC_points vintage override for ExCALIBR_points: these genes' on-file
+# ExCALIBR calibrations are all 2018-vintage, so ExCALIBR_points prefers
+# ExC_points_2018 over ExC_points_2025 for them (every other gene uses
+# ExC_points_2025 only). TP53 is included even though its Functional_points
+# come entirely from OddsPath on the official checkpoint -- ExCALIBR_points
+# is documented above as the literal calibration value regardless of what's
+# actually used, and harmless to include here regardless: the only TP53
+# dataset on the official checkpoint with any ExCALIBR calibration,
+# TP53_Funk_2025, is excluded from it entirely (see
+# Variant_Classification_analysis.ipynb's "not the meta analysis" cell).
+EXCALIBR_VINTAGE_OVERRIDE_GENES = frozenset({"BRCA1", "PTEN", "MSH2", "TP53"})
 
 DISALLOWED_VARIANT_NOTES = frozenset({
     "splice_variant_not_measured",

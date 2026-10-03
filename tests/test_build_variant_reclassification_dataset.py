@@ -189,13 +189,15 @@ def test_excalibr_points_is_literal_value_even_when_op_overrides_functional():
     assert out["Functional_points"].iloc[0] == 8
 
 
-def test_excalibr_points_vintage_override_for_brca1_pten_msh2():
+def test_excalibr_points_vintage_override_for_brca1_pten_msh2_tp53():
     df = _checkpoint_frame([
         {"Gene": "BRCA1", "ExC_points_2025": 2, "ExC_points_2018": 6},
+        {"Gene": "TP53", "ExC_points_2025": 2, "ExC_points_2018": 6},
         {"Gene": "G1", "ExC_points_2025": 2, "ExC_points_2018": 6},
     ])
     out = add_points_columns(df)
     assert out.loc[out.Gene == "BRCA1", "ExCALIBR_points"].iloc[0] == 6
+    assert out.loc[out.Gene == "TP53", "ExCALIBR_points"].iloc[0] == 6
     assert out.loc[out.Gene == "G1", "ExCALIBR_points"].iloc[0] == 2
 
 

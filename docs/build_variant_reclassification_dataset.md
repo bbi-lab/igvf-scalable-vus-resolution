@@ -6,9 +6,16 @@ biobank analysis input file (one row per surviving measurement) or a
 deduplicated reclassification dataset (one row per DNA variant), by
 re-applying the notebook's own downstream exclusions and adding six
 ACMG/AMP points columns (`ExCALIBR_points`, `OddsPath_points`,
-`Functional_points`, `REVEL_points`, `Conflict_REVEL_GeneSpecific`,
-`Combined_points`) -- see the script's own module docstring for the exact
-column definitions and exclusion rules.
+`Functional_points`, `<predictor>_points`, `Conflict_<predictor>_*`,
+`Combined_points` -- `REVEL_points`/`Conflict_REVEL_GeneSpecific` by
+default, see "Choosing a predictor" below) -- see the script's own module
+docstring for the exact column definitions and exclusion rules.
+
+In README.md's main-pipeline "Running it" steps, this script runs twice
+against the same `Variant_Classification_analysis.ipynb` checkpoint: once
+per predictor with `--dedup` (step 5, one deduplicated reclassification
+dataset per `REVEL`/`AM`/`MP2`), then once more with no arguments (step 6,
+the default-predictor, non-deduplicated biobank analysis input file).
 
 ## Choosing a checkpoint
 
@@ -57,15 +64,63 @@ regardless of `--dedup` -- **always pass `--output` explicitly when using
 `--dedup`**, or it overwrites the per-measurement file at that default
 path with the deduplicated one.
 
+## Choosing a predictor
+
+`Combined_points` (`Functional_points` plus a computational predictor's
+points) defaults to REVEL, gene-specific with genome-wide fallback --
+`--predictor AM`/`--predictor MP2` swap in AlphaMissense or MutPred2
+instead, and `--predictor-scope genome-wide` drops the gene-specific
+contribution entirely. The output's predictor-named columns follow suit
+(`<predictor>_points`, `Conflict_<predictor>_GeneSpecific` or
+`Conflict_<predictor>_GenomeWide`), reducing to today's `REVEL_points`/
+`Conflict_REVEL_GeneSpecific` for the default predictor/scope.
+
+Two things change with the predictor, not just the column values:
+
+- The training-circularity exclusion (dropping variants used to train the
+  predictor, to avoid the file scoring a variant partly by how well it was
+  predicted during that predictor's own training) switches from
+  `revel_train_amino` to `mp2_train_amino` for `--predictor MP2`. `AM` has
+  no such column in the checkpoint, so no row is excluded on this basis
+  when `--predictor AM` is selected.
+- `--dedup`'s winning measurement for a variant scored by more than one
+  dataset can change, since it's chosen by greatest `abs(Combined_points)`
+  and `Combined_points` is predictor-dependent. On the official checkpoint,
+  switching `REVEL` -> `AM` changes the winning dataset for 1,634 of
+  635,028 variants; `REVEL` -> `MP2` changes it for 10,117. Two real
+  examples, both candidates sharing `Functional_points`:
+
+  - **BRCA1 `chr17:43049179 A>G` (`p.Met1783Thr`)**, two datasets:
+    `BRCA1_Findlay_2018` (`Functional_points=-5`) and
+    `BRCA1_Adamovich_2022_Cisplatin_Resistance` (`Functional_points=0`).
+    Both share `REVEL_points=-1` and `AM_points=3`. Under `REVEL`,
+    `Combined_points` is -6 and -1 -- `Findlay_2018` wins (`abs`=6). Under
+    `AM`, it's -2 and 3 -- `Adamovich_2022_Cisplatin_Resistance` wins
+    instead (`abs`=3 > 2): the predictor swap alone flips which dataset's
+    row survives `--dedup`, with no change to either dataset's own
+    functional evidence.
+  - **PAX6 `chr11:31801588 CCC>TAT` (`p.Gly124Ile`)**, two datasets:
+    `PAX6_McDonnell_2024_LE9_geneticin` (`Functional_points=0`) and
+    `PAX6_McDonnell_2024_LE9_no_geneticin` (`Functional_points=-8`). Both
+    share `REVEL_points=0` and `MP2_points=4`. Under `REVEL`,
+    `Combined_points` is 0 and -8 -- `no_geneticin` wins outright
+    (`abs`=8). Under `MP2`, it's 4 and -4 -- an exact tie in `abs`, broken
+    by `Dataset` name ascending (`"...geneticin"` sorts before
+    `"...no_geneticin"`), so `geneticin` wins instead. This one shows the
+    tie-break rule actually deciding a real case, not just the predictor
+    switch.
+
 ## Usage
 
 ```bash
-# Official biobank analysis input file (one row per measurement)
-poetry run python -m src.build_variant_reclassification_dataset
+# Official deduplicated reclassification dataset, one per predictor (README step 5)
+for predictor in REVEL AM MP2; do
+  poetry run python -m src.build_variant_reclassification_dataset --dedup --predictor "$predictor" \
+    --output "data/output/reclassification/integrated_variant_effect_reclassification_${predictor}.tsv.gz"
+done
 
-# Official deduplicated reclassification dataset (one row per DNA variant)
-poetry run python -m src.build_variant_reclassification_dataset --dedup \
-  --output data/output/reclassification/integrated_variant_effect_reclassification.tsv.gz
+# Official biobank analysis input file (one row per measurement; README step 6)
+poetry run python -m src.build_variant_reclassification_dataset
 
 # ExCALIBR-for-all-genes biobank analysis input file
 poetry run python -m src.build_variant_reclassification_dataset \

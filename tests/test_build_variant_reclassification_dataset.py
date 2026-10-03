@@ -4,16 +4,23 @@ import pandas as pd
 import pytest
 
 from src.build_variant_reclassification_dataset import (
+    BASE_OUTPUT_COLUMNS,
     OUTPUT_COLUMNS,
     add_points_columns,
     apply_notebook_exclusions,
     build_reclassification_dataset,
+    points_output_columns,
 )
 
-CHECKPOINT_COLS = OUTPUT_COLUMNS[:-6] + [
-    "VariantNotes", "ExC_points_2025", "ExC_points_2018",
-    "OP_points", "Fxn_points", "Points_REVEL_GeneSpecific_GenomeWide",
-    "Conflicting_REVEL_GeneSpecific", "revel_train_amino",
+CHECKPOINT_COLS = BASE_OUTPUT_COLUMNS + [
+    "VariantNotes", "ExC_points_2025", "ExC_points_2018", "OP_points", "Fxn_points",
+    "revel_train_amino", "mp2_train_amino",
+    "Points_REVEL_GeneSpecific_GenomeWide", "Points_REVEL_GenomeWide",
+    "Points_AM_GeneSpecific_GenomeWide", "Points_AM_GenomeWide",
+    "Points_MP2_GeneSpecific_GenomeWide", "Points_MP2_GenomeWide",
+    "Conflicting_REVEL_GeneSpecific", "Conflicting_REVEL_GenomeWide",
+    "Conflicting_AM_GeneSpecific", "Conflicting_AM_GenomeWide",
+    "Conflicting_MP2_GeneSpecific", "Conflicting_MP2_GenomeWide",
 ]
 
 
@@ -39,6 +46,7 @@ def _checkpoint_row(**overrides):
         "Points_REVEL_GeneSpecific_GenomeWide": 2,
         "Conflicting_REVEL_GeneSpecific": 7,
         "revel_train_amino": "No",
+        "mp2_train_amino": "No",
     })
     row.update(overrides)
     return row
@@ -162,16 +170,40 @@ def test_pre_existing_flag_still_removed(chek2_file):
 
 
 def test_revel_train_amino_dropped(chek2_file):
-    """Variants used to train REVEL are excluded, matching the notebook's
-    REVEL-specific category sheets (VUS_REVEL, Unobserved_REVEL, etc.),
-    which drop them to avoid circularity with this file's REVEL-based
-    Combined_points."""
+    """Variants used to train REVEL are excluded by default (predictor=
+    REVEL), matching the notebook's REVEL-specific category sheets
+    (VUS_REVEL, Unobserved_REVEL, etc.), which drop them to avoid
+    circularity with this file's REVEL-based Combined_points."""
     df = _checkpoint_frame([
         {"revel_train_amino": "Yes"},
         {"revel_train_amino": "No"},
     ])
     out = apply_notebook_exclusions(df, chek2_file)
     assert list(out["revel_train_amino"]) == ["No"]
+
+
+def test_mp2_train_amino_dropped_when_predictor_is_mp2(chek2_file):
+    """With predictor=MP2, the circularity concern shifts to MP2's own
+    training flag -- REVEL's is no longer relevant, since Combined_points
+    is no longer REVEL-based."""
+    df = _checkpoint_frame([
+        {"mavedb_variant_urn": "urn:mavedb:1", "mp2_train_amino": "Yes", "revel_train_amino": "No"},
+        {"mavedb_variant_urn": "urn:mavedb:2", "mp2_train_amino": "No", "revel_train_amino": "Yes"},
+    ])
+    out = apply_notebook_exclusions(df, chek2_file, predictor="MP2")
+    assert list(out["mavedb_variant_urn"]) == ["urn:mavedb:2"]
+
+
+def test_no_train_exclusion_when_predictor_is_am(chek2_file):
+    """AM has no training-circularity column in the checkpoint -- neither
+    REVEL's nor MP2's training flag should exclude anything when
+    predictor=AM."""
+    df = _checkpoint_frame([
+        {"mavedb_variant_urn": "urn:mavedb:1", "revel_train_amino": "Yes", "mp2_train_amino": "Yes"},
+        {"mavedb_variant_urn": "urn:mavedb:2", "revel_train_amino": "No", "mp2_train_amino": "No"},
+    ])
+    out = apply_notebook_exclusions(df, chek2_file, predictor="AM")
+    assert set(out["mavedb_variant_urn"]) == {"urn:mavedb:1", "urn:mavedb:2"}
 
 
 # --- add_points_columns -------------------------------------------------------------------
@@ -231,6 +263,37 @@ def test_conflict_revel_gene_specific_is_renamed_from_conflicting_revel_gene_spe
     assert out["Conflict_REVEL_GeneSpecific"].iloc[0] == "Conflicting evidence"
 
 
+def test_points_output_columns_reduces_to_historical_names_for_default():
+    assert points_output_columns("REVEL", "gene-specific") == [
+        "ExCALIBR_points", "OddsPath_points", "Functional_points",
+        "REVEL_points", "Conflict_REVEL_GeneSpecific", "Combined_points",
+    ]
+
+
+def test_add_points_columns_predictor_am_uses_am_gene_specific_columns():
+    df = _checkpoint_frame([{
+        "Fxn_points": 5,
+        "Points_AM_GeneSpecific_GenomeWide": 2,
+        "Conflicting_AM_GeneSpecific": "Conflicting evidence",
+    }])
+    out = add_points_columns(df, predictor="AM")
+    assert out["AM_points"].iloc[0] == 2
+    assert out["Conflict_AM_GeneSpecific"].iloc[0] == "Conflicting evidence"
+    assert out["Combined_points"].iloc[0] == 7
+
+
+def test_add_points_columns_predictor_mp2_genome_wide_scope():
+    df = _checkpoint_frame([{
+        "Fxn_points": 5,
+        "Points_MP2_GenomeWide": 3,
+        "Conflicting_MP2_GenomeWide": "Conflicting evidence",
+    }])
+    out = add_points_columns(df, predictor="MP2", predictor_scope="genome-wide")
+    assert out["MP2_points"].iloc[0] == 3
+    assert out["Conflict_MP2_GenomeWide"].iloc[0] == "Conflicting evidence"
+    assert out["Combined_points"].iloc[0] == 8
+
+
 # --- build_reclassification_dataset (end to end) -------------------------------------------
 
 
@@ -267,6 +330,27 @@ def test_build_reclassification_dataset_dedups_by_dna_variant_when_enabled(tmp_p
     assert len(out) == 1
     assert out["Dataset"].iloc[0] == "Dataset_high"
     assert list(out.columns) == OUTPUT_COLUMNS
+
+
+def test_build_reclassification_dataset_predictor_can_change_dedup_winner(tmp_path, chek2_file):
+    """Combined_points (the dedup sort key) is predictor-dependent, so the
+    surviving measurement for a variant scored by more than one dataset can
+    differ by --predictor even when Functional_points is tied."""
+    checkpoint = _checkpoint_frame([
+        {"Gene": "G1", "hg38_start": 5000, "Dataset": "Dataset_low_revel_high_am", "Fxn_points": 2,
+         "Points_REVEL_GeneSpecific_GenomeWide": 0, "Points_AM_GeneSpecific_GenomeWide": 8},
+        {"Gene": "G1", "hg38_start": 5000, "Dataset": "Dataset_high_revel_low_am", "Fxn_points": 2,
+         "Points_REVEL_GeneSpecific_GenomeWide": 5, "Points_AM_GeneSpecific_GenomeWide": 0},
+    ])
+    checkpoint_path = tmp_path / "checkpoint.csv.gz"
+    checkpoint.to_csv(checkpoint_path, index=False, compression="gzip")
+
+    revel_out = build_reclassification_dataset(checkpoint_path, chek2_file, dedup=True, predictor="REVEL")
+    am_out = build_reclassification_dataset(checkpoint_path, chek2_file, dedup=True, predictor="AM")
+
+    assert revel_out["Dataset"].iloc[0] == "Dataset_high_revel_low_am"
+    assert am_out["Dataset"].iloc[0] == "Dataset_low_revel_high_am"
+    assert list(am_out.columns) == BASE_OUTPUT_COLUMNS + points_output_columns("AM", "gene-specific")
 
 
 def test_build_reclassification_dataset_dedup_excludes_conflicting_fxn_data(tmp_path, chek2_file):

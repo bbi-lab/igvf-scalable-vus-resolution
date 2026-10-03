@@ -31,11 +31,15 @@ checkpoint, are re-applied here:
   expected and kept, not treated as disqualifying. Deduplicating rows that
   are known to conflict would instead silently pick one dataset's value as
   the winner, so `dedup=True` excludes them outright rather than doing that.
-- Rows with `revel_train_amino == 'Yes'` are dropped -- variants used to
-  train the REVEL predictor, matching the notebook's own REVEL-specific
-  category sheets (`VUS_REVEL`, `Unobserved_REVEL`, `gnomAD_REVEL`,
-  `controls_REVEL_GeneSpecific`), which exclude them to avoid circularity
-  (this file's `Combined_points` is REVEL-based, per `REVEL_points` below).
+- Rows with `<predictor>_train_amino == 'Yes'` are dropped -- variants used
+  to train the chosen predictor, matching the notebook's own
+  predictor-specific category sheets (e.g. `VUS_REVEL`, `Unobserved_REVEL`,
+  `gnomAD_REVEL`, `controls_REVEL_GeneSpecific` for REVEL), which exclude
+  them to avoid circularity with this file's predictor-based
+  `Combined_points` (see `--predictor` below). `AM` has no such column in
+  the checkpoint -- AlphaMissense isn't trained on this dataset's ClinVar
+  controls the way REVEL/MutPred2 are -- so no row is excluded on this
+  basis when `--predictor AM` is selected.
 
 Six points columns are added:
 
@@ -53,14 +57,34 @@ Six points columns are added:
 - `Functional_points`: `Fxn_points` verbatim -- the pipeline's own choice of
   `ExCALIBR_points` or `OddsPath_points` per gene (`F9`/`TP53` use
   `OddsPath_points`; every other gene uses `ExCALIBR_points`).
-- `REVEL_points`: `Points_REVEL_GeneSpecific_GenomeWide` verbatim
-  (gene-specific REVEL points, falling back to genome-wide).
-- `Conflict_REVEL_GeneSpecific`: `Conflicting_REVEL_GeneSpecific` verbatim --
-  the notebook's `split_zero`-derived column: `"Conflicting evidence"` when
-  `Functional_points` and `REVEL_points` disagree in sign, `"No evidence"`
-  when both are missing, otherwise `Combined_points`'s value restated.
-- `Combined_points`: `Functional_points + REVEL_points` -- matches the
-  notebook's own `Total_Points_GeneSpecific_REVEL`.
+- `<predictor>_points` (named `REVEL_points` by default -- see `--predictor`
+  below): `Points_<predictor>_GeneSpecific_GenomeWide` verbatim
+  (gene-specific points, falling back to genome-wide; `--predictor-scope
+  genome-wide` uses `Points_<predictor>_GenomeWide` instead, with no
+  gene-specific contribution at all).
+- `Conflict_<predictor>_GeneSpecific` or `Conflict_<predictor>_GenomeWide`
+  (named `Conflict_REVEL_GeneSpecific` by default), matching
+  `--predictor-scope`: `Conflicting_<predictor>_GeneSpecific` or
+  `Conflicting_<predictor>_GenomeWide` verbatim -- the notebook's
+  `split_zero`-derived column: `"Conflicting evidence"` when
+  `Functional_points` and `<predictor>_points` disagree in sign, `"No
+  evidence"` when both are missing, otherwise `Combined_points`'s value
+  restated.
+- `Combined_points`: `Functional_points + <predictor>_points` -- matches
+  the notebook's own `Total_Points_GeneSpecific_REVEL` by default.
+
+`--predictor` (`REVEL` by default; `AM`/`MP2` also available) selects which
+computational predictor's points feed `<predictor>_points`/
+`Conflict_<predictor>_*`/`Combined_points` -- the checkpoint carries the
+same shape of columns (`Points_*_GeneSpecific_GenomeWide`,
+`Points_*_GenomeWide`, `Conflicting_*_GeneSpecific`,
+`Conflicting_*_GenomeWide`) for all three. Changing it can change
+`--dedup`'s deduplication winner for a variant scored by more than one
+dataset, since `dedup_by_max_abs_points` picks the candidate with the
+greatest `abs(Combined_points)`, and `Combined_points` depends on the
+chosen predictor: on the official checkpoint, switching `REVEL` -> `AM`
+changes the winning dataset for 1,634 of 635,028 variants; `REVEL` -> `MP2`
+changes it for 10,117.
 
 By default (`dedup=False`), no deduplication is applied: a variant scored by
 more than one dataset/assay keeps one row per measurement (this is the
@@ -114,7 +138,40 @@ DISALLOWED_VARIANT_NOTES = frozenset({
     "start_lost_variant_not_measured",
 })
 
-OUTPUT_COLUMNS = [
+PREDICTOR_CHOICES = ("REVEL", "AM", "MP2")
+PREDICTOR_SCOPE_CHOICES = ("gene-specific", "genome-wide")
+
+# Training-circularity exclusion column per predictor (see
+# apply_notebook_exclusions) -- None where the checkpoint carries no such
+# column (AM has no training-circularity concept here).
+PREDICTOR_TRAIN_EXCLUSION_COLUMN = {
+    "REVEL": "revel_train_amino",
+    "AM": None,
+    "MP2": "mp2_train_amino",
+}
+
+
+def points_output_columns(predictor: str, predictor_scope: str) -> list[str]:
+    """The six points columns' names for `predictor`/`predictor_scope` --
+    always `ExCALIBR_points`, `OddsPath_points`, `Functional_points`, and
+    `Combined_points`, plus `<predictor>_points` and
+    `Conflict_<predictor>_GeneSpecific`/`Conflict_<predictor>_GenomeWide`
+    (matching `predictor_scope`). Reduces to the historical
+    `REVEL_points`/`Conflict_REVEL_GeneSpecific` names for the default
+    `predictor="REVEL"`, `predictor_scope="gene-specific"`.
+    """
+    conflict_scope_label = "GeneSpecific" if predictor_scope == "gene-specific" else "GenomeWide"
+    return [
+        "ExCALIBR_points",
+        "OddsPath_points",
+        "Functional_points",
+        f"{predictor}_points",
+        f"Conflict_{predictor}_{conflict_scope_label}",
+        "Combined_points",
+    ]
+
+
+BASE_OUTPUT_COLUMNS = [
     "Dataset", "Gene", "HGNC_id", "mavedb_variant_urn", "Chrom", "Strand", "hg38_start", "hg38_end",
     "ref_allele", "alt_allele", "auth_transcript_id", "transcript_pos", "transcript_ref", "transcript_alt",
     "aa_pos", "aa_ref", "aa_alt", "hgvs_c", "hgvs_p", "consequence", "most_severe_mutational_consequence",
@@ -141,18 +198,20 @@ OUTPUT_COLUMNS = [
     "Updated_Classification_ClinGen_repo", "Updated_Evidence Codes_ClinGen_repo",
     "REVEL", "REVEL_train", "AM_score", "AM_class", "MutPred2", "MP2_train",
     "simplified_consequence", "condensed_consequence", "splice_variant", "splice_var_amino", "Flag",
-    "ExCALIBR_points", "OddsPath_points", "Functional_points",
-    "REVEL_points", "Conflict_REVEL_GeneSpecific", "Combined_points",
 ]
 
+OUTPUT_COLUMNS = BASE_OUTPUT_COLUMNS + points_output_columns("REVEL", "gene-specific")
 
-def apply_notebook_exclusions(df: pd.DataFrame, chek2_file: Path, dedup: bool = False) -> pd.DataFrame:
+
+def apply_notebook_exclusions(
+    df: pd.DataFrame, chek2_file: Path, dedup: bool = False, predictor: str = "REVEL"
+) -> pd.DataFrame:
     """Re-apply the checkpoint-downstream exclusions from
     `Variant_Classification_analysis.ipynb` cells 71-77 and 95: `SFPQ`, the
     CHEK2 QC flag, unmeasured-splice/start-lost `VariantNotes` tags (bare
     `conflicting_fxn_data` is additionally excluded when `dedup=True` -- see
-    module docstring), any other `Flag == '*'` row, and REVEL-training
-    variants.
+    module docstring), any other `Flag == '*'` row, and `predictor`-training
+    variants (via `PREDICTOR_TRAIN_EXCLUSION_COLUMN`; no-op for `AM`).
 
     The CHEK2 merge key is normalized (`hgvs_p`'s transcript prefix, e.g.
     `"NP_009125.1:"`, stripped before matching against `hgvs_pro`) rather
@@ -181,14 +240,18 @@ def apply_notebook_exclusions(df: pd.DataFrame, chek2_file: Path, dedup: bool = 
         & ((df["splice_var_amino"] != "Yes") | (df["splice_measure"] == "Yes"))
     ]
     df = df[df["Flag"] != "*"]
-    df = df[df["revel_train_amino"] != "Yes"]
+    train_exclusion_col = PREDICTOR_TRAIN_EXCLUSION_COLUMN[predictor]
+    if train_exclusion_col is not None:
+        df = df[df[train_exclusion_col] != "Yes"]
     return df
 
 
-def add_points_columns(df: pd.DataFrame) -> pd.DataFrame:
+def add_points_columns(df: pd.DataFrame, predictor: str = "REVEL", predictor_scope: str = "gene-specific") -> pd.DataFrame:
     """Add `ExCALIBR_points`, `OddsPath_points`, `Functional_points`,
-    `REVEL_points`, `Conflict_REVEL_GeneSpecific`, and `Combined_points` --
-    see module docstring for the exact definitions.
+    `<predictor>_points`, `Conflict_<predictor>_GeneSpecific`/
+    `Conflict_<predictor>_GenomeWide`, and `Combined_points` (see
+    `points_output_columns` for the exact names) -- see module docstring
+    for the exact definitions.
     """
     df = df.copy()
 
@@ -200,22 +263,37 @@ def add_points_columns(df: pd.DataFrame) -> pd.DataFrame:
 
     df["OddsPath_points"] = df["OP_points"]
     df["Functional_points"] = df["Fxn_points"]
-    df["REVEL_points"] = df["Points_REVEL_GeneSpecific_GenomeWide"]
-    df["Conflict_REVEL_GeneSpecific"] = df["Conflicting_REVEL_GeneSpecific"]
+
+    if predictor_scope == "gene-specific":
+        points_source = f"Points_{predictor}_GeneSpecific_GenomeWide"
+        conflict_source = f"Conflicting_{predictor}_GeneSpecific"
+    else:
+        points_source = f"Points_{predictor}_GenomeWide"
+        conflict_source = f"Conflicting_{predictor}_GenomeWide"
+    points_col, conflict_col = points_output_columns(predictor, predictor_scope)[3:5]
+
+    df[points_col] = df[points_source]
+    df[conflict_col] = df[conflict_source]
     df["Combined_points"] = (
         pd.to_numeric(df["Functional_points"], errors="coerce").fillna(0)
-        + pd.to_numeric(df["REVEL_points"], errors="coerce").fillna(0)
+        + pd.to_numeric(df[points_col], errors="coerce").fillna(0)
     )
     return df
 
 
-def build_reclassification_dataset(checkpoint_file: Path, chek2_file: Path, dedup: bool = False) -> pd.DataFrame:
+def build_reclassification_dataset(
+    checkpoint_file: Path,
+    chek2_file: Path,
+    dedup: bool = False,
+    predictor: str = "REVEL",
+    predictor_scope: str = "gene-specific",
+) -> pd.DataFrame:
     df = pd.read_csv(checkpoint_file)
-    df = apply_notebook_exclusions(df, chek2_file, dedup=dedup)
-    df = add_points_columns(df)
+    df = apply_notebook_exclusions(df, chek2_file, dedup=dedup, predictor=predictor)
+    df = add_points_columns(df, predictor=predictor, predictor_scope=predictor_scope)
     if dedup:
         df = dedup_by_max_abs_points(df, points_col="Combined_points", genomic_key_cols=GENOMIC_KEY_COLS)
-    return df[OUTPUT_COLUMNS]
+    return df[BASE_OUTPUT_COLUMNS + points_output_columns(predictor, predictor_scope)]
 
 
 @click.command(help=__doc__)
@@ -247,8 +325,35 @@ def build_reclassification_dataset(checkpoint_file: Path, chek2_file: Path, dedu
         "biobank-input use."
     ),
 )
-def main(checkpoint_file: Path, chek2_file: Path, output: Path, dedup: bool) -> None:
-    result = build_reclassification_dataset(checkpoint_file, chek2_file, dedup=dedup)
+@click.option(
+    "--predictor",
+    type=click.Choice(PREDICTOR_CHOICES),
+    default="REVEL",
+    show_default=True,
+    help="Computational predictor to combine with Functional_points into Combined_points.",
+)
+@click.option(
+    "--predictor-scope",
+    type=click.Choice(PREDICTOR_SCOPE_CHOICES),
+    default="gene-specific",
+    show_default=True,
+    help=(
+        "gene-specific falls back to genome-wide when no gene-specific calibration exists "
+        "(Points_<predictor>_GeneSpecific_GenomeWide); genome-wide ignores gene-specific "
+        "calibration entirely (Points_<predictor>_GenomeWide)."
+    ),
+)
+def main(
+    checkpoint_file: Path,
+    chek2_file: Path,
+    output: Path,
+    dedup: bool,
+    predictor: str,
+    predictor_scope: str,
+) -> None:
+    result = build_reclassification_dataset(
+        checkpoint_file, chek2_file, dedup=dedup, predictor=predictor, predictor_scope=predictor_scope
+    )
     output.parent.mkdir(parents=True, exist_ok=True)
     result.to_csv(output, sep="\t", index=False, compression="gzip")
     click.echo(f"Wrote {len(result)} rows to {output}")

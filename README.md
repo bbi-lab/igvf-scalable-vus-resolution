@@ -195,15 +195,25 @@ Run in this order:
    seen in multiple assays, and exports the per-category classification
    files that become Supplementary Data 5. See
    [`notebooks/analysis/README_Variant_Classification_analysis.md`](notebooks/analysis/README_Variant_Classification_analysis.md).
-5. **`src/build_variant_reclassification_dataset.py`** — reads that
-   notebook's own cell-69 checkpoint, re-applies its downstream exclusions
-   (`SFPQ`, the CHEK2 QC flag, unmeasured-splice/start-lost `VariantNotes`
-   tags -- bare `conflicting_fxn_data` is deliberately kept, since each row
-   is one dataset's measurement rather than a deduplicated per-variant
-   record), and adds four ACMG/AMP points columns. Produces
+5. **`src/build_variant_reclassification_dataset.py --dedup --predictor
+   <REVEL|AM|MP2>`** — reads that notebook's own cell-69 checkpoint,
+   re-applies its downstream exclusions, adds six ACMG/AMP points columns,
+   and collapses to one row per DNA variant (greatest `abs(Combined_points)`
+   wins, ties broken by `Dataset` name). Run once per computational
+   predictor to produce a deduplicated reclassification dataset scored by
+   each in turn (`Combined_points` is predictor-dependent, so the
+   surviving measurement for a given variant can differ by predictor —
+   see [`docs/build_variant_reclassification_dataset.md`](docs/build_variant_reclassification_dataset.md)).
+   Produces `data/output/reclassification/integrated_variant_effect_reclassification_<REVEL|AM|MP2>.tsv.gz`.
+6. **`src/build_variant_reclassification_dataset.py`** — the same script,
+   default invocation: no `--dedup` (one row per surviving measurement,
+   not deduplicated to one row per DNA variant — `SFPQ`, the CHEK2 QC
+   flag, and unmeasured-splice/start-lost `VariantNotes` tags are still
+   excluded, but bare `conflicting_fxn_data` is deliberately kept, since
+   each row is one dataset's measurement) and REVEL as the default
+   predictor. Produces
    `data/output/reclassification/integrated_variant_effect_biobank_input_data.tsv.gz`,
-   one row per surviving measurement (not deduplicated to one row per DNA
-   variant), which collaborators use for downstream biobank analysis.
+   which collaborators use for downstream biobank analysis.
 
 Two more `src/` scripts support this stage (beyond `load_oddspath_calibrations.py`
 above) and are already converted:
@@ -247,7 +257,13 @@ for nb in Variant_Classification_analysis OddsPath_classifications; do
     notebooks/analysis/${nb}.ipynb
 done
 
-# 5. Build the biobank-analysis reclassification export from that notebook's checkpoint
+# 5. Build a deduplicated reclassification dataset per computational predictor
+for predictor in REVEL AM MP2; do
+  src/scripts/run_build_variant_reclassification_dataset.sh --dedup --predictor "$predictor" \
+    --output "data/output/reclassification/integrated_variant_effect_reclassification_${predictor}.tsv.gz"
+done
+
+# 6. Build the biobank-analysis reclassification export from that notebook's checkpoint
 src/scripts/run_build_variant_reclassification_dataset.sh
 ```
 
@@ -260,8 +276,10 @@ the repo depends on a particular kernel name.
 Outputs land under `data/output/supplementary_data/` (`Supplementary_Data_4.xlsx`,
 `Supplementary_Data_5.xlsx`), `data/output/predictor_calibration/` (the
 per-gene control files also used by Extended Data Figure 7), and
-`data/output/reclassification/integrated_variant_effect_biobank_input_data.tsv.gz`
-(the biobank-analysis export from step 5 above).
+`data/output/reclassification/` (the per-predictor deduplicated
+reclassification datasets from step 5, and
+`integrated_variant_effect_biobank_input_data.tsv.gz`, the biobank-analysis
+export from step 6).
 
 ---
 

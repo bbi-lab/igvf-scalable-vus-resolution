@@ -629,7 +629,12 @@ ggsave(file.path(FIGURE_5_DIR, "cm_clinvar_ExOP_MP2_GeneSpecific_calibrated.pdf"
 source("../../../src/lib/figures/metrics_bar_calibrated.R", local = .metrics_bar_lib)
 make_metrics_bar_calibrated <- .metrics_bar_lib$make_metrics_bar_calibrated
 
-metrics_controls_calibrated <- make_metrics_bar_calibrated(metrics_one_star_YP)
+# Original all-metrics version, kept intact under "_all_calibrated".
+metrics_controls_all_calibrated <- make_metrics_bar_calibrated(metrics_one_star_YP)
+ggsave(file.path(FIGURE_5_DIR, "metrics_controls_GeneSpecific_all_calibrated.pdf"), metrics_controls_all_calibrated$plot, width = metrics_controls_all_calibrated$width_mm, height = metrics_controls_all_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+
+# Fig 5c: Sensitivity/Specificity only.
+metrics_controls_calibrated <- make_metrics_bar_calibrated(metrics_one_star_YP, categories = .metrics_bar_lib$CATEGORY_ORDER_SENS_SPEC)
 
 ggsave(file.path(FIGURE_5_DIR, "metrics_controls_GeneSpecific_calibrated.pdf"), metrics_controls_calibrated$plot, width = metrics_controls_calibrated$width_mm, height = metrics_controls_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
 
@@ -1023,7 +1028,12 @@ ggsave(file.path(FIGURE_5_DIR, "cm_clingen_ExOP_MP2_GeneSpecific_calibrated.pdf"
 # Calibrated metrics bar chart: real print size, 6pt/5pt Arial regular (see
 # lib/metrics_bar_calibrated.R and the clinvar panel above, which sources
 # it).
-metrics_clingen_calibrated <- make_metrics_bar_calibrated(metrics_clingen_YP)
+# Original all-metrics version, kept intact under "_all_calibrated".
+metrics_clingen_all_calibrated <- make_metrics_bar_calibrated(metrics_clingen_YP)
+ggsave(file.path(FIGURE_5_DIR, "metrics_clingen_GeneSpecific_all_calibrated.pdf"), metrics_clingen_all_calibrated$plot, width = metrics_clingen_all_calibrated$width_mm, height = metrics_clingen_all_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
+
+# Fig 5f: Sensitivity/Specificity only.
+metrics_clingen_calibrated <- make_metrics_bar_calibrated(metrics_clingen_YP, categories = .metrics_bar_lib$CATEGORY_ORDER_SENS_SPEC)
 
 ggsave(file.path(FIGURE_5_DIR, "metrics_clingen_GeneSpecific_calibrated.pdf"), metrics_clingen_calibrated$plot, width = metrics_clingen_calibrated$width_mm, height = metrics_clingen_calibrated$height_mm, units = 'mm', device = cairo_pdf, create.dir = TRUE)
 

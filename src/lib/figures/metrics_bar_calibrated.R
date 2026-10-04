@@ -41,6 +41,9 @@ CATEGORY_DISPLAY <- c(
   Determinate_calls = "Det", MCC = "MCC", Specificity = "Spec",
   Sensitivity = "Sens", Concordance = "Ccd"
 )
+# Sensitivity/Specificity-only subset (same relative bottom-to-top order as
+# CATEGORY_ORDER) for the Fig 5c/5f panels, which drop the other 3 metrics.
+CATEGORY_ORDER_SENS_SPEC <- c("Specificity", "Sensitivity")
 # Bottom-to-top order within each metric's 3-bar cluster -- matches
 # ggplot2's own alphabetical dodge order for an unordered fill factor
 # (confirmed via ggplot_build() on the original plot).
@@ -85,7 +88,8 @@ text_height_mm <- function(label, pt, family = FONT_FAMILY) {
 # beyond it.
 make_metrics_bar_calibrated <- function(metrics_df,
                                          chart_width_mm = 26, chart_height_mm = 35,
-                                         tick_pt = TICK_PT, title_pt = TITLE_PT) {
+                                         tick_pt = TICK_PT, title_pt = TITLE_PT,
+                                         categories = CATEGORY_ORDER) {
   measure_dev_file <- tempfile(fileext = ".pdf")
   grDevices::cairo_pdf(measure_dev_file)
   on.exit({
@@ -93,15 +97,15 @@ make_metrics_bar_calibrated <- function(metrics_df,
     unlink(measure_dev_file)
   }, add = TRUE)
 
-  n_categories <- length(CATEGORY_ORDER)
+  n_categories <- length(categories)
   y_unit_min <- 1 - DISCRETE_EXPAND_UNITS
   y_unit_max <- n_categories + DISCRETE_EXPAND_UNITS
   mm_y <- function(u) (u - y_unit_min) / (y_unit_max - y_unit_min) * chart_height_mm
   mm_x <- function(v) v * chart_width_mm
 
   # ---- Bars ----
-  bars <- do.call(rbind, lapply(seq_along(CATEGORY_ORDER), function(i) {
-    category <- CATEGORY_ORDER[i]
+  bars <- do.call(rbind, lapply(seq_along(categories), function(i) {
+    category <- categories[i]
     do.call(rbind, lapply(seq_along(PREDICTOR_ORDER), function(j) {
       predictor <- PREDICTOR_ORDER[j]
       value <- metrics_df[[category]][metrics_df$Predictor == predictor]
@@ -123,8 +127,8 @@ make_metrics_bar_calibrated <- function(metrics_df,
   bars$label_w <- text_width_mm(bars$value_label, tick_pt)
 
   # ---- Axis ticks/labels ----
-  y_tick_labels <- unname(CATEGORY_DISPLAY[CATEGORY_ORDER])
-  y_tick_y <- mm_y(seq_along(CATEGORY_ORDER))
+  y_tick_labels <- unname(CATEGORY_DISPLAY[categories])
+  y_tick_y <- mm_y(seq_along(categories))
   y_tick_w <- max(text_width_mm(y_tick_labels, tick_pt))
 
   x_tick_values <- c(0, 0.25, 0.5, 0.75, 1)

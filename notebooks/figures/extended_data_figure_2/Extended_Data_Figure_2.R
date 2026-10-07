@@ -277,41 +277,66 @@ condensed_assay_datasets_without_excalibr <- setdiff(
     pull(Dataset)
 )
 
-# Sample sizes shown above each gene panel: missense vs. other (derived as
-# All minus Missense -- ExCALIBR has no direct "non-missense" consequence
-# row the way "Functional class" does) carrier counts among cases/controls.
-# The ExCALIBR score bins are cumulative, so there's no single row that
-# already holds "every carrier of this consequence" -- "<= -1"/">= +1" are
-# the least-restrictive (broadest) bin in each direction, so summing just
-# those two covers everyone with a non-zero score. Carrier counts are
-# parsed from the source data with privacy-censored "<= 20" cells treated
-# as 20 (see parse_censored_count() in load_biobank_or_table.R) -- fine for
-# this descriptive annotation, not precise enough for anything computed.
-# Short-scale (17.8K-style) number formatting -- these panels are narrow
-# (5 across), and full comma-formatted digit strings don't fit.
-count_fmt <- scales::label_number(scale_cut = scales::cut_short_scale())
+# Sample sizes shown above each gene panel: total carriers among cases/
+# controls with any classified (non-"0") variant from that gene's assay.
+# Not broken down by consequence (e.g. missense vs. other) -- "All" and
+# "Missense" aren't disjoint (a carrier can have variants of both kinds in
+# the same assay), so an All-minus-Missense subtraction risks double-
+# counting/undercounting people rather than giving an exact non-missense
+# count. The ExCALIBR score bins are cumulative, so there's no single row
+# that already holds "every carrier of this consequence" -- "≤ -1"/"≥ +1"
+# are the least-restrictive (broadest) bin in each direction, so summing
+# just those two covers everyone with a non-zero score.
+#
+# Carrier counts are parsed from the source data with privacy-censored
+# "≤ 20" cells treated as 20 (see parse_censored_count() in
+# load_biobank_or_table.R) -- an upper bound on that cell, not its real
+# value. A sum that includes one or more censored cells is therefore only
+# known to fall somewhere between (sum of the exact cells + 1 per censored
+# cell, since a censored cell is never really 0) and (sum of the exact
+# cells + 20 per censored cell) -- shown as that range (e.g. "971-990") in
+# assay_count_annotations_df, unless the range degenerates to a single
+# censored cell against an otherwise-empty sum (no exact contribution at
+# all), in which case the true total is simply ≤ 20, same as the source
+# cell itself.
+# Plain comma-grouped integer up to 9,999 (e.g. "1,410"); above that, one
+# decimal place of thousands with a "K" suffix (e.g. "12.9K") up to
+# 99,999, and no decimal place at all from 100,000 up (e.g. "120K") -- a
+# tenths digit stops being meaningful noise at that point. Unlike
+# scales::label_number(scale_cut = ...), which switches to "K" at 1,000 and
+# varies its decimal count by magnitude (e.g. "1.410K", "284.49K").
+count_fmt <- function(x) {
+  dplyr::case_when(
+    x >= 100000 ~ paste0(scales::label_number(accuracy = 1)(x / 1000), 'K'),
+    x > 9999 ~ paste0(scales::label_number(accuracy = 0.1)(x / 1000), 'K'),
+    TRUE ~ scales::label_comma(accuracy = 1)(x)
+  )
+}
 
 assay_dataset_counts <- or_df %>%
   filter(
     Dataset %in% condensed_assay_datasets,
     (Classifier == 'ExCALIBR' & !(Dataset %in% condensed_assay_datasets_without_excalibr)) |
       (Classifier == 'StandardizedClass' & Dataset %in% condensed_assay_datasets_without_excalibr),
-    Consequence %in% c('All', 'Missense'),
-    # '<= -1'/'>= +1' are ExCALIBR's broadest bins (see comment above); for
+    Consequence == 'All',
+    # '≤ -1'/'≥ +1' are ExCALIBR's broadest bins (see comment above); for
     # StandardizedClass (TP53_Fayer_2021_meta's OddsPath calibration) every
     # carrier is NORMAL or ABNORMAL, so that pair is the equivalent "everyone
     # with a classification" set.
     Classification %in% c('≤ -1', '≥ +1', 'NORMAL', 'ABNORMAL')
   ) %>%
-  group_by(Dataset, Gene, Consequence) %>%
+  group_by(Dataset, Gene) %>%
   summarise(
-    `Carrier cases` = sum(`Carrier cases`),
-    `Carrier controls` = sum(`Carrier controls`),
+    # Upper bound: every censored cell counted at its substituted value (20,
+    # see above) -- equal to the exact total when nothing was censored.
+    `Carrier cases upper` = sum(`Carrier cases`),
+    `Carrier controls upper` = sum(`Carrier controls`),
+    # The portion of the sum known exactly, excluding any censored cell.
+    `Carrier cases known` = sum(if_else(`Carrier cases censored`, 0L, `Carrier cases`)),
+    `Carrier controls known` = sum(if_else(`Carrier controls censored`, 0L, `Carrier controls`)),
+    `Carrier cases n_censored` = sum(`Carrier cases censored`),
+    `Carrier controls n_censored` = sum(`Carrier controls censored`),
     .groups = 'drop'
-  ) %>%
-  pivot_wider(
-    names_from = Consequence,
-    values_from = c(`Carrier cases`, `Carrier controls`)
   )
 
 # A StandardizedClass (OddsPath) dataset only ever reports a binary
@@ -411,60 +436,57 @@ assay_panel_x_min <- condensed_assay_plot_df %>%
   group_by(Gene) %>%
   summarise(panel_x_min = min(OR_LI, na.rm = TRUE), .groups = 'drop')
 
-# One row per gene per annotation line: a left-aligned "Cases / Controls"
-# header sharing its row with the right-aligned Other (All minus Missense)
-# count, and a second row below it for the right-aligned Missense count in
-# blue (matching its series in the plot). This lands below the native
-# per-gene strip (gene name, bold) and above the panel's own plotted data --
-# not above the strip/Disease header -- because that strip is given extra
-# bottom margin below (reserving blank room for this content within its own
-# cell) rather than this layer having to clear the whole strip height, as a
-# strip and the panel directly below it are flush with no gap by default.
-# `vjust` (more negative = further above the panel) only needs to be large
-# enough to clear into that reserved margin via coord_cartesian(clip =
-# 'off') below -- actual values tuned against this plot's real panel/strip
-# size, not transferable to a plot with different dimensions.
+# One row per gene per annotation line: a left-aligned "N cases" and a
+# right-aligned "N controls", sharing a single row above each panel (no
+# longer split by consequence -- see assay_dataset_counts above). This
+# lands below the native per-gene strip (gene name, bold) and above the
+# panel's own plotted data -- not above the strip/Disease header -- because
+# that strip is given extra bottom margin below (reserving blank room for
+# this content within its own cell) rather than this layer having to clear
+# the whole strip height, as a strip and the panel directly below it are
+# flush with no gap by default. `vjust` (more negative = further above the
+# panel) only needs to be large enough to clear into that reserved margin
+# via coord_cartesian(clip = 'off') below -- actual value tuned against
+# this plot's real panel/strip size, not transferable to a plot with
+# different dimensions.
+# Formats a (possibly partially censored) sum: a bare number when nothing
+# was censored; "≤ <upper>" when the only uncertainty is a single censored
+# cell with no other (exact) contribution, so the true total is, like the
+# source cell itself, simply at most 20; otherwise a "<lower>-<upper>"
+# range, since a second nonzero contribution (exact or itself censored)
+# means "≤ 20" would no longer be a tight -- or even correct -- bound (see
+# assay_dataset_counts above). A range whose ends round to the same
+# count_fmt() display (e.g. 24,792-24,811, both "24.8K") collapses to that
+# one value instead of the redundant-looking "24.8K-24.8K".
+format_censored_count <- function(known, n_censored, upper) {
+  lower <- known + n_censored
+  lower_fmt <- count_fmt(lower)
+  upper_fmt <- count_fmt(upper)
+  dplyr::case_when(
+    n_censored == 0 ~ upper_fmt,
+    n_censored == 1 & known == 0 ~ paste0('≤ ', upper_fmt),
+    lower_fmt == upper_fmt ~ lower_fmt,
+    TRUE ~ paste0(lower_fmt, '-', upper_fmt)
+  )
+}
+
 assay_count_annotations_df <- bind_rows(
   assay_dataset_counts %>%
     transmute(
       Gene,
-      part = 'header',
       hjust = 0,
-      vjust = -1.1,
-      # Smaller than the counts (4pt vs 5pt) -- "Cases/Controls" sharing a
-      # row with a wide count (KCNQ4's "28.318K / 210.2K") collided at
-      # equal size; this is a caption next to data, not data itself, so
-      # shrinking it a bit is a reasonable way to buy the needed room back.
-      size = 4,
-      color = 'black',
-      text = 'Cases/Controls'
-    ),
-  assay_dataset_counts %>%
-    transmute(
-      Gene,
-      part = 'other',
-      hjust = 1,
-      vjust = -1.1,
-      size = 5,
-      color = 'black',
       text = sprintf(
-        '%s / %s',
-        count_fmt(`Carrier cases_All` - `Carrier cases_Missense`),
-        count_fmt(`Carrier controls_All` - `Carrier controls_Missense`)
+        '%s cases',
+        format_censored_count(`Carrier cases known`, `Carrier cases n_censored`, `Carrier cases upper`)
       )
     ),
   assay_dataset_counts %>%
     transmute(
       Gene,
-      part = 'missense',
       hjust = 1,
-      vjust = -0.3,
-      size = 5,
-      color = '#1D7AAB',
       text = sprintf(
-        '%s / %s',
-        count_fmt(`Carrier cases_Missense`),
-        count_fmt(`Carrier controls_Missense`)
+        '%s controls',
+        format_censored_count(`Carrier controls known`, `Carrier controls n_censored`, `Carrier controls upper`)
       )
     )
 ) %>%
@@ -474,7 +496,14 @@ assay_count_annotations_df <- bind_rows(
   # broadcasts it into every panel instead (confirmed: this is exactly what
   # happened before this join was added).
   left_join(gene_groups_df, by = 'Gene') %>%
-  mutate(x = if_else(part == 'header', panel_x_min, Inf))
+  mutate(
+    x = if_else(hjust == 0, panel_x_min, Inf),
+    # BAP1/MSH2/RAD51D's cases count is a range (e.g. "1,399-1,418"), and in
+    # these narrower (5-across) panels that text is too wide for the
+    # default 5pt without colliding with the controls text on the same
+    # row -- shrink just these three enough to clear it.
+    size = if_else(Gene %in% c('BAP1', 'MSH2', 'RAD51D'), 4.4, 5)
+  )
 
 # Limits for most panels
 assay_plot_common_limits <- condensed_assay_plot_df %>%
@@ -514,7 +543,7 @@ condensed_assay_plot <- ggplot(
     strip = strip_nested(
       text_x = list(
         element_text(size = 7, face = 'bold'),
-        element_text(size = 7, face = 'bold', margin = margin(t = 3, r = 3, b = 10, l = 3))
+        element_text(size = 7, face = 'bold', margin = margin(t = 3, r = 3, b = 9, l = 3))
       ),
       # strip_nested()'s by_layer_x defaults to FALSE, which does NOT treat
       # the text_x list above as one element per nesting depth (Disease,
@@ -534,12 +563,15 @@ condensed_assay_plot <- ggplot(
   # layer's content overflow past the panel's own border into that margin.
   geom_text(
     data = assay_count_annotations_df,
-    aes(x = x, y = Inf, label = text, hjust = hjust, vjust = vjust, size = I(size / .pt), color = I(color)),
+    # size is per-gene (see assay_count_annotations_df) -- I() bypasses the
+    # default area-based size scale, treating these as literal point sizes.
+    aes(x = x, y = Inf, label = text, hjust = hjust, size = I(size / .pt)),
+    vjust = -0.9,
+    color = 'black',
     inherit.aes = FALSE,
     # Without this, ggplot merges this layer into the Consequence color
-    # legend below (it maps color too, even via I()) and draws geom_text's
-    # placeholder key glyph -- literally the letter "a" -- on top of the
-    # All/Missense keys.
+    # legend below and draws geom_text's placeholder key glyph -- literally
+    # the letter "a" -- on top of the All/Missense keys.
     show.legend = FALSE
   ) +
   coord_cartesian(clip = 'off') +

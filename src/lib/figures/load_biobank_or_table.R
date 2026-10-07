@@ -31,6 +31,14 @@ parse_censored_count <- function(x) {
   as.integer(stringr::str_remove(x, '^.*\\s'))
 }
 
+# Whether a `Carrier cases`/`Carrier controls` string is itself the
+# privacy-censored "<= 20" rather than an exact count -- lets a caller that
+# needs to know (e.g. to show "<= N" instead of a bare number) distinguish
+# the two cases that parse_censored_count() above deliberately collapses.
+is_censored_count <- function(x) {
+  stringr::str_detect(x, '^\\s*≤')
+}
+
 # By default this restricts to the unbroken-down "All" row per Dataset/
 # Gene/Classifier/Classification, reproducing the one row per bin the
 # original file had. Pass keep_consequence = TRUE (Figure_2i.R's
@@ -79,6 +87,8 @@ load_biobank_or_table <- function(path, keep_consequence = FALSE) {
       `Cases with variants` = dplyr::if_else(`Carrier cases` == '0', 0L, 1L),
       # Parsed approximate counts (censored -> 20) for descriptive sample-
       # size annotations only -- see parse_censored_count() above.
+      `Carrier cases censored` = is_censored_count(`Carrier cases`),
+      `Carrier controls censored` = is_censored_count(`Carrier controls`),
       `Carrier cases` = parse_censored_count(`Carrier cases`),
       `Carrier controls` = parse_censored_count(`Carrier controls`)
     )

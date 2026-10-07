@@ -58,7 +58,7 @@ which also drops the conflict bucket from the report.
 
 It also reports two further sections, sourced from separate input files:
 
-- **ExCALIBR calibration coverage** (Extended Data Figure 2): how many genes
+- **ExCALIBR calibration coverage** (Extended Data Figure 4): how many genes
   have a row in `--excalibr-calibrations-file`'s `ExCALIBR_calibrations` sheet
   (default `data/output/supplementary_data/Supplementary_Data_4.xlsx`), and how many
   of those genes have at least one dataset where ExCALIBR assigned at least

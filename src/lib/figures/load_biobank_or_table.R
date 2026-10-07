@@ -1,5 +1,5 @@
 # Shared loader for the biobank-cohort odds-ratio table used by Figure 2i,
-# Figure 6b, and Extended Data Figure 2 (func_df/combined_points_plot_df/
+# Figure 6b, and Extended Data Figure 4 (func_df/combined_points_plot_df/
 # predictor_plot_df/assay_plot_df). Pending a real IGVFFI3804AVJR.csv.gz
 # re-export from Zenodo, these three scripts instead read an AoU-only export
 # (data/input/biobank/AoU-OR-estimates_*.tsv.gz, optionally concatenated

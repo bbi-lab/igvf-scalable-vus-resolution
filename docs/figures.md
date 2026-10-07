@@ -87,7 +87,7 @@ them.
 
 ### 3. `Figure_2i.R` (separate from the notebook pipeline above)
 
-Same pattern as `Figure_6b.R` / `Extended_Data_Figure_2.R`: a plain Rscript
+Same pattern as `Figure_6b.R` / `Extended_Data_Figure_4.R`: a plain Rscript
 run via the `r-figures` Docker service, reading
 `data/input/biobank/IGVFFI3804AVJR.csv.gz` (downloaded separately from
 https://data.igvf.org/tabular-files/IGVFFI3804AVJR/ -- nothing in this repo
@@ -264,9 +264,9 @@ matches how a given panel was assembled by hand.
 
 ## Extended Data Figures
 
-Directories: `notebooks/figures/extended_data_figure_2/`,
+Directories: `notebooks/figures/extended_data_figure_4/`,
 `notebooks/figures/extended_data_figure_7/`, and
-`notebooks/figures/extended_data_figure_6_8_9_11_12/`. Ext. Data Figs 2 and 7 are
+`notebooks/figures/extended_data_figure_6_8_9_11_12/`. Ext. Data Figs 4 and 7 are
 standalone scripts, documented in their own subsections below;
 `Extended_data_figures.Rmd` covers Figs 6, 6alt, 6alt missense, 8, 8alt,
 9alt, 11, and 12, and is documented further down.
@@ -275,9 +275,9 @@ Ext. Data Fig 9 and Ext. Data Fig 10 are standalone Python scripts under
 `src/ablation_variant_reclassification.py`), also documented in their own
 subsections below.
 
-### Extended Data Figure 2
+### Extended Data Figure 4
 
-`Extended_Data_Figure_2.R` -- odds-ratio forest plots for gene-specific vs.
+`Extended_Data_Figure_4.R` -- odds-ratio forest plots for gene-specific vs.
 genome-wide predictor calibration (top) and per-assay ExCALIBR classification
 (bottom), faceted by gene/disease group. Plain `Rscript`, not an `.Rmd` --
 same `tidyverse`/`patchwork`/`ggh4x`/`extrafont` dependencies and `r-figures`
@@ -288,11 +288,11 @@ produces it).
 
 ```bash
 # Reads data/input/biobank/IGVFFI3804AVJR.csv.gz (see link above).
-docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_2 \
-  r-figures Extended_Data_Figure_2.R
+docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_4 \
+  r-figures Extended_Data_Figure_4.R
 ```
 
-Saves `data/output/figures/assets/extended_data_figure_2.pdf`.
+Saves `data/output/figures/assets/extended_data_figure_4/extended_data_figure_4.pdf`.
 
 ### Extended Data Figure 7
 

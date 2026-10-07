@@ -104,7 +104,7 @@ agreement, sourced from `--excalibr-calibrations-file` (default
 Supplementary_Data_4.xlsx) and `--controls-file` (default
 Supplementary_Data_5.xlsx) respectively:
 
-- **ExCALIBR calibration coverage** (Extended Data Figure 2): how many genes
+- **ExCALIBR calibration coverage** (Extended Data Figure 4): how many genes
   have a row in Supplementary_Data_4's `ExCALIBR_calibrations` sheet, and how
   many of those genes have at least one dataset where ExCALIBR assigned at
   least one point of evidence in either direction (i.e. at least one of that
@@ -1371,7 +1371,7 @@ def format_calibration_summary(stats):
     excl_suffix = "excluding F9/TP53/SFPQ"
     return "\n".join(
         [
-            "=== ExCALIBR calibration coverage (Extended Data Figure 2) ===",
+            "=== ExCALIBR calibration coverage (Extended Data Figure 4) ===",
             f"Genes with ExCALIBR calibrations: {total} ({total_excl} {excl_suffix})",
             (
                 f"Genes with >=1 dataset assigning >=1 point of evidence (pathogenic or benign): "

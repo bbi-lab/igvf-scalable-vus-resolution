@@ -390,12 +390,12 @@ docker compose run --rm -w /usr/src/app/notebooks/figures/figure_5_6 \
   r-figures -e 'rmarkdown::render("Figure5_6.Rmd", output_file = "executed_Figure5_6_missense.html", params = list(consequence_filter = "missense"))'
 ```
 
-#### Extended Data Figure 2
+#### Extended Data Figure 4
 
 ```bash
-# Extended_Data_Figure_2.R -- reads data/input/biobank/IGVFFI3804AVJR.csv.gz (see above)
-docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_2 \
-  r-figures Extended_Data_Figure_2.R
+# Extended_Data_Figure_4.R -- reads data/input/biobank/IGVFFI3804AVJR.csv.gz (see above)
+docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_4 \
+  r-figures Extended_Data_Figure_4.R
 ```
 
 #### Extended Data Figure 7

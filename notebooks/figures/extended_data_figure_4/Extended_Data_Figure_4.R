@@ -1,4 +1,4 @@
-# Extended Data Figure 2
+# Extended Data Figure 4
 
 # This script requires IGVFFI3804AVJR.csv.gz which is available from
 # https://data.igvf.org/tabular-files/IGVFFI3804AVJR/ and expected at
@@ -650,7 +650,7 @@ condensed_assay_plot <- ggplot(
   geom_vline(xintercept = log10(1), linetype = 'dashed')
 
 # Compose figure together
-fig_exd2 <- (condensed_assay_plot + nature_theme +
+fig_exd4 <- (condensed_assay_plot + nature_theme +
     # facet_nested_wrap() (ggh4x, used here) renders panel.border at roughly
     # double the linewidth facet_grid() (panel b, below) does for the same
     # theme value -- confirmed by rendering each panel alone and measuring
@@ -668,12 +668,12 @@ fig_exd2 <- (condensed_assay_plot + nature_theme +
   )
 
 # Show figure
-print(fig_exd2)
+print(fig_exd4)
 
 # Save figure
 ggsave(
-  '../../../data/output/figures/assets/extended_data_figure_2.pdf',
-  fig_exd2,
+  '../../../data/output/figures/assets/extended_data_figure_4/extended_data_figure_4.pdf',
+  fig_exd4,
   width = 160, # Max 183
   height = 247,
   units = 'mm',

@@ -650,7 +650,14 @@ condensed_assay_plot <- ggplot(
   geom_vline(xintercept = log10(1), linetype = 'dashed')
 
 # Compose figure together
-fig_exd2 <- (condensed_assay_plot + nature_theme) +
+fig_exd2 <- (condensed_assay_plot + nature_theme +
+    # facet_nested_wrap() (ggh4x, used here) renders panel.border at roughly
+    # double the linewidth facet_grid() (panel b, below) does for the same
+    # theme value -- confirmed by rendering each panel alone and measuring
+    # border pixel width at a fixed DPI. Halving it here (nature_theme's own
+    # panel.border is unchanged, since panel b renders it correctly) matches
+    # the two panels' border weight.
+    theme(panel.border = element_rect(fill = NA, colour = 'black', linewidth = 0.25))) +
   (figure_predictor_plot + nature_theme + theme(plot.margin = margin(t = 0, r = 5.5, b = 5.5, l = 5.5))) +
   plot_annotation(tag_levels='a') +
   plot_layout(

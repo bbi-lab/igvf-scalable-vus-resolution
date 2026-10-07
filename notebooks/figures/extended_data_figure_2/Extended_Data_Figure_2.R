@@ -425,7 +425,7 @@ assay_count_annotations_df <- bind_rows(
       Gene,
       part = 'header',
       hjust = 0,
-      vjust = -2.0,
+      vjust = -1.1,
       # Smaller than the counts (4pt vs 5pt) -- "Cases/Controls" sharing a
       # row with a wide count (KCNQ4's "28.318K / 210.2K") collided at
       # equal size; this is a caption next to data, not data itself, so
@@ -439,7 +439,7 @@ assay_count_annotations_df <- bind_rows(
       Gene,
       part = 'other',
       hjust = 1,
-      vjust = -2.0,
+      vjust = -1.1,
       size = 5,
       color = 'black',
       text = sprintf(
@@ -453,7 +453,7 @@ assay_count_annotations_df <- bind_rows(
       Gene,
       part = 'missense',
       hjust = 1,
-      vjust = -0.6,
+      vjust = -0.3,
       size = 5,
       color = '#1D7AAB',
       text = sprintf(
@@ -509,7 +509,7 @@ condensed_assay_plot <- ggplot(
     strip = strip_nested(
       text_x = list(
         element_text(size = 7, face = 'bold'),
-        element_text(size = 7, face = 'bold', margin = margin(t = 3, r = 3, b = 18, l = 3))
+        element_text(size = 7, face = 'bold', margin = margin(t = 3, r = 3, b = 10, l = 3))
       ),
       # strip_nested()'s by_layer_x defaults to FALSE, which does NOT treat
       # the text_x list above as one element per nesting depth (Disease,
@@ -563,11 +563,7 @@ condensed_assay_plot <- ggplot(
   geom_vline(xintercept = 1, linetype = 'dashed')
 
 # Compose figure together
-fig_exd2 <- (condensed_assay_plot + nature_theme +
-    # Extra room above each row of panels for the sample-size annotation
-    # (geom_text + coord_cartesian(clip = 'off') above) to occupy without
-    # overlapping the panel row above it.
-    theme(panel.spacing.y = unit(4, 'mm'))) +
+fig_exd2 <- (condensed_assay_plot + nature_theme) +
   (figure_predictor_plot + nature_theme + theme(plot.margin = margin(t = 0, r = 5.5, b = 5.5, l = 5.5))) +
   plot_annotation(tag_levels='a') +
   plot_layout(

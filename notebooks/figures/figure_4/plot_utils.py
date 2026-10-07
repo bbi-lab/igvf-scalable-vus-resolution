@@ -62,6 +62,48 @@ BENIGN_THRESHOLD_COLOR = '#2166AC'
 PATHOGENIC_THRESHOLD_COLOR = '#B2182B'
 CARTOON_FIT_COLORS = ['#8B3A47', '#0D4A6B']
 
+def _bold_italic_gene_title(ax, gene_name, suffix, x=0.5, y=0.98, fontsize=FONTSIZE_SUBTITLE,
+                             ha='center', va='top'):
+    """Draw "<gene_name> <suffix>" centered at (x, y) in ax-fraction coords,
+    with gene_name italic+bold and suffix bold -- matching the rest of the
+    (bold) title.
+
+    Plain-text fontweight='bold' has no effect on a mathtext ($...$) span
+    (confirmed empirically: matplotlib mathtext has no combined bold-italic
+    command -- \\mathbf{\\mathit{...}} still renders non-bold, same as bare
+    \\mathit{...} -- and there's no supported \\mathbfit either, which is
+    what broke this in the first place, see git history), so this renders
+    gene_name as plain (non-mathtext) text with fontstyle='italic' instead,
+    which *does* respect fontweight. That means gene_name and suffix must be
+    two separate Text artists, which this positions itself: draw both once
+    to measure their rendered widths via the renderer, then reposition them
+    edge-to-edge so the pair is centered as a whole, the same "draw once,
+    read back extents" trick used for panel c's colorbar placement.
+    """
+    fig = ax.figure
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+
+    t_gene = ax.text(x, y, gene_name, transform=ax.transAxes, fontsize=fontsize,
+                      fontweight='bold', fontstyle='italic', ha=ha, va=va)
+    t_suffix = ax.text(x, y, suffix, transform=ax.transAxes, fontsize=fontsize,
+                        fontweight='bold', ha=ha, va=va)
+
+    bb_gene = t_gene.get_window_extent(renderer)
+    bb_suffix = t_suffix.get_window_extent(renderer)
+    ax_width = ax.get_window_extent(renderer).width
+
+    frac_gene = bb_gene.width / ax_width
+    frac_suffix = bb_suffix.width / ax_width
+    left = x - (frac_gene + frac_suffix) / 2
+
+    t_gene.set_ha('left')
+    t_gene.set_position((left, y))
+    t_suffix.set_ha('left')
+    t_suffix.set_position((left + frac_gene, y))
+    return t_gene, t_suffix
+
+
 def joint_densities(x, params, weights):
     """
     weighted pdfs of a mixture of skew normal distributions
@@ -250,7 +292,7 @@ def plot_panel_a(gs_spec, scoreset_2018, indv_summary, fits, score_range, flippe
         hist_data = scoreset_2018.scores[sample_mask]
         n_count = sample_mask.sum()
         
-        sns.histplot(hist_data, binwidth=bin_width, stat='density', ax=ax,
+        sns.histplot(hist_data, binwidth=bin_width, binrange=(x_min, x_max), stat='density', ax=ax,
                    alpha=0.5, color=color)
         
         density_sample = sample_density(score_range, fits, sample_idx)
@@ -328,14 +370,14 @@ def plot_panel_b(gs_spec, scoreset, all_scores, point_ranges, score_range, flipp
             display_name = 'All SNVs'
             n_count = len(all_scores)
             # Plot All SNVs on twin axis (right)
-            sns.histplot(hist_data, binwidth=bin_width, stat='count', ax=ax_twin,
+            sns.histplot(hist_data, binwidth=bin_width, binrange=(x_min, x_max), stat='count', ax=ax_twin,
                        alpha=alpha, color=color)
         else:
             hist_data = scoreset.scores[sample_mask]
             display_name = SAMPLE_NAMES[sample_num]
             n_count = sample_mask.sum()
             # Plot PLP/BLB on main axis (left)
-            sns.histplot(hist_data, binwidth=bin_width, stat='count', ax=ax_hist,
+            sns.histplot(hist_data, binwidth=bin_width, binrange=(x_min, x_max), stat='count', ax=ax_hist,
                        alpha=alpha, color=color)
         
         face_rgba = to_rgba(color, alpha)
@@ -358,12 +400,7 @@ def plot_panel_b(gs_spec, scoreset, all_scores, point_ranges, score_range, flipp
     ax_hist.legend([h[0] for h in sample_handles], [h[1] for h in sample_handles],
                   loc='upper right', fontsize=FONTSIZE_LEGEND)
 
-    ax_hist.text(0.5, 0.98, rf'$\mathbfit{{MSH2}}$'+' experimental scores',
-            transform=ax_hist.transAxes,
-            fontsize=FONTSIZE_SUBTITLE, 
-            fontweight='bold',
-            va='top', 
-            ha='center')
+    _bold_italic_gene_title(ax_hist, 'MSH2', ' experimental scores', fontsize=FONTSIZE_SUBTITLE)
     
     # Add centered title in title row
     bbox = plt.subplot(gs_outer[0])
@@ -443,15 +480,27 @@ def plot_panel_b(gs_spec, scoreset, all_scores, point_ranges, score_range, flipp
     return legend_handles
 
 
-def plot_panel_c(gs_spec, danzs_oob, auths_oob, fig):
-    """Panel C: Confusion matrices with purple gradient"""
+def plot_panel_c(gs_spec, danzs_oob, auths_oob, fig, vus_pct_danz=None, vus_pct_auth=None):
+    """Panel C: Confusion matrices with purple gradient.
+
+    *vus_pct_danz*/*vus_pct_auth*, if given, are pooled VUS-determinate
+    percentages shown in each panel's "Determinate: Controls X%, VUS Y%"
+    caption; the VUS clause is omitted (not faked) when not supplied.
+    """
     # Add title row
     gs_outer = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs_spec,
                                                 height_ratios=[0.00, 1], hspace=0)
     gs = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=gs_outer[1], wspace=0.15)
-    
-    danz_agg = sum([d for d in danzs_oob if d is not None])
-    auth_agg = sum([a for a in auths_oob if a is not None])
+
+    # Restrict the ExCALIBR side to the same dataset subset as the author
+    # side (datasets with no recorded author functional classification have
+    # auths_oob[i] is None) -- summing danzs_oob over every dataset
+    # regardless of author-data availability would pool ExCALIBR's evidence
+    # over a strictly larger population than the author comparison, making
+    # the two heatmaps not actually comparable.
+    paired = [(d, a) for d, a in zip(danzs_oob, auths_oob) if d is not None and a is not None]
+    danz_agg = sum(d for d, _ in paired)
+    auth_agg = sum(a for _, a in paired)
     danz_metrics = compute_classification_metrics(danz_agg)
     auth_metrics = compute_classification_metrics(auth_agg)
     
@@ -459,7 +508,7 @@ def plot_panel_c(gs_spec, danzs_oob, auths_oob, fig):
     purple_cmap = LinearSegmentedColormap.from_list("purple", CMAP[1:])
     max_val = max(danz_agg.values.max(), auth_agg.values.max())
     
-    def plot_confusion(df, ax, title, metrics, show_cbar=False, cbar_ax=None):
+    def plot_confusion(df, ax, title, metrics, show_cbar=False, cbar_ax=None, vus_pct=None):
         def get_text_color(value, max_value):
             return 'white' if value / max_value > WHITE_TEXT_THRESHOLD_4C else 'black'
         
@@ -494,9 +543,11 @@ def plot_panel_c(gs_spec, danzs_oob, auths_oob, fig):
         ax.set_title(title, fontsize=FONTSIZE_SUBTITLE, fontweight='bold', pad=6)
         ax.tick_params(length=0, labelsize=FONTSIZE_TICK)
         
-        coverage_text = f"DOR: {metrics['dor_standard']:.1f}\nDeterminate: Controls {100*metrics['coverage']:.1f}%, VUS "
-        coverage_text += "79.7%" if "ExCALIBR" in title else "93.2%"
-        
+        coverage_text = f"DOR: {metrics['dor_standard']:.1f}\nDeterminate: Controls {100*metrics['coverage']:.1f}%"
+        if vus_pct is not None:
+            coverage_text += f", VUS {vus_pct:.1f}%"
+
+
         ax.text(0.5, -0.26, coverage_text, transform=ax.transAxes,
                fontsize=FONTSIZE_LEGEND, ha='center', va='top', color='#555555')
         
@@ -513,8 +564,8 @@ def plot_panel_c(gs_spec, danzs_oob, auths_oob, fig):
     bbox_auth = ax_auth.get_position()
     cbar_ax = fig.add_axes([bbox_auth.x1 + 0.01, bbox_auth.y0, 0.015, bbox_auth.height])
     
-    plot_confusion(danz_agg, ax_danz, "ExCALIBR Evidence", danz_metrics, show_cbar=False)
-    plot_confusion(auth_agg, ax_auth, "Functional Annotations", auth_metrics, show_cbar=True, cbar_ax=cbar_ax)
+    plot_confusion(danz_agg, ax_danz, "ExCALIBR Evidence", danz_metrics, show_cbar=False, vus_pct=vus_pct_danz)
+    plot_confusion(auth_agg, ax_auth, "Functional Annotations", auth_metrics, show_cbar=True, cbar_ax=cbar_ax, vus_pct=vus_pct_auth)
     
     # ax_danz.text(-0.25, 1.15, "c", transform=ax_danz.transAxes,
     #             fontsize=FONTSIZE_PANEL_LETTER, fontweight='bold', va='top', ha='left')
@@ -647,11 +698,12 @@ def plot_panel_e(gs_spec, gene, dist, labdat, snvdf, sorted_thresholds, oldsorte
     ax_twin = ax_hist.twinx()
     
     bin_width = (labdat[0].max() - labdat[0].min()) / 50
-    sns.histplot(labdat[labdat[1] == 0][0], binwidth=bin_width, color=SAMPLE_COLORS[1],
+    bin_range = (0, 1)
+    sns.histplot(labdat[labdat[1] == 0][0], binwidth=bin_width, binrange=bin_range, color=SAMPLE_COLORS[1],
                 alpha=SAMPLE_ALPHAS[1], ax=ax_hist, label=f'ClinVar BLB\n(n={len(labdat[labdat[1] == 0])})')
-    sns.histplot(labdat[labdat[1] == 1][0], binwidth=bin_width, color=SAMPLE_COLORS[0],
+    sns.histplot(labdat[labdat[1] == 1][0], binwidth=bin_width, binrange=bin_range, color=SAMPLE_COLORS[0],
                 alpha=SAMPLE_ALPHAS[0], ax=ax_hist, label=f'ClinVar PLP\n(n={len(labdat[labdat[1] == 1])})')
-    sns.histplot(snvdf[dist], binwidth=bin_width, color=SAMPLE_COLORS[2], alpha=SAMPLE_ALPHAS[2],
+    sns.histplot(snvdf[dist], binwidth=bin_width, binrange=bin_range, color=SAMPLE_COLORS[2], alpha=SAMPLE_ALPHAS[2],
                 ax=ax_twin, label=f'All SNVs\n(n={len(snvdf):,})')
     
     ax_hist.set_xlim(0, 1)
@@ -663,12 +715,7 @@ def plot_panel_e(gs_spec, gene, dist, labdat, snvdf, sorted_thresholds, oldsorte
     ax_hist.tick_params(labelsize=FONTSIZE_TICK)
     ax_twin.tick_params(labelsize=FONTSIZE_TICK)
 
-    ax_hist.text(0.5, 0.98, rf'$\mathbfit{{MSH2}}$'+' REVEL scores',
-            transform=ax_hist.transAxes,
-            fontsize=FONTSIZE_SUBTITLE, 
-            fontweight='bold',
-            va='top', 
-            ha='center')  # Centered at top
+    _bold_italic_gene_title(ax_hist, 'MSH2', ' REVEL scores', fontsize=FONTSIZE_SUBTITLE)
     
     lines1, labels1 = ax_hist.get_legend_handles_labels()
     lines2, labels2 = ax_twin.get_legend_handles_labels()
@@ -849,7 +896,8 @@ def plot_figure4(
     prior, Post_p, Post_b, p_data_sim, b_data_sim,
     gene_4e, dist_4e, labdat_4e, snvdf_4e, sorted_thresholds_4e, oldsorted_thresholds_4e,
     dist_4f, finalout_4f,
-    figsize=(13, 15)
+    figsize=(13, 15),
+    vus_pct_danz=None, vus_pct_auth=None,
 ):
     """
     Create unified Figure 4 with modular subfigures.
@@ -878,7 +926,8 @@ def plot_figure4(
     point_ranges = {int(k): v for k,v in indv_summary['point_ranges'].items()}
     legend_handles_b = plot_panel_b(main_gs[2, 0], scoreset, all_scores, point_ranges, score_range, flipped, fig)
     
-    plot_panel_c(main_gs[5, 0], danzs_oob, auths_oob, fig)  # Updated row index
+    plot_panel_c(main_gs[5, 0], danzs_oob, auths_oob, fig,  # Updated row index
+                 vus_pct_danz=vus_pct_danz, vus_pct_auth=vus_pct_auth)
     
     plot_panel_d(main_gs[0, 1], prior, Post_p, Post_b, p_data_sim, b_data_sim, fig)
     

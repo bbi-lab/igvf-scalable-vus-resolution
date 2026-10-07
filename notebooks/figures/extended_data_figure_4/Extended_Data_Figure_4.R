@@ -66,7 +66,7 @@ gene_groups_df <- tribble(
   "CALM3", "Cardiovascular", "Cardio- vascular", "Cardiovascular",
   "CHEK2", "Cancer", "Cancer", "Cancer",
   "G6PD", "Metabolic", "Meta- bolic", "Meta- bolic",
-  "GCK", "Metabolic", "Meta- bolic", "Meta- bolic",
+  # "GCK", "Metabolic", "Meta- bolic", "Meta- bolic", # excluded -- no longer has any non-NA odds ratio (see condensed_assay_datasets)
   "KCNE1", "Cardiovascular", "Cardio- vascular", "Cardiovascular",
   "KCNH2", "Cardiovascular", "Cardio- vascular", "Cardiovascular",
   "KCNQ4", "Hearing loss", "Hearing loss", "Hearing loss", #Rare disease",
@@ -79,8 +79,8 @@ gene_groups_df <- tribble(
   "RAD51D", "Cancer", "Cancer", "Cancer",
   "SCN5A", "Cardiovascular", "Cardio- vascular", "Cardiovascular",
   "TARDBP", "Rare disease", "Rare disease", "Rare disease",
-  "TP53", "Cancer", "Cancer", "Cancer",
-  "TSC2", "Cancer", "Cancer", "Cancer"
+  "TP53", "Cancer", "Cancer", "Cancer"
+  # "TSC2", "Cancer", "Cancer", "Cancer" # excluded -- no longer has any non-NA odds ratio (see condensed_assay_datasets and figure_predictor_plot_df)
 )
 
 # Predictor plot component
@@ -186,7 +186,7 @@ make_predictor_plot <- function(
 # Make plot frame
 figure_predictor_plot_df <- predictor_plot_df %>%
   filter(
-    Gene %in% c('BRCA1', 'BRCA2', 'MSH2', 'TP53', 'TSC2'), # Have gene-specific calibration
+    Gene %in% c('BRCA1', 'BRCA2', 'MSH2', 'TP53'), # Have gene-specific calibration; TSC2 excluded -- no longer has any non-NA odds ratio
   )
 
 # Make plot for final figure
@@ -244,19 +244,20 @@ condensed_assay_datasets <- c(
   'BRCA1_Findlay_2018',
   'BRCA2_Hu_2024',
   #'BRCA2_Sahu_2025_SGE',
-  'GCK_Gersing_2023_complementation',
+  #'GCK_Gersing_2023_complementation', # excluded -- no longer has any non-NA odds ratio
   'KCNH2_Jiang_2022',
+  # 'KCNH2_O_Neill_2024_surface_expression',
   'KCNQ4_Zheng_2022_current_homozygous',
   'MSH2_Jia_2021',
   'PALB2_IGVF',
   'RAD51C_Olvera-León_2024',
   'RAD51D_IGVF',
   'SCN5A_Ma_2024',
-  'TP53_Fayer_2021_meta',
+  'TP53_Fayer_2021_meta'
   #'TP53_Boettcher_2019'
   #'TP53_Fortuno_2021',
   #'TP53_Giacomelli_2018_combined_score'
-  'TSC2_IGVF'
+  #'TSC2_IGVF' # excluded -- no longer has any non-NA odds ratio
 )
 
 # Almost every dataset above reports *both* an ExCALIBR score-interval
@@ -536,7 +537,7 @@ assay_count_annotations_df <- bind_rows(
 
 # Limits for most panels
 assay_plot_common_limits <- condensed_assay_plot_df %>%
-  filter(!(Gene %in% c("BRCA1", "MSH2", "KCNH2", "TSC2", "GCK"))) %>%
+  filter(!(Gene %in% c("BRCA1", "MSH2", "KCNH2"))) %>%
   summarise(
     OR_LI = min(OR_LI),
     OR_UI = max(OR_UI)

@@ -38,6 +38,11 @@ nature_theme <- theme_linedraw() +
     strip.background = element_blank(),
     legend.title = element_blank(),
     legend.text = element_text(size = 6),
+    # Half the default vertical gaps around a bottom-positioned legend:
+    # legend.box.spacing (panel-to-legend, default 11pt) and legend.margin's
+    # top/bottom (default 5.5pt each, left/right left unchanged).
+    legend.box.spacing = unit(5.5, 'pt'),
+    legend.margin = margin(2.75, 5.5, 2.75, 5.5),
     ggh4x.facet.nestline = element_line(linewidth = 1*point_in_mm, color="black"),
     plot.tag = element_text(face = 'bold')
   )

@@ -51,7 +51,7 @@ nature_theme <- theme_linedraw() +
 # can overlay a Missense-only series on the aggregate ("All") one; every
 # other use below restricts back to Consequence == 'All' to stay unaffected.
 or_df <- load_biobank_or_table(
-  "../../../data/input/biobank/AoU-OR-estimates_2026-10-06_merged.tsv.gz",
+  "../../../data/input/biobank/AoU-OR-estimates_2026-10-07.tsv.gz",
   keep_consequence = TRUE
 )
 

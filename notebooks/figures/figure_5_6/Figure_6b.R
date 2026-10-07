@@ -43,7 +43,7 @@ nature_theme <- theme_linedraw() +
   )
 
 # Load main table
-or_df <- load_biobank_or_table("../../../data/input/biobank/AoU-OR-estimates_2026-10-06_merged.tsv.gz")
+or_df <- load_biobank_or_table("../../../data/input/biobank/AoU-OR-estimates_2026-10-07.tsv.gz")
 
 # Broad gene-phenotype classes
 

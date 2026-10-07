@@ -51,7 +51,7 @@ SHOW_ABNORMAL_MISSENSE_ROW <- TRUE
 
 # Load main table
 or_df <- load_biobank_or_table(
-  "../../../data/input/biobank/AoU-OR-estimates_2026-10-06_merged.tsv.gz",
+  "../../../data/input/biobank/AoU-OR-estimates_2026-10-07.tsv.gz",
   keep_consequence = SHOW_ABNORMAL_MISSENSE_ROW
 )
 

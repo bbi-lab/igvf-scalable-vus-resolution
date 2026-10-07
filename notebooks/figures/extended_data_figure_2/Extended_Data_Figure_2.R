@@ -602,6 +602,10 @@ condensed_assay_plot <- ggplot(
     aes(x = x, y = Inf, label = text, hjust = hjust, size = I(size / .pt)),
     vjust = -0.9,
     color = 'black',
+    # geom_text() doesn't inherit nature_theme's text family -- unlike
+    # theme elements (axis/strip/legend text), a geom's font is set per
+    # layer, not from the plot theme.
+    family = 'Arial',
     inherit.aes = FALSE,
     # Without this, ggplot merges this layer into the Consequence color
     # legend below and draws geom_text's placeholder key glyph -- literally
@@ -666,6 +670,7 @@ ggsave(
   width = 160, # Max 183
   height = 247,
   units = 'mm',
+  family = 'Arial',
   device = pdf, # JS 20260714
   # device = cairo_pdf)
   create.dir = TRUE)

@@ -277,28 +277,16 @@ condensed_assay_datasets_without_excalibr <- setdiff(
     pull(Dataset)
 )
 
-# Sample sizes shown above each gene panel: total carriers among cases/
-# controls with any classified (non-"0") variant from that gene's assay.
-# Not broken down by consequence (e.g. missense vs. other) -- "All" and
-# "Missense" aren't disjoint (a carrier can have variants of both kinds in
-# the same assay), so an All-minus-Missense subtraction risks double-
-# counting/undercounting people rather than giving an exact non-missense
-# count. The ExCALIBR score bins are cumulative, so there's no single row
-# that already holds "every carrier of this consequence" -- "≤ -1"/"≥ +1"
-# are the least-restrictive (broadest) bin in each direction, so summing
-# just those two covers everyone with a non-zero score.
-#
-# Carrier counts are parsed from the source data with privacy-censored
-# "≤ 20" cells treated as 20 (see parse_censored_count() in
-# load_biobank_or_table.R) -- an upper bound on that cell, not its real
-# value. A sum that includes one or more censored cells is therefore only
-# known to fall somewhere between (sum of the exact cells + 1 per censored
-# cell, since a censored cell is never really 0) and (sum of the exact
-# cells + 20 per censored cell) -- shown as that range (e.g. "971-990") in
-# assay_count_annotations_df, unless the range degenerates to a single
-# censored cell against an otherwise-empty sum (no exact contribution at
-# all), in which case the true total is simply ≤ 20, same as the source
-# cell itself.
+# Sample sizes shown above each gene panel: whether that's each dataset's
+# total cohort ("Total cases"/"Total controls", constant across every row of
+# a Dataset -- not broken down by assay result at all) or just the subset of
+# that cohort who carry a classified variant from this gene's assay
+# ("Carrier cases"/"Carrier controls") is controlled by SHOW_TOTAL_COUNTS
+# below. Total is simpler and immune to the privacy-censoring issues carrier
+# counts have (see the carrier-mode comment further down) -- it's the
+# default -- but carrier counts remain available by flipping the flag.
+SHOW_TOTAL_COUNTS <- TRUE
+
 # Plain comma-grouped integer up to 9,999 (e.g. "1,410"); above that, one
 # decimal place of thousands with a "K" suffix (e.g. "12.9K") up to
 # 99,999, and no decimal place at all from 100,000 up (e.g. "120K") -- a
@@ -313,31 +301,75 @@ count_fmt <- function(x) {
   )
 }
 
-assay_dataset_counts <- or_df %>%
-  filter(
-    Dataset %in% condensed_assay_datasets,
-    (Classifier == 'ExCALIBR' & !(Dataset %in% condensed_assay_datasets_without_excalibr)) |
-      (Classifier == 'StandardizedClass' & Dataset %in% condensed_assay_datasets_without_excalibr),
-    Consequence == 'All',
-    # '≤ -1'/'≥ +1' are ExCALIBR's broadest bins (see comment above); for
-    # StandardizedClass (TP53_Fayer_2021_meta's OddsPath calibration) every
-    # carrier is NORMAL or ABNORMAL, so that pair is the equivalent "everyone
-    # with a classification" set.
-    Classification %in% c('≤ -1', '≥ +1', 'NORMAL', 'ABNORMAL')
-  ) %>%
-  group_by(Dataset, Gene) %>%
-  summarise(
-    # Upper bound: every censored cell counted at its substituted value (20,
-    # see above) -- equal to the exact total when nothing was censored.
-    `Carrier cases upper` = sum(`Carrier cases`),
-    `Carrier controls upper` = sum(`Carrier controls`),
-    # The portion of the sum known exactly, excluding any censored cell.
-    `Carrier cases known` = sum(if_else(`Carrier cases censored`, 0L, `Carrier cases`)),
-    `Carrier controls known` = sum(if_else(`Carrier controls censored`, 0L, `Carrier controls`)),
-    `Carrier cases n_censored` = sum(`Carrier cases censored`),
-    `Carrier controls n_censored` = sum(`Carrier controls censored`),
-    .groups = 'drop'
-  )
+assay_dataset_counts <- if (SHOW_TOTAL_COUNTS) {
+  # "Total cases"/"Total controls" (see load_biobank_or_table.R) are each
+  # dataset's whole cohort, the same for every row of that Dataset -- so
+  # this is just one row per dataset, no binning/summing/censoring to deal
+  # with. Columns are still named `Carrier ... upper/known/n_censored` to
+  # match the carrier-mode branch below, so format_censored_count() and
+  # assay_count_annotations_df don't need to know which mode is active:
+  # n_censored = 0 always takes format_censored_count()'s bare-number path.
+  or_df %>%
+    filter(Dataset %in% condensed_assay_datasets) %>%
+    distinct(Dataset, Gene, `Total cases`, `Total controls`) %>%
+    transmute(
+      Dataset, Gene,
+      `Carrier cases upper` = `Total cases`,
+      `Carrier controls upper` = `Total controls`,
+      `Carrier cases known` = `Total cases`,
+      `Carrier controls known` = `Total controls`,
+      `Carrier cases n_censored` = 0L,
+      `Carrier controls n_censored` = 0L
+    )
+} else {
+  # Total carriers among cases/controls with any classified (non-"0")
+  # variant from that gene's assay. Not broken down by consequence (e.g.
+  # missense vs. other) -- "All" and "Missense" aren't disjoint (a carrier
+  # can have variants of both kinds in the same assay), so an
+  # All-minus-Missense subtraction risks double-counting/undercounting
+  # people rather than giving an exact non-missense count. The ExCALIBR
+  # score bins are cumulative, so there's no single row that already holds
+  # "every carrier of this consequence" -- "≤ -1"/"≥ +1" are the
+  # least-restrictive (broadest) bin in each direction, so summing just
+  # those two covers everyone with a non-zero score.
+  #
+  # Carrier counts are parsed from the source data with privacy-censored
+  # "≤ 20" cells treated as 20 (see parse_censored_count() in
+  # load_biobank_or_table.R) -- an upper bound on that cell, not its real
+  # value. A sum that includes one or more censored cells is therefore only
+  # known to fall somewhere between (sum of the exact cells + 1 per censored
+  # cell, since a censored cell is never really 0) and (sum of the exact
+  # cells + 20 per censored cell) -- shown as that range (e.g. "971-990") in
+  # assay_count_annotations_df, unless the range degenerates to a single
+  # censored cell against an otherwise-empty sum (no exact contribution at
+  # all), in which case the true total is simply ≤ 20, same as the source
+  # cell itself.
+  or_df %>%
+    filter(
+      Dataset %in% condensed_assay_datasets,
+      (Classifier == 'ExCALIBR' & !(Dataset %in% condensed_assay_datasets_without_excalibr)) |
+        (Classifier == 'StandardizedClass' & Dataset %in% condensed_assay_datasets_without_excalibr),
+      Consequence == 'All',
+      # '≤ -1'/'≥ +1' are ExCALIBR's broadest bins (see comment above); for
+      # StandardizedClass (TP53_Fayer_2021_meta's OddsPath calibration) every
+      # carrier is NORMAL or ABNORMAL, so that pair is the equivalent "everyone
+      # with a classification" set.
+      Classification %in% c('≤ -1', '≥ +1', 'NORMAL', 'ABNORMAL')
+    ) %>%
+    group_by(Dataset, Gene) %>%
+    summarise(
+      # Upper bound: every censored cell counted at its substituted value (20,
+      # see above) -- equal to the exact total when nothing was censored.
+      `Carrier cases upper` = sum(`Carrier cases`),
+      `Carrier controls upper` = sum(`Carrier controls`),
+      # The portion of the sum known exactly, excluding any censored cell.
+      `Carrier cases known` = sum(if_else(`Carrier cases censored`, 0L, `Carrier cases`)),
+      `Carrier controls known` = sum(if_else(`Carrier controls censored`, 0L, `Carrier controls`)),
+      `Carrier cases n_censored` = sum(`Carrier cases censored`),
+      `Carrier controls n_censored` = sum(`Carrier controls censored`),
+      .groups = 'drop'
+    )
+}
 
 # A StandardizedClass (OddsPath) dataset only ever reports a binary
 # NORMAL/ABNORMAL call, not a score -- but every variant in one of those

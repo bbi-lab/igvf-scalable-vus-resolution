@@ -90,6 +90,14 @@ load_biobank_or_table <- function(path, keep_consequence = FALSE) {
       `Carrier cases censored` = is_censored_count(`Carrier cases`),
       `Carrier controls censored` = is_censored_count(`Carrier controls`),
       `Carrier cases` = parse_censored_count(`Carrier cases`),
-      `Carrier controls` = parse_censored_count(`Carrier controls`)
+      `Carrier controls` = parse_censored_count(`Carrier controls`),
+      # Total cohort size for this Dataset's cases/controls -- constant
+      # across every row of a given Dataset (every Classifier/Classification/
+      # Consequence combination), unlike `Carrier cases`/`Carrier controls`
+      # above (which vary by row and are privacy-censored). Never censored
+      # in this source file (checked all 3,454 rows), so a plain integer
+      # parse is enough -- no parse_censored_count()/is_censored_count().
+      `Total cases` = as.integer(`Total cases`),
+      `Total controls` = as.integer(`Total controls`)
     )
 }

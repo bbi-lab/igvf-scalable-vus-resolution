@@ -457,17 +457,6 @@ condensed_assay_plot_df <-
   ) %>%
   left_join(gene_groups_df)
 
-# Per-gene left edge for the annotation's left-aligned header below: `x =
-# -Inf` would be the natural way to pin it to the panel's left border, but
-# with scale_x_log10() that silently drops the layer (log10(-Inf) is NaN,
-# not -Inf -- confirmed with a minimal repro), unlike `x = Inf` for the
-# right-aligned counts, which works fine (log10(Inf) = Inf). Anchoring at
-# each panel's own leftmost plotted value instead sidesteps that and lands
-# in the same place anyway.
-assay_panel_x_min <- condensed_assay_plot_df %>%
-  group_by(Gene) %>%
-  summarise(panel_x_min = min(OR_LI, na.rm = TRUE), .groups = 'drop')
-
 # One row per gene per annotation line: a left-aligned "N cases" and a
 # right-aligned "N controls", sharing a single row above each panel (no
 # longer split by consequence -- see assay_dataset_counts above). This
@@ -522,14 +511,17 @@ assay_count_annotations_df <- bind_rows(
       )
     )
 ) %>%
-  left_join(assay_panel_x_min, by = 'Gene') %>%
   # facet_nested_wrap facets on both Disease and Gene -- without Disease
   # here too, ggplot can't route each row to its one matching panel and
   # broadcasts it into every panel instead (confirmed: this is exactly what
   # happened before this join was added).
   left_join(gene_groups_df, by = 'Gene') %>%
   mutate(
-    x = if_else(hjust == 0, panel_x_min, Inf),
+    # condensed_assay_plot below plots pre-log10'd Odds Ratio/CI columns on
+    # a plain continuous scale (see that scale's own comment for why) --
+    # which, unlike scale_x_log10(), handles -Inf/Inf natively, so both
+    # ends of this annotation can sit exactly at their panel's true border.
+    x = if_else(hjust == 0, -Inf, Inf),
     # BAP1/MSH2/RAD51D's cases count is a range (e.g. "1,399-1,418"), and in
     # these narrower (5-across) panels that text is too wide for the
     # default 5pt without colliding with the controls text on the same
@@ -546,12 +538,22 @@ assay_plot_common_limits <- condensed_assay_plot_df %>%
   ) %>% deframe()
 
 # Build assay plot
+# x/xmin/xmax are pre-log10'd here (and scale_x_continuous() below, not
+# scale_x_log10(), does the display/guide work) rather than leaving the
+# transform to the scale: scale_x_log10() maps -Inf to NaN rather than
+# -Inf, which silently drops any layer placed there -- confirmed with a
+# minimal repro -- which ruled out using x = -Inf to pin the left-aligned
+# "cases" annotation (further down) exactly to each panel's true left
+# border the same way x = Inf already does for "controls" on the right.
+# Pre-transforming sidesteps that: a plain continuous scale passes -Inf
+# through unchanged, same as Inf, so both ends of that annotation can now
+# sit exactly at their panel's border with no approximation needed.
 condensed_assay_plot <- ggplot(
   condensed_assay_plot_df,
   aes(
-    x=`Odds Ratio`,
-    xmin=OR_LI,
-    xmax=OR_UI,
+    x = log10(`Odds Ratio`),
+    xmin = log10(OR_LI),
+    xmax = log10(OR_UI),
     y=Classification,
     shape = significance,
     color = Consequence
@@ -588,11 +590,11 @@ condensed_assay_plot <- ggplot(
   ) +
   geom_errorbar(width = 0.5, position = position_dodge(width=0.5)) +
   geom_pointrange(position = position_dodge(width=0.5), fill='white') +
-  # Sample-size annotation (Cases/Controls header + counts), positioned
-  # below each panel's native gene-name strip -- in the room that strip's
-  # own enlarged bottom margin reserves for it above -- rather than inside
-  # the panel, via coord_cartesian(clip = 'off') below, which lets this
-  # layer's content overflow past the panel's own border into that margin.
+  # Sample-size annotation ("N cases" / "N controls"), positioned below
+  # each panel's native gene-name strip -- in the room that strip's own
+  # enlarged bottom margin reserves for it above -- rather than inside the
+  # panel, via coord_cartesian(clip = 'off') below, which lets this layer's
+  # content overflow past the panel's own border into that margin.
   geom_text(
     data = assay_count_annotations_df,
     # size is per-gene (see assay_count_annotations_df) -- I() bypasses the
@@ -607,10 +609,22 @@ condensed_assay_plot <- ggplot(
     show.legend = FALSE
   ) +
   coord_cartesian(clip = 'off') +
-  scale_x_log10(
-    labels = scales::label_number(drop0trailing=TRUE),
+  scale_x_continuous(
+    # x/xmin/xmax are already log10'd (see aes() above) -- breaks are
+    # computed the same way scale_x_log10()'s own default would (nice
+    # breaks in the untransformed space, via scales::breaks_log(), then
+    # re-log10'd to place them on this now-linear axis), and
+    # guide_axis_logticks(prescale.base = 10) draws the usual log-style
+    # major/minor ticks for data that's pre-transformed rather than
+    # transformed by the scale itself.
+    # name: without this, the axis title falls back to deparsing the aes()
+    # expression itself (literally "log10('Odds Ratio')") instead of the
+    # plain column name a non-computed aes() mapping would have shown.
+    name = 'Odds Ratio',
+    breaks = function(lims) log10(scales::breaks_log()(10^lims)),
+    labels = function(x) scales::label_number(drop0trailing = TRUE)(10^x),
     minor_breaks = NULL,
-    guide = "axis_logticks",
+    guide = guide_axis_logticks(prescale.base = 10)
   ) +
   scale_shape_manual(
     values = c(
@@ -629,7 +643,7 @@ condensed_assay_plot <- ggplot(
       override.aes = aes(shape = 21, fill = 'white')
     )
   ) +
-  geom_vline(xintercept = 1, linetype = 'dashed')
+  geom_vline(xintercept = log10(1), linetype = 'dashed')
 
 # Compose figure together
 fig_exd2 <- (condensed_assay_plot + nature_theme) +

@@ -254,6 +254,24 @@ condensed_assay_datasets <- c(
   'TSC2_IGVF'
 )
 
+# Almost every dataset above reports *both* an ExCALIBR score-interval
+# classification and a separate, coarser StandardizedClass (Functional
+# class: NORMAL/ABNORMAL) one -- e.g. BAP1_Waters_2024 has both. Panel a
+# should keep using each dataset's ExCALIBR points as before; StandardizedClass
+# is only the right (and only available) choice for a dataset like
+# TP53_Fayer_2021_meta that has no ExCALIBR calibration at all. Naively
+# filtering Classifier %in% c('ExCALIBR', 'StandardizedClass') pulled in
+# *both* for every other gene too -- double-counting carriers in the
+# sample-size annotations and adding spurious extra points alongside the
+# real ExCALIBR ones. This resolves the choice per dataset instead.
+condensed_assay_datasets_without_excalibr <- setdiff(
+  condensed_assay_datasets,
+  or_df %>%
+    filter(Classifier == 'ExCALIBR', Dataset %in% condensed_assay_datasets) %>%
+    distinct(Dataset) %>%
+    pull(Dataset)
+)
+
 # Sample sizes shown above each gene panel: missense vs. other (derived as
 # All minus Missense -- ExCALIBR has no direct "non-missense" consequence
 # row the way "Functional class" does) carrier counts among cases/controls.
@@ -271,9 +289,14 @@ count_fmt <- scales::label_number(scale_cut = scales::cut_short_scale())
 assay_dataset_counts <- or_df %>%
   filter(
     Dataset %in% condensed_assay_datasets,
-    Classifier == 'ExCALIBR',
+    (Classifier == 'ExCALIBR' & !(Dataset %in% condensed_assay_datasets_without_excalibr)) |
+      (Classifier == 'StandardizedClass' & Dataset %in% condensed_assay_datasets_without_excalibr),
     Consequence %in% c('All', 'Missense'),
-    Classification %in% c('≤ -1', '≥ +1')
+    # '<= -1'/'>= +1' are ExCALIBR's broadest bins (see comment above); for
+    # StandardizedClass (TP53_Fayer_2021_meta's OddsPath calibration) every
+    # carrier is NORMAL or ABNORMAL, so that pair is the equivalent "everyone
+    # with a classification" set.
+    Classification %in% c('≤ -1', '≥ +1', 'NORMAL', 'ABNORMAL')
   ) %>%
   group_by(Dataset, Gene, Consequence) %>%
   summarise(
@@ -286,13 +309,87 @@ assay_dataset_counts <- or_df %>%
     values_from = c(`Carrier cases`, `Carrier controls`)
   )
 
+# A StandardizedClass (OddsPath) dataset only ever reports a binary
+# NORMAL/ABNORMAL call, not a score -- but every variant in one of those
+# classes gets the exact same point value, fixed by that dataset's own
+# OddsPath calibration strength (e.g. TP53_Fayer_2021_meta's Evidence Code
+# Abnormal is PS3_moderate, i.e. +2 for every ABNORMAL carrier). Thresholds
+# mirror annotate_OP_points() in Variant_Classification_analysis.ipynb.
+oddspath_points <- read_csv(
+  '../../../data/output/mave_calibration/OddsPath_calibrations.csv.gz',
+  show_col_types = FALSE
+) %>%
+  transmute(
+    Dataset,
+    OddsNormal = suppressWarnings(as.numeric(OddsNormal)),
+    OddsAbnormal = suppressWarnings(as.numeric(OddsAbnormal))
+  ) %>%
+  mutate(
+    normal_magnitude = case_when(
+      is.na(OddsNormal) ~ NA_integer_,
+      OddsNormal < 0.053 ~ 4L,
+      OddsNormal < 0.23 ~ 2L,
+      OddsNormal < 0.48 ~ 1L,
+      TRUE ~ NA_integer_
+    ),
+    abnormal_magnitude = case_when(
+      is.na(OddsAbnormal) ~ NA_integer_,
+      OddsAbnormal > 350 ~ 8L,
+      OddsAbnormal > 18.7 ~ 4L,
+      OddsAbnormal > 4.3 ~ 2L,
+      OddsAbnormal > 2.1 ~ 1L,
+      TRUE ~ NA_integer_
+    )
+  )
+
 condensed_assay_plot_df <-
   assay_plot_df %>%
   filter(
-    Classifier == 'ExCALIBR',
+    # Most datasets here report both Classifier values -- ExCALIBR is kept
+    # for those; StandardizedClass only takes over for a dataset like
+    # TP53_Fayer_2021_meta that has no ExCALIBR calibration at all (see
+    # condensed_assay_datasets_without_excalibr above). Without this
+    # per-dataset split, every other gene would get both its ExCALIBR points
+    # and its StandardizedClass NORMAL/ABNORMAL call plotted together.
+    (Classifier == 'ExCALIBR' & !(Dataset %in% condensed_assay_datasets_without_excalibr)) |
+      (Classifier == 'StandardizedClass' & Dataset %in% condensed_assay_datasets_without_excalibr),
     Dataset %in% condensed_assay_datasets,
     Classification != "0"
   ) %>%
+  left_join(oddspath_points, by = 'Dataset') %>%
+  mutate(
+    magnitude = case_when(
+      Classifier == 'StandardizedClass' & Classification == 'NORMAL' ~ normal_magnitude,
+      Classifier == 'StandardizedClass' & Classification == 'ABNORMAL' ~ abnormal_magnitude,
+      TRUE ~ NA_integer_
+    )
+  ) %>%
+  # ExCALIBR's own point bins are cumulative -- '>= +1' includes every
+  # carrier in '>= +2' (and anyone scoring exactly +1). A StandardizedClass
+  # dataset's ABNORMAL call is a single fixed point value (e.g. +2 above),
+  # which means nobody from that assay ever scores exactly +1 -- so its
+  # '>= +1' row covers exactly the same carriers as its '>= +2' row, and the
+  # two should be identical rather than '>= +1' being left blank. Expand
+  # each StandardizedClass row into one copy per cumulative bin from 1 up to
+  # its own magnitude (ExCALIBR rows get a single no-op copy via the
+  # coalesce to 1).
+  rowwise() %>%
+  mutate(bin = list(seq_len(coalesce(magnitude, 1L)))) %>%
+  ungroup() %>%
+  unnest(bin) %>%
+  mutate(
+    Classification = case_when(
+      Classifier == 'StandardizedClass' & Classification == 'NORMAL' ~ paste0('≤ -', bin),
+      Classifier == 'StandardizedClass' & Classification == 'ABNORMAL' ~ paste0('≥ +', bin),
+      TRUE ~ as.character(Classification)
+    ),
+    Classification = factor(Classification, levels = assay_classification_levels)
+  ) %>%
+  # A StandardizedClass row whose calibration didn't clear even a Supporting
+  # threshold (magnitude NA) has no bin to land on -- drop it rather than
+  # plot an unlabeled point.
+  filter(!is.na(Classification)) %>%
+  select(-normal_magnitude, -abnormal_magnitude, -magnitude, -bin) %>%
   mutate(
     Consequence = factor(Consequence, levels = c('All', 'Missense'))
   ) %>%

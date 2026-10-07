@@ -42,40 +42,73 @@ nature_theme <- theme_linedraw() +
     plot.tag = element_text(face = 'bold')
   )
 
+# Add a separate "Functionally Abnormal (Missense)" row alongside the
+# unbroken-down "Functionally Abnormal (All)" row, so the missense-specific
+# estimate (often the one driving classification decisions) is visible next
+# to the overall one. Set to FALSE for the simpler 2-category (Normal/
+# Abnormal) version instead.
+SHOW_ABNORMAL_MISSENSE_ROW <- TRUE
+
 # Load main table
 or_df <- load_biobank_or_table(
-  "../../../data/input/biobank/AoU-OR-estimates_2026-10-06_merged.tsv.gz"
+  "../../../data/input/biobank/AoU-OR-estimates_2026-10-06_merged.tsv.gz",
+  keep_consequence = SHOW_ABNORMAL_MISSENSE_ROW
 )
 
 # Filter to IGVF functional assays
 func_df <- or_df %>%
   filter(
     str_ends(Dataset, '_IGVF'),
-    Dataset != 'TSC2_IGVF', # We show TSC2 RapGAP separately in this figure
     Classifier == 'StandardizedClass',
     Classification %in% c('NORMAL', 'ABNORMAL'),
     `Cases with variants` > 0
-  ) %>%
+  )
+
+if (SHOW_ABNORMAL_MISSENSE_ROW) {
+  func_df <- func_df %>%
+    filter(
+      Consequence == 'All' | (Classification == 'ABNORMAL' & Consequence == 'Missense')
+    ) %>%
+    mutate(
+      Classification = factor(
+        case_when(
+          Classification == 'NORMAL' ~ 'Functionally Normal',
+          Consequence == 'Missense' ~ 'Functionally Abnormal (Missense)',
+          Consequence == 'All' ~ 'Functionally Abnormal (All)'
+        ),
+        levels = c(
+          'Functionally Normal',
+          'Functionally Abnormal (All)',
+          'Functionally Abnormal (Missense)'
+        )
+      )
+    )
+} else {
+  # load_biobank_or_table() already restricted to Consequence == 'All'
+  # (and dropped that column) when keep_consequence = FALSE above.
+  func_df <- func_df %>%
+    mutate(
+      Classification = factor(
+        str_c('Functionally ', str_to_title(Classification)),
+        levels = c('Functionally Normal', 'Functionally Abnormal')
+      )
+    )
+}
+
+func_df <- func_df %>%
   mutate(
     `Odds Ratio` = exp(LogOR),
     OR_LI = exp(LogOR_LI),
     OR_UI = exp(LogOR_UI),
-    Classification = factor(
-      str_c('Functionally ', str_to_title(Classification)),
-      levels = c('Functionally Normal', 'Functionally Abnormal')
-    ),
     Gene = factor(
-      case_when(
-        Dataset == "TSC2_rapgap_IGVF" ~ "TSC2 RapGAP",
-        .default = Gene
-      ),
-      levels = c('TSC2 RapGAP', 'BARD1', 'PALB2', 'RAD51D', 'XRCC2', 'CTCF', 'SFPQ')
+      Gene,
+      levels = c('TSC2', 'BARD1', 'PALB2', 'RAD51D', 'XRCC2', 'CTCF', 'SFPQ')
     )
   )
 
 # Calc limits for small plots
-limits_df <- func_df %>% 
-  filter(Gene != "TSC2 RapGAP") %>%
+limits_df <- func_df %>%
+  filter(Gene != "TSC2") %>%
   summarise(
     OR_LI = min(OR_LI),
     OR_UI = max(OR_UI)
@@ -112,12 +145,14 @@ fig2i_plot <- make_func_plot(func_df, deframe(limits_df))
 print(fig2i_plot + nature_theme)
 
 
-# Save plot
+# Save plot -- the 3-category split needs more vertical room per panel
+# than the original 2-category version (30mm) to keep the wrapped y-axis
+# labels from colliding.
 ggsave(
   '../../../data/output/figures/assets/figure_2/figure_2i.pdf',
   fig2i_plot + nature_theme,
   width = 100,
-  height = 30,
+  height = if (SHOW_ABNORMAL_MISSENSE_ROW) 45 else 30,
   units = 'mm',
   family = 'Arial',
   device = cairo_pdf,

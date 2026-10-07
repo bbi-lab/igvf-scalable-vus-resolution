@@ -42,17 +42,17 @@ nature_theme <- theme_linedraw() +
     plot.tag = element_text(face = 'bold')
   )
 
-# Add a separate "Functionally Abnormal (Missense)" row alongside the
-# unbroken-down "Functionally Abnormal (All)" row, so the missense-specific
-# estimate (often the one driving classification decisions) is visible next
-# to the overall one. Set to FALSE for the simpler 2-category (Normal/
-# Abnormal) version instead.
-SHOW_ABNORMAL_MISSENSE_ROW <- TRUE
+# Add a separate "Functionally Abnormal (<consequence>)" row alongside the
+# unbroken-down "Functionally Abnormal (All)" row for each consequence
+# listed here, so consequence-specific estimates (often the ones driving
+# classification decisions) are visible next to the overall one. Set to
+# c() for the simpler 2-category (Normal/Abnormal) version instead.
+ABNORMAL_BREAKDOWN_CONSEQUENCES <- c('Missense', 'Truncating')
 
 # Load main table
 or_df <- load_biobank_or_table(
   "../../../data/input/biobank/AoU-OR-estimates_2026-10-07.tsv.gz",
-  keep_consequence = SHOW_ABNORMAL_MISSENSE_ROW
+  keep_consequence = length(ABNORMAL_BREAKDOWN_CONSEQUENCES) > 0
 )
 
 # Filter to IGVF functional assays
@@ -64,22 +64,22 @@ func_df <- or_df %>%
     `Cases with variants` > 0
   )
 
-if (SHOW_ABNORMAL_MISSENSE_ROW) {
+if (length(ABNORMAL_BREAKDOWN_CONSEQUENCES) > 0) {
   func_df <- func_df %>%
     filter(
-      Consequence == 'All' | (Classification == 'ABNORMAL' & Consequence == 'Missense')
+      Consequence == 'All' | (Classification == 'ABNORMAL' & Consequence %in% ABNORMAL_BREAKDOWN_CONSEQUENCES)
     ) %>%
     mutate(
       Classification = factor(
         case_when(
           Classification == 'NORMAL' ~ 'Functionally Normal',
-          Consequence == 'Missense' ~ 'Functionally Abnormal (Missense)',
-          Consequence == 'All' ~ 'Functionally Abnormal (All)'
+          Consequence == 'All' ~ 'Functionally Abnormal (All)',
+          TRUE ~ str_c('Functionally Abnormal (', Consequence, ')')
         ),
         levels = c(
           'Functionally Normal',
           'Functionally Abnormal (All)',
-          'Functionally Abnormal (Missense)'
+          str_c('Functionally Abnormal (', ABNORMAL_BREAKDOWN_CONSEQUENCES, ')')
         )
       )
     )
@@ -96,19 +96,19 @@ if (SHOW_ABNORMAL_MISSENSE_ROW) {
 }
 
 func_df <- func_df %>%
+  filter(Gene != 'TSC2') %>% # TSC2 excluded -- remove this filter to re-include
   mutate(
     `Odds Ratio` = exp(LogOR),
     OR_LI = exp(LogOR_LI),
     OR_UI = exp(LogOR_UI),
     Gene = factor(
       Gene,
-      levels = c('TSC2', 'BARD1', 'PALB2', 'RAD51D', 'XRCC2', 'CTCF', 'SFPQ')
+      levels = c('BARD1', 'PALB2', 'RAD51D', 'XRCC2', 'CTCF', 'SFPQ')
     )
   )
 
 # Calc limits for small plots
 limits_df <- func_df %>%
-  filter(Gene != "TSC2") %>%
   summarise(
     OR_LI = min(OR_LI),
     OR_UI = max(OR_UI)
@@ -145,14 +145,14 @@ fig2i_plot <- make_func_plot(func_df, deframe(limits_df))
 print(fig2i_plot + nature_theme)
 
 
-# Save plot -- the 3-category split needs more vertical room per panel
-# than the original 2-category version (30mm) to keep the wrapped y-axis
-# labels from colliding.
+# Save plot -- each added breakdown category needs ~15mm more vertical
+# room per panel than the base 2-category version (30mm) to keep the
+# wrapped y-axis labels from colliding.
 ggsave(
   '../../../data/output/figures/assets/figure_2/figure_2i.pdf',
   fig2i_plot + nature_theme,
   width = 100,
-  height = if (SHOW_ABNORMAL_MISSENSE_ROW) 45 else 30,
+  height = 30 + 15 * length(ABNORMAL_BREAKDOWN_CONSEQUENCES),
   units = 'mm',
   family = 'Arial',
   device = cairo_pdf,

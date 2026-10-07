@@ -2,13 +2,18 @@
 
 # This script requires IGVFFI3804AVJR.csv.gz which is available from
 # https://data.igvf.org/tabular-files/IGVFFI3804AVJR/ and expected at
-# data/input/biobank/IGVFFI3804AVJR.csv.gz.
+# data/input/biobank/IGVFFI3804AVJR.csv.gz. Pending a re-export of that
+# file, it currently instead reads an AoU-only stand-in (see
+# load_biobank_or_table.R) -- swap the read below back to a plain
+# read_csv() once IGVFFI3804AVJR.csv.gz is available again.
 
 # Load libraries
 library(tidyverse)
 library(patchwork)
 library(ggh4x)
 library(extrafont)
+
+source('../../../src/lib/figures/load_biobank_or_table.R')
 
 # Font setup
 loadfonts(device = 'all')
@@ -38,7 +43,7 @@ nature_theme <- theme_linedraw() +
   )
 
 # Load main table
-or_df <- read_csv("../../../data/input/biobank/IGVFFI3804AVJR.csv.gz")
+or_df <- load_biobank_or_table("../../../data/input/biobank/AoU-OR-estimates_2026-10-06_merged.tsv.gz")
 
 # Broad gene-phenotype classes
 
@@ -55,6 +60,7 @@ gene_groups_df <- tribble(
   "KCNE1", "Cardiovascular", "Cardio- vascular", "Cardiovascular",
   "KCNH2", "Cardiovascular", "Cardio- vascular", "Cardiovascular",
   "KCNQ4", "Hearing loss", "Hearing loss", "Hearing loss", #Rare disease",
+  "LDLR", "Metabolic", "Meta- bolic", "Meta- bolic",
   "MSH2", "Cancer", "Cancer", "Cancer",
   "OTC", "Metabolic", "Meta- bolic", "Meta- bolic",
   "PALB2", "Cancer", "Cancer", "Cancer",

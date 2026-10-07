@@ -287,6 +287,11 @@ condensed_assay_datasets_without_excalibr <- setdiff(
 # default -- but carrier counts remain available by flipping the flag.
 SHOW_TOTAL_COUNTS <- TRUE
 
+# Whether to draw the "N cases"/"N controls" sample-size strip above each
+# gene panel at all (see assay_count_annotations_df and the geom_text()
+# layer further down). Off by default; set to TRUE to bring it back.
+SHOW_SAMPLE_SIZE_ANNOTATIONS <- FALSE
+
 # Plain comma-grouped integer up to 9,999 (e.g. "1,410"); above that, one
 # decimal place of thousands with a "K" suffix (e.g. "12.9K") up to
 # 99,999, and no decimal place at all from 100,000 up (e.g. "120K") -- a
@@ -577,7 +582,10 @@ condensed_assay_plot <- ggplot(
     strip = strip_nested(
       text_x = list(
         element_text(size = 7, face = 'bold'),
-        element_text(size = 7, face = 'bold', margin = margin(t = 3, r = 3, b = 9, l = 3))
+        element_text(
+          size = 7, face = 'bold',
+          margin = margin(t = 3, r = 3, b = if (SHOW_SAMPLE_SIZE_ANNOTATIONS) 9 else 3, l = 3)
+        )
       ),
       # strip_nested()'s by_layer_x defaults to FALSE, which does NOT treat
       # the text_x list above as one element per nesting depth (Disease,
@@ -595,7 +603,7 @@ condensed_assay_plot <- ggplot(
   # enlarged bottom margin reserves for it above -- rather than inside the
   # panel, via coord_cartesian(clip = 'off') below, which lets this layer's
   # content overflow past the panel's own border into that margin.
-  geom_text(
+  (if (SHOW_SAMPLE_SIZE_ANNOTATIONS) geom_text(
     data = assay_count_annotations_df,
     # size is per-gene (see assay_count_annotations_df) -- I() bypasses the
     # default area-based size scale, treating these as literal point sizes.
@@ -611,7 +619,7 @@ condensed_assay_plot <- ggplot(
     # legend below and draws geom_text's placeholder key glyph -- literally
     # the letter "a" -- on top of the All/Missense keys.
     show.legend = FALSE
-  ) +
+  ) else NULL) +
   coord_cartesian(clip = 'off') +
   scale_x_continuous(
     # x/xmin/xmax are already log10'd (see aes() above) -- breaks are

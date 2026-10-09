@@ -1031,6 +1031,21 @@ def _format_table_text(table, markdown, index=True):
     return table.to_string(index=index)
 
 
+def _append_table(lines, table, markdown, index=True):
+    """Append a rendered table to `lines`, inserting a blank line first in
+    Markdown mode if one isn't already there.
+
+    CommonMark only recognizes a table that's separated from a preceding
+    list item/paragraph line by a blank line (or nested under it with
+    matching indentation) -- without one, the table's pipe-delimited rows
+    get swallowed as plain continuation text of that previous line instead
+    of rendering as a table. A no-op in text mode.
+    """
+    if markdown and lines and lines[-1] != "":
+        lines.append("")
+    lines.append(_format_table_text(table, markdown, index=index))
+
+
 def _format_prose_lines(lines, markdown):
     """Convert plain description lines into Markdown bullets, one per line,
     preserving each line's leading-space indent as nested bullet depth
@@ -1050,6 +1065,22 @@ def _format_prose_lines(lines, markdown):
         indent = len(line) - len(stripped)
         out.append(" " * indent + "- " + stripped)
     return out
+
+
+def _format_label_block(lines, markdown):
+    """Render `lines` as plain paragraph text, for a label that sits directly
+    above a table -- unlike `_format_prose_lines`, this never renders as a
+    Markdown list. A list item immediately followed by a table, even with a
+    blank line between them, is not reliably parsed as ending the list and
+    starting a table block (some renderers, e.g. VS Code's Markdown preview,
+    swallow the table as list-continuation text instead); a plain paragraph
+    has no such ambiguity. Multiple lines are joined with an explicit `<br>`
+    so they still appear on separate lines within that one paragraph. No-op
+    in text mode.
+    """
+    if not markdown:
+        return list(lines)
+    return ["<br>\n".join(lines)] if lines else []
 
 
 def format_gene_breakdown(gene_breakdown, markdown=False):
@@ -1104,7 +1135,7 @@ def compute_igvf_dataset_measurement_counts(condensed, metadata):
 def format_igvf_dataset_measurement_counts(table, markdown=False):
     lines = [_format_title(IGVF_DATASET_MEASUREMENT_COUNTS_TITLE, markdown)]
     if len(table):
-        lines.append(_format_table_text(table, markdown, index=False))
+        _append_table(lines, table, markdown, index=False)
     return "\n".join(lines)
 
 
@@ -1148,9 +1179,9 @@ def compute_composite_score_datasets(condensed, metadata, merge_calm_genes=False
 
 def format_composite_score_datasets(table, markdown=False):
     lines = [_format_title(COMPOSITE_SCORE_DATASETS_TITLE, markdown)]
-    lines.extend(_format_prose_lines([f"Total composite scores: {int(table['Scores'].sum())}"], markdown))
+    lines.extend(_format_label_block([f"Total composite scores: {int(table['Scores'].sum())}"], markdown))
     if len(table):
-        lines.append(_format_table_text(table, markdown, index=False))
+        _append_table(lines, table, markdown, index=False)
     return "\n".join(lines)
 
 
@@ -1339,11 +1370,11 @@ def summarize_flags(flags):
 
 def format_count_table(title, total, table, markdown=False):
     lines = [_format_title(title, markdown, level=3)]
-    lines.extend(_format_prose_lines([f"Total: {total}"], markdown))
+    lines.extend(_format_label_block([f"Total: {total}"], markdown))
     if total:
         body = table.copy()
         body["pct"] = body["pct"].map(lambda x: f"{x:.1f}%")
-        lines.append(_format_table_text(body, markdown))
+        _append_table(lines, body, markdown)
     return "\n".join(lines)
 
 
@@ -1370,13 +1401,13 @@ def summarize_clinical_flags(flags, snv_label):
 
 def format_clinical_table(title, total, snv_total, table, snv_label, markdown=False):
     lines = [_format_title(title, markdown, level=3)]
-    lines.extend(_format_prose_lines([f"Total: {total} ({snv_total} {snv_label})"], markdown))
+    lines.extend(_format_label_block([f"Total: {total} ({snv_total} {snv_label})"], markdown))
     if total:
         body = table.copy()
         body["pct"] = body["pct"].map(lambda x: f"{x:.1f}%")
         pct_snv_col = f"% of {snv_label}"
         body[pct_snv_col] = body[pct_snv_col].map(lambda x: f"{x:.1f}%")
-        lines.append(_format_table_text(body, markdown))
+        _append_table(lines, body, markdown)
     return "\n".join(lines)
 
 
@@ -1784,14 +1815,14 @@ def format_reclassification_filter_funnel(steps, markdown=False):
     assayed_pct = 100 * final["distinct_assayed_variants"] / starting_assayed if starting_assayed else float("nan")
 
     lines = [_format_title("=== Filtering effects on the reclassification dataset ===", markdown)]
-    lines.append(_format_table_text(table, markdown))
+    _append_table(lines, table, markdown)
     lines.append("-" * 80)
     lines.extend(
-        _format_prose_lines(
+        _format_label_block(
             ["Alternative endpoints (mutually exclusive, neither applied on top of the other):"], markdown
         )
     )
-    lines.append(_format_table_text(alternatives_table, markdown))
+    _append_table(lines, alternatives_table, markdown)
     lines.append("")
     lines.extend(
         _format_prose_lines(
@@ -1860,11 +1891,11 @@ def format_reclassification_table(title, total, determinate, agreement_pct, tabl
     prose = [f"Total control variants: {total}", f"Determinate calls (evidence assigned): {determinate}"]
     if determinate:
         prose.append(f"Agreement with ClinVar PLP/BLB (of determinate calls): {agreement_pct:.1f}%")
-    lines.extend(_format_prose_lines(prose, markdown))
+    lines.extend(_format_label_block(prose, markdown))
     if total:
         body = table.copy()
         body["pct"] = body["pct"].map(lambda x: f"{x:.1f}%")
-        lines.append(_format_table_text(body, markdown))
+        _append_table(lines, body, markdown)
     return "\n".join(lines)
 
 
@@ -2734,24 +2765,26 @@ def format_variant_classification_table(stats_by_predictor, title=VARIANT_CLASSI
     gnomad_unresolved_table = _unresolved_table("gnomad")
     unobserved_unresolved_table = _unresolved_table("unobserved")
 
-    lines = [_format_title(title, markdown), _format_table_text(overall, markdown), ""]
-    lines.extend(_format_prose_lines(["ClinVar VUS resolved (reclassified pathogenic or benign):"], markdown))
-    lines.append(_format_table_text(vus_table, markdown))
+    lines = [_format_title(title, markdown)]
+    _append_table(lines, overall, markdown)
     lines.append("")
-    lines.extend(_format_prose_lines(["ClinVar VUS unresolved:"], markdown))
-    lines.append(_format_table_text(vus_unresolved_table, markdown))
+    lines.extend(_format_label_block(["ClinVar VUS resolved (reclassified pathogenic or benign):"], markdown))
+    _append_table(lines, vus_table, markdown)
     lines.append("")
-    lines.extend(_format_prose_lines(["gnomAD variants resolved (classified pathogenic or benign):"], markdown))
-    lines.append(_format_table_text(gnomad_table, markdown))
+    lines.extend(_format_label_block(["ClinVar VUS unresolved:"], markdown))
+    _append_table(lines, vus_unresolved_table, markdown)
     lines.append("")
-    lines.extend(_format_prose_lines(["gnomAD variants unresolved:"], markdown))
-    lines.append(_format_table_text(gnomad_unresolved_table, markdown))
+    lines.extend(_format_label_block(["gnomAD variants resolved (classified pathogenic or benign):"], markdown))
+    _append_table(lines, gnomad_table, markdown)
     lines.append("")
-    lines.extend(_format_prose_lines(["Unobserved variants resolved (classified pathogenic or benign):"], markdown))
-    lines.append(_format_table_text(unobserved_table, markdown))
+    lines.extend(_format_label_block(["gnomAD variants unresolved:"], markdown))
+    _append_table(lines, gnomad_unresolved_table, markdown)
     lines.append("")
-    lines.extend(_format_prose_lines(["Unobserved variants unresolved:"], markdown))
-    lines.append(_format_table_text(unobserved_unresolved_table, markdown))
+    lines.extend(_format_label_block(["Unobserved variants resolved (classified pathogenic or benign):"], markdown))
+    _append_table(lines, unobserved_table, markdown)
+    lines.append("")
+    lines.extend(_format_label_block(["Unobserved variants unresolved:"], markdown))
+    _append_table(lines, unobserved_unresolved_table, markdown)
     return "\n".join(lines)
 
 
@@ -2902,7 +2935,7 @@ def compute_gene_discordance_stats(workbook, top_n=GENE_DISCORDANCE_TOP_N):
 def format_gene_discordance_summary(by_gene, total_discordant, total_controls, top_n=GENE_DISCORDANCE_TOP_N, markdown=False):
     lines = [_format_title(GENE_DISCORDANCE_TITLE, markdown)]
     lines.extend(
-        _format_prose_lines(
+        _format_label_block(
             [
                 f"Total discordant control variants: {total_discordant} of {total_controls}",
                 f"Top {top_n} genes by discordant-variant count:",
@@ -2912,7 +2945,7 @@ def format_gene_discordance_summary(by_gene, total_discordant, total_controls, t
     )
     top = by_gene.head(top_n)
     if len(top):
-        lines.append(_format_table_text(top, markdown))
+        _append_table(lines, top, markdown)
     return "\n".join(lines)
 
 
@@ -2981,7 +3014,7 @@ def format_consequence_splice_breakdown_table(breakdown, title=CONSEQUENCE_SPLIC
     }
     lines = [_format_title(title, markdown)]
     lines.extend(
-        _format_prose_lines(
+        _format_label_block(
             [
                 f"Each cell: distinct DNA variants with every SpliceAI score ({', '.join(SPLICEAI_SCORE_COLS)}) "
                 f"{SPLICEAI_LOW_LABEL} / with at least one SpliceAI score {SPLICEAI_HIGH_LABEL}."
@@ -2989,7 +3022,7 @@ def format_consequence_splice_breakdown_table(breakdown, title=CONSEQUENCE_SPLIC
             markdown,
         )
     )
-    lines.append(_format_table_text(result, markdown))
+    _append_table(lines, result, markdown)
     return "\n".join(lines)
 
 

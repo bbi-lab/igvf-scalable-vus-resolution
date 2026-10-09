@@ -63,6 +63,8 @@ from src.mave_dataset_stats import (
     VARIANT_CLASSIFICATION_PREDICTORS,
     VARIANT_CLASSIFICATION_TITLE,
     VUS_LABEL,
+    _append_table,
+    _format_label_block,
     _format_prose_lines,
     _format_table_text,
     _format_title,
@@ -3841,8 +3843,50 @@ def test_format_count_table_markdown_mode_renders_level_three_heading_and_table(
     text = format_count_table("Score coverage -- test", total, table, markdown=True)
 
     assert text.startswith("### Score coverage -- test")
-    assert "- Total: 2" in text
+    assert "Total: 2" in text
+    assert "- Total: 2" not in text
     assert any(line.count("|") >= 2 for line in text.splitlines())
+    # The "Total: 2" label must not be a list item immediately followed by
+    # the table (even blank-line-separated) -- some Markdown renderers (e.g.
+    # VS Code's preview) fail to parse a table that directly follows a list
+    # item and instead swallow it as list-continuation text. A blank line
+    # must still separate the label from the table.
+    lines = text.splitlines()
+    total_index = next(i for i, line in enumerate(lines) if line == "Total: 2")
+    assert lines[total_index + 1] == ""
+    assert lines[total_index + 2].startswith("|")
+
+
+def test_append_table_inserts_blank_line_before_table_in_markdown_mode():
+    table = pd.DataFrame({"a": [1]})
+
+    lines = ["- A label"]
+    _append_table(lines, table, markdown=True)
+
+    assert lines[1] == ""
+    assert lines[2].startswith("|")
+
+
+def test_append_table_is_noop_separator_in_text_mode():
+    table = pd.DataFrame({"a": [1]})
+
+    lines = ["A label"]
+    _append_table(lines, table, markdown=False)
+
+    assert lines == ["A label", table.to_string()]
+
+
+def test_format_label_block_text_mode_is_noop():
+    lines = ["Total: 2", "Another line"]
+    assert _format_label_block(lines, markdown=False) == lines
+
+
+def test_format_label_block_markdown_mode_renders_plain_paragraph_not_bullets():
+    text = _format_label_block(["Total: 2", "Determinate: 1"], markdown=True)
+
+    assert len(text) == 1
+    assert "- " not in text[0]
+    assert text[0] == "Total: 2<br>\nDeterminate: 1"
 
 
 def test_format_gene_breakdown_markdown_mode_bulletizes_each_group():

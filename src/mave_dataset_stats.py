@@ -3505,23 +3505,52 @@ def format_registered_genetic_tests_summary(total_count, per_gene_counts, title=
 
 FUNCTIONAL_ONLY_SUFFICIENT_TITLE = "=== Functional-evidence-only sufficiency (ablation analysis; --include-ablation-summary) ==="
 
+# Mirrors `src.ablation_variant_reclassification`'s `SYNERGY_CATEGORY_ORDER +
+# CONFLICT_ORDER` label strings exactly, duplicated here (rather than
+# imported) since that module imports from this one at module level --
+# importing back would be circular. `FUNCTIONAL_ALONE_LABEL` is the row
+# highlighted for REVEL: how many Pathogenic/Likely Pathogenic calls needed
+# only functional/experimental evidence.
+FUNCTIONAL_ALONE_LABEL = "Functional alone sufficient"
+PREDICTOR_ALONE_LABEL = "Predictive alone sufficient"
+BOTH_ALONE_LABEL = "Either alone sufficient"
+SYNERGY_LABEL = "Neither alone sufficient"
+CONFLICT_LABEL = "Lost to combining (evidence conflict)"
+ABLATION_SYNERGY_CATEGORY_ORDER = [
+    FUNCTIONAL_ALONE_LABEL,
+    PREDICTOR_ALONE_LABEL,
+    BOTH_ALONE_LABEL,
+    SYNERGY_LABEL,
+    CONFLICT_LABEL,
+]
+
 
 def format_functional_only_sufficient_pathogenic_fraction(
     functional_only_fractions, title=FUNCTIONAL_ONLY_SUFFICIENT_TITLE, markdown=False
 ):
     """Text form of `src.ablation_variant_reclassification.compute_
-    functional_only_sufficient_pathogenic_fraction`'s output
-    (`{predictor: (functional_only_count, combined_resolved_count)}`): for
-    each predictor, what percent of its combined-evidence (the pipeline's
-    actual method) Pathogenic/Likely Pathogenic calls were already reached
-    by functional/experimental evidence alone.
+    functional_only_sufficient_pathogenic_fraction`'s output (`{predictor:
+    {category_label: count}}`): for each predictor, the full breakdown of how
+    its combined-evidence (the pipeline's actual method) Pathogenic/Likely
+    Pathogenic calls were reached -- functional evidence alone, predictor
+    evidence alone, either alone, true synergy (neither alone), or lost to
+    combining -- as counts and percent of that predictor's total in-scope
+    variants (every variant where at least one arm resolved Pathogenic/Likely
+    Pathogenic). Highlights REVEL's "functional alone sufficient" figure.
     """
     lines = [_format_title(title, markdown)]
-    body = [
-        f"{predictor}: " + _format_count_and_pct(functional_only, combined_total)
-        for predictor, (functional_only, combined_total) in functional_only_fractions.items()
-    ]
-    lines.extend(_format_label_block(body, markdown))
+    table = pd.DataFrame(
+        {
+            predictor: {
+                category: _format_count_and_pct(counts[category], sum(counts.values()))
+                for category in ABLATION_SYNERGY_CATEGORY_ORDER
+            }
+            for predictor, counts in functional_only_fractions.items()
+        }
+    )
+    if "REVEL" in table.columns:
+        table = _highlight_cells(table, markdown, [(table.index == FUNCTIONAL_ALONE_LABEL, "REVEL")])
+    _append_table(lines, table, markdown)
     return "\n".join(lines)
 
 

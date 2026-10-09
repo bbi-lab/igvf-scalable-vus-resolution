@@ -659,7 +659,15 @@ def test_compute_functional_only_sufficient_pathogenic_fraction(tmp_path):
 
     result = compute_functional_only_sufficient_pathogenic_fraction(df, chek2_path, predictors=["REVEL"])
 
-    assert result == {"REVEL": (1, 2)}
+    assert result == {
+        "REVEL": {
+            FUNCTIONAL_ALONE_LABEL: 1,
+            PREDICTOR_ALONE_LABEL: 0,
+            BOTH_ALONE_LABEL: 0,
+            SYNERGY_LABEL: 1,
+            CONFLICT_LABEL: 0,
+        }
+    }
 
 
 # --- build_ablation_report (end to end, text sanity checks) -------------------------------------

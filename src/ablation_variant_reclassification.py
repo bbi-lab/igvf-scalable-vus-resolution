@@ -1127,18 +1127,22 @@ def synergy_counts(flags, functional_col, predictor_col, combined_col):
 
 
 def compute_functional_only_sufficient_pathogenic_fraction(checkpoint, chek2_file, predictors=PREDICTOR_POINTS_COLUMNS):
-    """For each predictor, how many of its combined-arm (the pipeline's
-    actual method) Pathogenic/Likely Pathogenic calls were already reached
-    by functional/experimental evidence alone -- `FUNCTIONAL_ALONE_LABEL`,
-    see `categorize_synergy` -- restricted to `DIRECTION_PATHOGENIC`, over
-    every variant (not just a `--scope`-restricted subset).
+    """For each predictor, the full synergy breakdown (see `synergy_counts`)
+    of its combined-arm (the pipeline's actual method) Pathogenic/Likely
+    Pathogenic calls, restricted to `DIRECTION_PATHOGENIC`, over every
+    variant where at least one arm (functional, predictor, or combined)
+    resolved Pathogenic/Likely Pathogenic (not just a `--scope`-restricted
+    subset). In particular, `FUNCTIONAL_ALONE_LABEL`'s count is how many of
+    the combined arm's Pathogenic/Likely Pathogenic calls needed only
+    functional/experimental evidence to reach that classification.
 
     `checkpoint`/`chek2_file` are the same inputs `main()` reads
     (`checkpoint_file`/`--chek2-file`); this applies the same `apply_
     notebook_exclusions`/`add_ablation_points_columns` preprocessing `main()`
     does before building arms.
 
-    Returns `{predictor: (functional_only_count, combined_resolved_count)}`.
+    Returns `{predictor: {category_label: count}}`, one entry per
+    `SYNERGY_CATEGORY_ORDER + CONFLICT_ORDER` label.
     """
     df = apply_notebook_exclusions(checkpoint, chek2_file)
     df = add_ablation_points_columns(df)
@@ -1151,7 +1155,7 @@ def compute_functional_only_sufficient_pathogenic_fraction(checkpoint, chek2_fil
         flags = predictor_flags_for_direction(predictor, predictor_arm, combined_arm, functional_flags, DIRECTION_PATHOGENIC)
         combined_col = f"Functional + {predictor}"
         counts = synergy_counts(flags, FUNCTIONAL_ARM_LABEL, f"{predictor} only", combined_col)
-        results[predictor] = (int(counts[FUNCTIONAL_ALONE_LABEL]), int(flags[combined_col].sum()))
+        results[predictor] = counts.to_dict()
     return results
 
 

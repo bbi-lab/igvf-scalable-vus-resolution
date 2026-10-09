@@ -10,6 +10,7 @@ from src.mave_dataset_stats import (
     AGREE_LABEL,
     ANY_EVIDENCE_LABEL,
     BENIGN_VALUES,
+    BOTH_ALONE_LABEL,
     CALM_MERGED_LABEL,
     CLINGEN_EVIDENCE_REPOSITORY_TITLE,
     CLINVAR_CONFLICT_LABEL,
@@ -23,6 +24,7 @@ from src.mave_dataset_stats import (
     CONCORDANT_CONTROL_PLP_TO_EVIDENCE_PLP_LABEL,
     CONCORDANT_LABEL,
     CONFLICTING_EVIDENCE_VALUE,
+    CONFLICT_LABEL,
     CONTROL_BLB_AT_THRESHOLD_LABEL,
     CONTROL_BLB_LABEL,
     CONTROL_CONCORDANCE_EVIDENCE_CALIBRATED_LABEL,
@@ -40,6 +42,7 @@ from src.mave_dataset_stats import (
     DISCORDANT_PATHOGENIC_TO_BENIGN_LABEL,
     DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_BENIGN_EXPERIMENTAL_LABEL,
     DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_LABEL,
+    FUNCTIONAL_ALONE_LABEL,
     FUNCTIONAL_POINTS_COL,
     GENE_DISCORDANCE_TITLE,
     GNOMAD_LABEL,
@@ -53,11 +56,13 @@ from src.mave_dataset_stats import (
     NO_EVIDENCE_LABEL,
     PATHOGENIC_OR_BENIGN_LABEL,
     PATHOGENIC_VALUES,
+    PREDICTOR_ALONE_LABEL,
     REVEL_TRAINING_STEP_LABEL,
     SIMPLIFIED_CONSEQUENCE_COL,
     SNV_ACCESSIBLE_LABEL,
     SNV_LABEL,
     SPLICEAI_SCORE_COLS,
+    SYNERGY_LABEL,
     UNIVERSAL_CALIBRATION_CATEGORY_SHEETS_BY_PREDICTOR,
     UNIVERSAL_CALIBRATION_CLASS_COL_BY_PREDICTOR,
     UNIVERSAL_PREDICTOR_POINTS_COL_BY_PREDICTOR,
@@ -4372,13 +4377,41 @@ def test_format_registered_genetic_tests_summary():
     assert "CALM1, CALM2, CALM3" in text
 
 
+def _ablation_breakdown(functional_alone, predictor_alone, both_alone, synergy, conflict):
+    return {
+        FUNCTIONAL_ALONE_LABEL: functional_alone,
+        PREDICTOR_ALONE_LABEL: predictor_alone,
+        BOTH_ALONE_LABEL: both_alone,
+        SYNERGY_LABEL: synergy,
+        CONFLICT_LABEL: conflict,
+    }
+
+
 def test_format_functional_only_sufficient_pathogenic_fraction():
-    functional_only_fractions = {"REVEL": (37271, 43080), "MutPred2": (36975, 86539)}
+    functional_only_fractions = {
+        "REVEL": _ablation_breakdown(37271, 1000, 2000, 2809, 3000),
+        "MutPred2": _ablation_breakdown(36975, 2000, 3000, 44564, 5000),
+    }
 
     text = format_functional_only_sufficient_pathogenic_fraction(functional_only_fractions)
 
-    assert "REVEL: 37271 of 43080 (86.5%)" in text
-    assert "MutPred2: 36975 of 86539 (42.7%)" in text
+    assert "REVEL" in text and "MutPred2" in text
+    assert "37271 of 46080 (80.9%)" in text
+    assert "36975 of 91539 (40.4%)" in text
+
+
+def test_format_functional_only_sufficient_pathogenic_fraction_highlights_revel_functional_alone():
+    functional_only_fractions = {
+        "REVEL": _ablation_breakdown(37271, 1000, 2000, 2809, 3000),
+        "MutPred2": _ablation_breakdown(36975, 2000, 3000, 44564, 5000),
+    }
+
+    markdown_text = format_functional_only_sufficient_pathogenic_fraction(functional_only_fractions, markdown=True)
+    text = format_functional_only_sufficient_pathogenic_fraction(functional_only_fractions, markdown=False)
+
+    assert "<mark>37271 of 46080 (80.9%)</mark>" in markdown_text
+    assert "<mark>36975" not in markdown_text
+    assert "<mark>" not in text
 
 
 

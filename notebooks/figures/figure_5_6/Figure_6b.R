@@ -179,7 +179,9 @@ fig6b_plot = combined_points_condensed_plot +
     axis.text.y = element_text(size = 5)
   )
 
-print(fig6b_plot)
+# Show plot (interactive only -- under Rscript this would otherwise open
+# the default graphics device and leave behind a stray Rplots.pdf)
+if (interactive()) print(fig6b_plot)
 
 # ggh4x::force_panelsizes(rows = unit(1.55, 'in')) would be the direct way to
 # pin the panel height, but it renders the y-axis's <=/>= glyphs

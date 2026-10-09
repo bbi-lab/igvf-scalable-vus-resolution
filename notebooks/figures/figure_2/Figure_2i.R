@@ -149,8 +149,9 @@ make_func_plot <- function(plot_df, x_limits)
 fig2i_plot <- make_func_plot(func_df, deframe(limits_df))
 
 
-# Show plot
-print(fig2i_plot + nature_theme)
+# Show plot (interactive only -- under Rscript this would otherwise open
+# the default graphics device and leave behind a stray Rplots.pdf)
+if (interactive()) print(fig2i_plot + nature_theme)
 
 
 # Save plot -- each added breakdown category needs ~15mm more vertical

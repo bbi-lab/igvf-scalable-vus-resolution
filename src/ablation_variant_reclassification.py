@@ -2633,6 +2633,11 @@ def save_ablation_document(
 
         block_types = section_block_types[scope]
         block_heights = section_block_heights[scope]
+        if not block_types:
+            # scope outside CONTROL_SCOPES with chart_types reduced to just
+            # "concordance" by _document_chart_types_for_scope -- nothing to
+            # render for this section beyond the title already drawn above.
+            continue
         block_figs = section_fig.subfigures(nrows=len(block_types), ncols=1, height_ratios=block_heights)
         if len(block_types) == 1:
             block_figs = [block_figs]
@@ -2796,6 +2801,11 @@ def save_ablation_document_grid(
                 fontweight="bold",
                 y=0.99,
             )
+            if not block_types:
+                # scope outside CONTROL_SCOPES with chart_types reduced to just
+                # "concordance" by _document_chart_types_for_scope -- nothing to
+                # render for this cell beyond the title already drawn above.
+                continue
             block_figs = scope_fig.subfigures(nrows=len(block_types), ncols=1, height_ratios=block_heights)
             if len(block_types) == 1:
                 block_figs = [block_figs]

@@ -1,6 +1,7 @@
 import re
 import unicodedata
 
+import numpy as np
 import pandas as pd
 import pytest
 from click.testing import CliRunner
@@ -30,6 +31,7 @@ from src.mave_dataset_stats import (
     CONTROL_EVIDENCE_COVERAGE_TITLE,
     CONTROL_PLP_LABEL,
     CONTROL_VUS_LABEL,
+    DATASET_SUMMARY_HIGHLIGHT_CELLS,
     DISAGREE_LABEL,
     DISCORDANT_BENIGN_TO_PATHOGENIC_LABEL,
     DISCORDANT_CONTROL_BLB_TO_EVIDENCE_PLP_LABEL,
@@ -74,6 +76,8 @@ from src.mave_dataset_stats import (
     _format_prose_lines,
     _format_table_text,
     _format_title,
+    _highlight_cells,
+    _mark,
     build_reclassification_report,
     build_report_text,
     clinvar_classification_from_flags,
@@ -114,6 +118,7 @@ from src.mave_dataset_stats import (
     format_reclassification_table,
     format_registered_genetic_tests_summary,
     format_vamp_seq_codon_nt_coverage,
+    highlight_dataset_summary_table,
     format_variant_classification_chi_squared_tests,
     format_variant_classification_table,
     funnel_distinct_dna_variants,
@@ -4375,3 +4380,305 @@ def test_format_functional_only_sufficient_pathogenic_fraction():
     assert "REVEL: 37271 of 43080 (86.5%)" in text
     assert "MutPred2: 36975 of 86539 (42.7%)" in text
 
+
+
+# --- Manuscript-citation highlighting (`_mark`/`_highlight_cells` and friends) ------------------
+
+
+def test_mark_wraps_in_markdown_mode_and_is_a_noop_in_text_mode():
+    assert _mark(42, markdown=True) == "<mark>42</mark>"
+    assert _mark(42, markdown=False) == "42"
+    assert _mark("3 of 5 (60.0%)", markdown=True) == "<mark>3 of 5 (60.0%)</mark>"
+
+
+def test_highlight_cells_is_a_noop_in_text_mode():
+    table = pd.DataFrame({"count": [1, 2]}, index=["A", "B"])
+    out = _highlight_cells(table, markdown=False, cells=[(table.index == "A", "count")])
+    assert out is table
+
+
+def test_highlight_cells_wraps_only_the_targeted_cell_in_markdown_mode():
+    table = pd.DataFrame({"count": [1, 2], "pct": ["10.0%", "20.0%"]}, index=["A", "B"])
+    out = _highlight_cells(
+        table, markdown=True, cells=[(table.index == "A", "count"), (table.index == "B", "pct")]
+    )
+    assert out.loc["A", "count"] == "<mark>1</mark>"
+    assert out.loc["B", "count"] == 2
+    assert out.loc["A", "pct"] == "10.0%"
+    assert out.loc["B", "pct"] == "<mark>20.0%</mark>"
+    # Original table is untouched (a copy was returned).
+    assert table.loc["A", "count"] == 1
+
+
+def test_highlight_cells_handles_int64_columns_without_raising():
+    table = pd.DataFrame({"count": pd.array([1, 2], dtype="Int64")}, index=["A", "B"])
+    out = _highlight_cells(table, markdown=True, cells=[(table.index == "A", "count")])
+    assert out.loc["A", "count"] == "<mark>1</mark>"
+
+
+def test_highlight_dataset_summary_table_covers_every_declared_cell():
+    all_rows = {row for row, _col in DATASET_SUMMARY_HIGHLIGHT_CELLS}
+    all_cols = {col for _row, col in DATASET_SUMMARY_HIGHLIGHT_CELLS}
+    # Dense (every row has every column, so none are NaN-upcast to float) --
+    # a KeyError below means DATASET_SUMMARY_HIGHLIGHT_CELLS drifted from
+    # stats_to_dataframe's actual rows/columns.
+    table = pd.DataFrame(1, index=sorted(all_rows), columns=sorted(all_cols))
+    out = highlight_dataset_summary_table(table, markdown=True)
+    for row, col in DATASET_SUMMARY_HIGHLIGHT_CELLS:
+        assert out.loc[row, col] == "<mark>1</mark>"
+    assert highlight_dataset_summary_table(table, markdown=False) is table
+
+
+def test_format_composite_score_datasets_highlights_total_and_brca2_sahu_row():
+    table = pd.DataFrame(
+        {
+            "Gene": ["F9", "BRCA2"],
+            "Dataset": ["F9_Popp_2025_model", "BRCA2_Sahu_2025_SGE"],
+            "IGVF / Community": ["IGVF", "Community"],
+            "Scores": [9007, 6545],
+        }
+    )
+
+    text = format_composite_score_datasets(table, markdown=True)
+    plain_text = format_composite_score_datasets(table, markdown=False)
+
+    assert "<mark>15552</mark>" in text  # Total composite scores: 9007 + 6545
+    assert "<mark>6545</mark>" in text
+    assert "<mark>9007</mark>" not in text  # F9's own row isn't highlighted, only BRCA2's
+    assert "<mark>" not in plain_text
+
+
+def test_format_calibration_summary_highlights_excl_figures():
+    stats = {
+        "genes_with_excalibr_calibrations": 40,
+        "genes_with_evidence_assigned": 36,
+        "genes_with_excalibr_calibrations_excl": 38,
+        "genes_with_evidence_assigned_excl": 34,
+    }
+
+    text = format_calibration_summary(stats, markdown=True)
+    plain_text = format_calibration_summary(stats, markdown=False)
+
+    assert "<mark>38</mark>" in text
+    assert "<mark>34</mark>" in text
+    assert "<mark>" not in plain_text
+
+
+def test_format_genomic_variant_count_highlights_the_row_count():
+    expanded = pd.DataFrame({"a": [1, 2, 3]})
+
+    text = format_genomic_variant_count("some/path.tsv.gz", expanded, markdown=True)
+    plain_text = format_genomic_variant_count("some/path.tsv.gz", expanded, markdown=False)
+
+    assert "<mark>3</mark>" in text
+    assert "<mark>" not in plain_text
+
+
+def test_format_count_table_highlight_cells():
+    flags = pd.DataFrame({"REVEL": [True, False], "AlphaMissense": [True, True]})
+    total, table = summarize_flags(flags)
+
+    text = format_count_table(
+        "Score coverage -- test", total, table, markdown=True, highlight_cells=[(table.index == "REVEL", "pct")]
+    )
+    plain_text = format_count_table("Score coverage -- test", total, table, markdown=False)
+
+    assert "<mark>50.0%</mark>" in text
+    assert "<mark>" not in plain_text
+
+
+def test_format_clinical_table_highlight_cells():
+    flags = pd.DataFrame(
+        {
+            VUS_LABEL: [True, False],
+            PATHOGENIC_OR_BENIGN_LABEL: [False, True],
+            GNOMAD_LABEL: [False, False],
+            NO_ANNOTATION_LABEL: [False, False],
+            SNV_ACCESSIBLE_LABEL: [True, True],
+        }
+    )
+    total, snv_total, table = summarize_clinical_flags(flags, SNV_ACCESSIBLE_LABEL)
+
+    text = format_clinical_table(
+        "Clinical attributes -- test",
+        total,
+        snv_total,
+        table,
+        SNV_ACCESSIBLE_LABEL,
+        markdown=True,
+        highlight_cells=[(table.index == VUS_LABEL, "count")],
+    )
+    plain_text = format_clinical_table(
+        "Clinical attributes -- test", total, snv_total, table, SNV_ACCESSIBLE_LABEL, markdown=False
+    )
+
+    assert "<mark>1</mark>" in text
+    assert "<mark>" not in plain_text
+
+
+def test_format_control_concordance_report_highlights_manuscript_cells(tmp_path):
+    path = tmp_path / "controls.xlsx"
+    _write_control_concordance_workbook(path)
+    concordance = compute_control_concordance(pd.ExcelFile(path))
+
+    text = format_control_concordance_report(concordance, markdown=True)
+    plain_text = format_control_concordance_report(concordance, markdown=False)
+
+    # ClinVar REVEL gene-specific row: Concordant == 3 of 5 (60.0%) (see
+    # test_compute_control_concordance_clinvar_and_clingen).
+    assert "<mark>3 of 5 (60.0%)</mark>" in text
+    assert "<mark>" not in plain_text
+
+
+def test_format_control_concordance_report_missense_only_highlights_manuscript_cells(tmp_path):
+    path = tmp_path / "controls.xlsx"
+    _write_missense_control_concordance_workbook(path)
+    concordance = compute_control_concordance(
+        pd.ExcelFile(path), control_sources=MISSENSE_CONTROL_CONCORDANCE_SOURCES, consequence_filter=MISSENSE_CONSEQUENCE_VALUE
+    )
+
+    text = format_control_concordance_report(
+        concordance, control_sources=MISSENSE_CONTROL_CONCORDANCE_SOURCES, title=MISSENSE_CONTROL_CONCORDANCE_TITLE, markdown=True
+    )
+    plain_text = format_control_concordance_report(
+        concordance, control_sources=MISSENSE_CONTROL_CONCORDANCE_SOURCES, title=MISSENSE_CONTROL_CONCORDANCE_TITLE
+    )
+
+    # ClinVar REVEL gene-specific row: Concordant == 2 of 3 (66.7%) (see
+    # test_compute_control_concordance_missense_only).
+    assert "<mark>2 of 3 (66.7%)</mark>" in text
+    assert "<mark>" not in plain_text
+
+
+def test_format_variant_classification_table_highlights_manuscript_cells():
+    stats = {
+        "total_classified": 8,
+        "total_pathogenic_or_benign": 6,
+        "vus_total": 3,
+        "vus_resolved": 2,
+        "vus_resolved_pathogenic": 1,
+        "vus_resolved_pathogenic_only_experimental": 1,
+        "vus_resolved_pathogenic_only_predictive": 0,
+        "vus_resolved_pathogenic_both_evidence": 0,
+        "vus_resolved_benign": 1,
+        "vus_resolved_benign_only_experimental": 0,
+        "vus_resolved_benign_only_predictive": 1,
+        "vus_resolved_benign_both_evidence": 0,
+        "vus_resolved_benign_at_threshold": 1,
+        "vus_resolved_benign_at_threshold_single_source": 1,
+        "vus_resolved_benign_at_threshold_conflicting": 0,
+        "vus_resolved_benign_at_threshold_conflicting_benign_experimental": 0,
+        "vus_unresolved": 1,
+        "vus_unresolved_concordant": 0,
+        "vus_unresolved_discordant": 0,
+        "vus_unresolved_only_experimental": 1,
+        "vus_unresolved_only_predictive": 0,
+        "vus_unresolved_neither": 0,
+        "vus_unresolved_zero_or_one_source": 1,
+        "vus_unresolved_near_pathogenic": 0,
+        # Deliberately different from vus_total/vus_resolved above, so the
+        # two tables' REVEL "Resolved" cells don't coincidentally render the
+        # same text (which would make the highlight-count assertions below
+        # ambiguous between the two tables).
+        "gnomad_total": 5,
+        "gnomad_resolved": 4,
+        "gnomad_resolved_pathogenic": 1,
+        "gnomad_resolved_pathogenic_only_experimental": 1,
+        "gnomad_resolved_pathogenic_only_predictive": 0,
+        "gnomad_resolved_pathogenic_both_evidence": 0,
+        "gnomad_resolved_benign": 1,
+        "gnomad_resolved_benign_only_experimental": 0,
+        "gnomad_resolved_benign_only_predictive": 1,
+        "gnomad_resolved_benign_both_evidence": 0,
+        "gnomad_resolved_benign_at_threshold": 1,
+        "gnomad_resolved_benign_at_threshold_single_source": 1,
+        "gnomad_resolved_benign_at_threshold_conflicting": 0,
+        "gnomad_resolved_benign_at_threshold_conflicting_benign_experimental": 0,
+        "gnomad_unresolved": 1,
+        "gnomad_unresolved_concordant": 0,
+        "gnomad_unresolved_discordant": 0,
+        "gnomad_unresolved_only_experimental": 1,
+        "gnomad_unresolved_only_predictive": 0,
+        "gnomad_unresolved_neither": 0,
+        "gnomad_unresolved_zero_or_one_source": 1,
+        "gnomad_unresolved_near_pathogenic": 0,
+        "unobserved_total": 2,
+        "unobserved_resolved": 1,
+        "unobserved_resolved_pathogenic": 1,
+        "unobserved_resolved_pathogenic_only_experimental": 0,
+        "unobserved_resolved_pathogenic_only_predictive": 0,
+        "unobserved_resolved_pathogenic_both_evidence": 1,
+        "unobserved_resolved_benign": 0,
+        "unobserved_resolved_benign_only_experimental": 0,
+        "unobserved_resolved_benign_only_predictive": 0,
+        "unobserved_resolved_benign_both_evidence": 0,
+        "unobserved_resolved_benign_at_threshold": 0,
+        "unobserved_resolved_benign_at_threshold_single_source": 0,
+        "unobserved_resolved_benign_at_threshold_conflicting": 0,
+        "unobserved_resolved_benign_at_threshold_conflicting_benign_experimental": 0,
+        "unobserved_unresolved": 1,
+        "unobserved_unresolved_concordant": 1,
+        "unobserved_unresolved_discordant": 0,
+        "unobserved_unresolved_only_experimental": 0,
+        "unobserved_unresolved_only_predictive": 0,
+        "unobserved_unresolved_neither": 0,
+        "unobserved_unresolved_zero_or_one_source": 0,
+        "unobserved_unresolved_near_pathogenic": 0,
+    }
+
+    text = format_variant_classification_table(_variant_classification_stats_by_predictor(stats), markdown=True)
+    plain_text = format_variant_classification_table(_variant_classification_stats_by_predictor(stats))
+
+    # This fixture reuses one `stats` dict for all three predictors, so many
+    # highlighted cells render identical text across rows/tables -- check
+    # presence (not exact counts, which this fixture's value collisions make
+    # ambiguous) plus the overall highlighted-cell count, which exactly
+    # reflects how many (row, column) targets this function declares: 14 in
+    # the VUS-resolved table (10 REVEL-only + Total/Resolved x2 more
+    # predictors), 8 in the VUS-unresolved table (REVEL-only), 6 in the
+    # gnomAD-resolved table, 5 in the Unobserved-resolved table.
+    assert "<mark>2 of 3 (66.7%)</mark>" in text  # REVEL's VUS "Resolved"
+    assert "<mark>1 of 3 (33.3%)</mark>" in text  # REVEL's VUS Pathogenic/Benign
+    assert "<mark>4 of 5 (80.0%)</mark>" in text  # REVEL's gnomAD "Resolved"
+    assert "<mark>1 of 2 (50.0%)</mark>" in text  # REVEL's Unobserved "Resolved"
+    assert text.count("<mark>") == 33
+    assert "<mark>" not in plain_text
+
+
+def test_format_variant_classification_chi_squared_tests_highlights_revel_only():
+    def _comparison(label, a_label, a_count, a_total, b_label, b_count, b_total, p):
+        table = np.array([[a_count, a_total - a_count], [b_count, b_total - b_count]])
+        return {
+            "label": label,
+            "group_a": {"label": a_label, "count": a_count, "total": a_total},
+            "group_b": {"label": b_label, "count": b_count, "total": b_total},
+            "table": table,
+            "chi2": 1.2345,
+            "dof": 1,
+            "p": p,
+        }
+
+    comparisons = [
+        _comparison("PLP rate: gnomAD vs. ClinVar VUS", "gnomAD", 10, 100, "ClinVar VUS", 20, 100, 0.01),
+        _comparison("BLB rate: gnomAD vs. ClinVar VUS", "gnomAD", 50, 100, "ClinVar VUS", 60, 100, 0.02),
+        _comparison("PLP rate: Unobserved vs. ClinVar VUS", "Unobserved", 15, 100, "ClinVar VUS", 20, 100, 0.03),
+        _comparison("PLP rate: Unobserved vs. gnomAD", "Unobserved", 15, 100, "gnomAD", 12, 100, 0.04),
+    ]
+    results_by_predictor = {"REVEL": comparisons, "AlphaMissense": comparisons}
+
+    text = format_variant_classification_chi_squared_tests(results_by_predictor, markdown=True)
+    plain_text = format_variant_classification_chi_squared_tests(results_by_predictor)
+
+    assert "<mark>" not in plain_text
+    # REVEL: comparisons 0/1 highlight both group rates + p; comparison 2 only
+    # p; comparison 3 only group_b's rate + p.
+    assert text.count("<mark>10 of 100 (10.0%)</mark>") == 1  # comparison 0's group_a (REVEL only)
+    assert text.count("<mark>20 of 100 (20.0%)</mark>") == 1  # comparison 0's group_b (REVEL only)
+    assert text.count("<mark>p = 0.01</mark>") == 1
+    assert text.count("<mark>p = 0.03</mark>") == 1  # comparison 2: p only, no rate highlight
+    assert "<mark>15 of 100 (15.0%)</mark>" not in text  # comparison 2/3's group_a, never highlighted
+    assert text.count("<mark>p = 0.04</mark>") == 1
+    # AlphaMissense's identical-valued comparisons are never marked.
+    assert "AlphaMissense" in text
+    am_section = text.split("-- AlphaMissense --")[1]
+    assert "<mark>" not in am_section

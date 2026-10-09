@@ -1154,6 +1154,37 @@ def _format_label_block(lines, markdown):
     return ["<br>\n".join(lines)] if lines else []
 
 
+# Manuscript-citation highlighting: wraps specific figures the manuscript
+# cites directly in a Markdown <mark> tag (renders as yellow highlighting in
+# VS Code's Markdown preview and GitHub), so they're easy to find/cross-check
+# against the generated report. No-op in text mode. See `_highlight_cells`
+# for the DataFrame-cell counterpart, and the `format_*` functions' own
+# `highlight` parameters for which figures are flagged where.
+def _mark(value, markdown):
+    return f"<mark>{value}</mark>" if markdown else str(value)
+
+
+def _highlight_cells(table, markdown, cells):
+    """Return a copy of `table` with specific cells wrapped via `_mark` when
+    `markdown` -- a no-op (returns `table` itself, unchanged) in text mode.
+
+    `cells` is an iterable of `(row_mask, column)` pairs, where `row_mask` is
+    a boolean Series/array over `table`'s index selecting exactly one row
+    (e.g. `table.index == "IGVF"` for a label-indexed table, or
+    `table["Dataset"] == "some_dataset"` for a table indexed by plain
+    position) -- using a mask rather than `.loc` labels directly works the
+    same way regardless of whether the table's own index carries the row's
+    identity.
+    """
+    if not markdown:
+        return table
+    table = table.copy()
+    for row_mask, col in cells:
+        table[col] = table[col].astype(object)
+        table.loc[row_mask, col] = table.loc[row_mask, col].map(lambda v: _mark(v, True))
+    return table
+
+
 def format_gene_breakdown(gene_breakdown, markdown=False):
     lines = [_format_title("=== Genes represented ===", markdown)]
     body = [f"{label} ({len(genes)}): {', '.join(genes)}" for label, genes in gene_breakdown.items()]
@@ -1250,9 +1281,13 @@ def compute_composite_score_datasets(condensed, metadata, merge_calm_genes=False
 
 def format_composite_score_datasets(table, markdown=False):
     lines = [_format_title(COMPOSITE_SCORE_DATASETS_TITLE, markdown)]
-    lines.extend(_format_label_block([f"Total composite scores: {int(table['Scores'].sum())}"], markdown))
+    total_scores = int(table["Scores"].sum())
+    lines.extend(_format_label_block([f"Total composite scores: {_mark(total_scores, markdown)}"], markdown))
     if len(table):
-        _append_table(lines, table, markdown, index=False)
+        # Manuscript-citation highlighting (see `_highlight_cells`):
+        # BRCA2_Sahu_2025_SGE's own Scores figure.
+        display_table = _highlight_cells(table, markdown, [(table["Dataset"] == "BRCA2_Sahu_2025_SGE", "Scores")])
+        _append_table(lines, display_table, markdown, index=False)
     return "\n".join(lines)
 
 
@@ -1299,7 +1334,7 @@ def format_genomic_variant_count(expanded_path, expanded, markdown=False):
     characters, so a single quoted field containing an embedded newline
     would silently inflate its count relative to the true record count.
     """
-    line = f"Genomic variants (rows in {expanded_path}): {len(expanded)}"
+    line = f"Genomic variants (rows in {expanded_path}): {_mark(len(expanded), markdown)}"
     return _format_prose_lines([line], markdown)[0]
 
 
@@ -1439,12 +1474,17 @@ def summarize_flags(flags):
     return total, pd.DataFrame({"count": counts, "pct": pct})
 
 
-def format_count_table(title, total, table, markdown=False):
+def format_count_table(title, total, table, markdown=False, highlight_cells=()):
+    """`highlight_cells`: see `_highlight_cells` -- manuscript-citation
+    highlighting, applied after `pct` is formatted to a string so it can
+    target that column too.
+    """
     lines = [_format_title(title, markdown, level=3)]
     lines.extend(_format_label_block([f"Total: {total}"], markdown))
     if total:
         body = table.copy()
         body["pct"] = body["pct"].map(lambda x: f"{x:.1f}%")
+        body = _highlight_cells(body, markdown, highlight_cells)
         _append_table(lines, body, markdown)
     return "\n".join(lines)
 
@@ -1470,7 +1510,11 @@ def summarize_clinical_flags(flags, snv_label):
     return total, snv_total, table
 
 
-def format_clinical_table(title, total, snv_total, table, snv_label, markdown=False):
+def format_clinical_table(title, total, snv_total, table, snv_label, markdown=False, highlight_cells=()):
+    """`highlight_cells`: see `_highlight_cells` -- manuscript-citation
+    highlighting, applied last so it can target any of `count`, `pct`,
+    `snv_label`, or its `% of {snv_label}` column.
+    """
     lines = [_format_title(title, markdown, level=3)]
     lines.extend(_format_label_block([f"Total: {total} ({snv_total} {snv_label})"], markdown))
     if total:
@@ -1478,6 +1522,7 @@ def format_clinical_table(title, total, snv_total, table, snv_label, markdown=Fa
         body["pct"] = body["pct"].map(lambda x: f"{x:.1f}%")
         pct_snv_col = f"% of {snv_label}"
         body[pct_snv_col] = body[pct_snv_col].map(lambda x: f"{x:.1f}%")
+        body = _highlight_cells(body, markdown, highlight_cells)
         _append_table(lines, body, markdown)
     return "\n".join(lines)
 
@@ -1511,19 +1556,49 @@ def build_variant_level_reports(
         ("DNA variant measurements", expanded, expanded_path, SNV_LABEL, variant_flags),
     ]
 
+    # Manuscript-citation highlighting (see `_highlight_cells`): only the
+    # "assayed variants, distinct" level's score-coverage and clinical-
+    # attribute tables, plus the "DNA variants, distinct" level's clinical
+    # table (its own SNV column only) -- the specific figures the manuscript
+    # cites, not every level.
     score_sections = []
     clinical_sections_mixed_year = []
     for label, df, source, snv_label, flags_fn in levels:
         flags = flags_fn(df, snv_label, allow_clinvar_conflicts=allow_clinvar_conflicts)
         total, table = summarize_flags(flags[SCORE_LABELS])
+        score_highlight_cells = (
+            [
+                (table.index == "REVEL", "pct"),
+                (table.index == "AlphaMissense", "pct"),
+                (table.index == "MutPred2", "pct"),
+            ]
+            if label == "assayed variants, distinct"
+            else ()
+        )
         score_sections.append(
-            format_count_table(f"Score coverage -- {label} (from {source})", total, table, markdown=markdown)
+            format_count_table(
+                f"Score coverage -- {label} (from {source})",
+                total,
+                table,
+                markdown=markdown,
+                highlight_cells=score_highlight_cells,
+            )
         )
 
         mixed_flags = flags_fn(
             df, snv_label, clinvar_series=mixed_year_clinvar_series(df), allow_clinvar_conflicts=allow_clinvar_conflicts
         )
         mixed_total, mixed_snv_total, mixed_table = summarize_clinical_flags(mixed_flags, snv_label)
+        if label == "assayed variants, distinct":
+            clinical_highlight_cells = [
+                (mixed_table.index == VUS_LABEL, "count"),
+                (mixed_table.index == PATHOGENIC_OR_BENIGN_LABEL, "count"),
+                (mixed_table.index == GNOMAD_LABEL, "count"),
+            ]
+        elif label == "DNA variants, distinct":
+            clinical_highlight_cells = [(mixed_table.index == NO_ANNOTATION_LABEL, snv_label)]
+        else:
+            clinical_highlight_cells = []
         clinical_sections_mixed_year.append(
             format_clinical_table(
                 f"Clinical attributes -- {label} (from {source})",
@@ -1532,6 +1607,7 @@ def build_variant_level_reports(
                 mixed_table,
                 snv_label,
                 markdown=markdown,
+                highlight_cells=clinical_highlight_cells,
             )
         )
 
@@ -1621,10 +1697,10 @@ def format_calibration_summary(stats, markdown=False):
     lines.extend(
         _format_prose_lines(
             [
-                f"Genes with ExCALIBR calibrations: {total} ({total_excl} {excl_suffix})",
+                f"Genes with ExCALIBR calibrations: {total} ({_mark(total_excl, markdown)} {excl_suffix})",
                 (
                     f"Genes with >=1 dataset assigning >=1 point of evidence (pathogenic or benign): "
-                    f"{with_evidence} ({pct:.1f}%) ({with_evidence_excl} ({pct_excl:.1f}%) {excl_suffix})"
+                    f"{with_evidence} ({pct:.1f}%) ({_mark(with_evidence_excl, markdown)} ({pct_excl:.1f}%) {excl_suffix})"
                 ),
             ],
             markdown,
@@ -2230,6 +2306,63 @@ def compute_control_concordance(
     return results
 
 
+def _control_concordance_highlight_cells(title, control_label, table):
+    """Manuscript-citation highlighting (see `_highlight_cells`) for
+    `format_control_concordance_report`'s per-control-source table --
+    specific (evidence row, column) cells the manuscript cites directly, in
+    the main report (`CONTROL_CONCORDANCE_TITLE`) and its missense-only
+    companion (`MISSENSE_CONTROL_CONCORDANCE_TITLE`). Returns `[]` for any
+    other `title` (e.g. a caller-supplied one), so this never raises on an
+    evidence label this table doesn't carry.
+    """
+    revel = COMBINED_EVIDENCE_LABEL_BY_PREDICTOR["REVEL"]
+    am = COMBINED_EVIDENCE_LABEL_BY_PREDICTOR["AlphaMissense"]
+    mp2 = COMBINED_EVIDENCE_LABEL_BY_PREDICTOR["MutPred2"]
+    revel_universal = COMBINED_UNIVERSAL_EVIDENCE_LABEL_BY_PREDICTOR["REVEL"]
+
+    targets = []
+    if title == CONTROL_CONCORDANCE_TITLE and control_label == "ClinVar":
+        targets = [
+            (revel, CONCORDANT_LABEL),
+            (revel, CONCORDANT_CONTROL_BLB_TO_EVIDENCE_BLB_LABEL),
+            (revel, CONTROL_VUS_LABEL),
+            (revel, DISCORDANT_LABEL),
+            (revel, DISCORDANT_CONTROL_PLP_TO_EVIDENCE_BLB_LABEL),
+            (revel, DISCORDANT_CONTROL_BLB_TO_EVIDENCE_PLP_LABEL),
+            (revel, CONTROL_BLB_AT_THRESHOLD_LABEL),
+            (revel, DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_LABEL),
+            (revel, DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_BENIGN_EXPERIMENTAL_LABEL),
+            (am, DISCORDANT_LABEL),
+            (am, DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_LABEL),
+            (mp2, DISCORDANT_LABEL),
+            (mp2, DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_LABEL),
+            (revel_universal, CONCORDANT_LABEL),
+            (revel_universal, DISCORDANT_LABEL),
+            (revel_universal, CONTROL_VUS_LABEL),
+        ]
+    elif title == CONTROL_CONCORDANCE_TITLE and control_label == "ClinGen":
+        targets = [
+            (revel, "Total"),
+            (revel, "Genes"),
+            (revel, CONTROL_BLB_LABEL),
+            (revel, CONTROL_PLP_LABEL),
+            (revel, DISCORDANT_LABEL),
+            (am, DISCORDANT_LABEL),
+            (mp2, DISCORDANT_LABEL),
+            (revel_universal, CONCORDANT_LABEL),
+            (revel_universal, DISCORDANT_LABEL),
+        ]
+    elif title == MISSENSE_CONTROL_CONCORDANCE_TITLE and control_label == "ClinVar":
+        targets = [
+            (revel, CONCORDANT_LABEL),
+            (revel, CONTROL_VUS_LABEL),
+            (revel, DISCORDANT_LABEL),
+            (am, DISCORDANT_LABEL),
+            (mp2, DISCORDANT_LABEL),
+        ]
+    return [(table.index == row, col) for row, col in targets if col in table.columns]
+
+
 def format_control_concordance_report(
     concordance, control_sources=CONTROL_CONCORDANCE_SOURCES, title=CONTROL_CONCORDANCE_TITLE, markdown=False
 ):
@@ -2329,6 +2462,9 @@ def format_control_concordance_report(
                 )
             rows[evidence_label] = row
         report_table = pd.DataFrame(rows).T
+        report_table = _highlight_cells(
+            report_table, markdown, _control_concordance_highlight_cells(title, control_label, report_table)
+        )
         heading = f"{control_label} controls ({sheet_pattern} sheets):"
         table_text = _format_table_text(report_table, markdown)
         if markdown:
@@ -2923,6 +3059,69 @@ def format_variant_classification_table(stats_by_predictor, title=VARIANT_CLASSI
     gnomad_unresolved_table = _unresolved_table("gnomad")
     unobserved_unresolved_table = _unresolved_table("unobserved")
 
+    # Manuscript-citation highlighting (see `_highlight_cells`): specific
+    # cells the manuscript cites directly, by predictor row and column.
+    vus_table = _highlight_cells(
+        vus_table,
+        markdown,
+        [
+            (vus_table.index == "REVEL", "Total"),
+            (vus_table.index == "REVEL", "Resolved"),
+            (vus_table.index == "REVEL", "Pathogenic/Likely Pathogenic"),
+            (vus_table.index == "REVEL", "  P/LP: experimental only"),
+            (vus_table.index == "REVEL", "  P/LP: both"),
+            (vus_table.index == "REVEL", "Benign/Likely Benign"),
+            (vus_table.index == "REVEL", "  B/LB: experimental only"),
+            (vus_table.index == "REVEL", "  B/LB: predictive only"),
+            (vus_table.index == "REVEL", "  B/LB: both"),
+            (vus_table.index == "REVEL", "    ...with benign experimental evidence"),
+            (vus_table.index == "AlphaMissense", "Total"),
+            (vus_table.index == "AlphaMissense", "Resolved"),
+            (vus_table.index == "MutPred2", "Total"),
+            (vus_table.index == "MutPred2", "Resolved"),
+        ],
+    )
+    vus_unresolved_table = _highlight_cells(
+        vus_unresolved_table,
+        markdown,
+        [
+            (vus_unresolved_table.index == "REVEL", "Unresolved"),
+            (vus_unresolved_table.index == "REVEL", "Concordant"),
+            (vus_unresolved_table.index == "REVEL", "Discordant"),
+            (vus_unresolved_table.index == "REVEL", "Experimental only"),
+            (vus_unresolved_table.index == "REVEL", "Predictive only"),
+            (vus_unresolved_table.index == "REVEL", "Neither"),
+            (vus_unresolved_table.index == "REVEL", "0 or 1 source (total)"),
+            (
+                vus_unresolved_table.index == "REVEL",
+                "+4/+5 points (overlaps Concordant/Discordant/Experimental/Predictive/0-or-1-source, not Neither)",
+            ),
+        ],
+    )
+    gnomad_table = _highlight_cells(
+        gnomad_table,
+        markdown,
+        [
+            (gnomad_table.index == "REVEL", "Total"),
+            (gnomad_table.index == "REVEL", "Resolved"),
+            (gnomad_table.index == "REVEL", "Pathogenic/Likely Pathogenic"),
+            (gnomad_table.index == "REVEL", "Benign/Likely Benign"),
+            (gnomad_table.index == "AlphaMissense", "Total"),
+            (gnomad_table.index == "MutPred2", "Total"),
+        ],
+    )
+    unobserved_table = _highlight_cells(
+        unobserved_table,
+        markdown,
+        [
+            (unobserved_table.index == "REVEL", "Total"),
+            (unobserved_table.index == "REVEL", "Resolved"),
+            (unobserved_table.index == "REVEL", "Pathogenic/Likely Pathogenic"),
+            (unobserved_table.index == "AlphaMissense", "Total"),
+            (unobserved_table.index == "MutPred2", "Total"),
+        ],
+    )
+
     lines = [_format_title(title, markdown)]
     _append_table(lines, overall, markdown)
     lines.append("")
@@ -3023,17 +3222,34 @@ def format_variant_classification_chi_squared_tests(
         "with Yates' continuity correction (R's chisq.test() default for a 2x2 table, "
         "equivalent to prop.test(..., correct = TRUE)).",
     ]
+    # Manuscript-citation highlighting (see `_mark`): the REVEL block's four
+    # comparisons (same fixed order as `VARIANT_CLASSIFICATION_CHI_SQUARED_
+    # COMPARISONS`) each cite that comparison's p-value; comparisons 0 and 1
+    # (gnomAD vs. ClinVar VUS, both directions) also cite both groups' own
+    # rates, and comparison 3 (Unobserved vs. gnomAD) additionally cites just
+    # group_b's (gnomAD's) rate.
+    revel_rate_highlights = {0: "ab", 1: "ab", 3: "b"}
+
     for predictor, comparisons in results_by_predictor.items():
         body.append("")
         body.append(f"-- {predictor} --")
-        for comparison in comparisons:
+        is_revel = markdown and predictor == "REVEL"
+        for i, comparison in enumerate(comparisons):
             group_a, group_b = comparison["group_a"], comparison["group_b"]
             table = comparison["table"]
+            rate_highlights = revel_rate_highlights.get(i, "") if is_revel else ""
+            a_text = _format_count_and_pct(group_a["count"], group_a["total"])
+            b_text = _format_count_and_pct(group_b["count"], group_b["total"])
+            p_text = _mark(f"p = {comparison['p']:.4g}", is_revel)
+            if "a" in rate_highlights:
+                a_text = _mark(a_text, True)
+            if "b" in rate_highlights:
+                b_text = _mark(b_text, True)
             body.append(comparison["label"] + ":")
-            body.append(f"  {group_a['label']}: " + _format_count_and_pct(group_a["count"], group_a["total"]))
-            body.append(f"  {group_b['label']}: " + _format_count_and_pct(group_b["count"], group_b["total"]))
+            body.append(f"  {group_a['label']}: " + a_text)
+            body.append(f"  {group_b['label']}: " + b_text)
             body.append(f"  2x2 table: [[{table[0, 0]}, {table[0, 1]}], [{table[1, 0]}, {table[1, 1]}]]")
-            body.append(f"  chi2 = {comparison['chi2']:.4f}, df = {comparison['dof']}, p = {comparison['p']:.4g}")
+            body.append(f"  chi2 = {comparison['chi2']:.4f}, df = {comparison['dof']}, {p_text}")
     lines = [_format_title(title, markdown), *_format_prose_lines(body, markdown)]
     return "\n".join(lines)
 
@@ -3373,6 +3589,40 @@ def build_report_text(
     return "\n\n".join(parts)
 
 
+# Manuscript-citation highlighting (Markdown mode only; see `_highlight_cells`)
+# for the Dataset summary table, applied in `main()` since `build_report_text`
+# itself is exercised with simplified test tables that don't carry every
+# column these rows/columns reference.
+DATASET_SUMMARY_HIGHLIGHT_CELLS = [
+    ("IGVF", "variant_effect_measurements"),
+    ("IGVF", "rna_scores"),
+    ("IGVF", "pct_variant_effect_measurements"),
+    ("IGVF", "composite_scores"),
+    ("IGVF", "distinct_variants_assayed"),
+    ("IGVF", "genes_represented"),
+    ("Community (non-IGVF)", "datasets"),
+    ("Community (non-IGVF)", "variant_effect_measurements"),
+    ("Community (non-IGVF)", "rna_scores"),
+    ("Community (non-IGVF)", "composite_scores"),
+    ("Community (non-IGVF)", "distinct_variants_assayed"),
+    ("Community (non-IGVF)", "genes_not_in_igvf_data"),
+    ("Combined (IGVF + community)", "datasets"),
+    ("Combined (IGVF + community)", "variant_effect_measurements"),
+    ("Combined (IGVF + community)", "rna_scores"),
+    ("Combined (IGVF + community)", "composite_scores"),
+    ("Combined (IGVF + community)", "distinct_variants_assayed"),
+    ("Combined (IGVF + community)", "genes_represented"),
+]
+
+
+def highlight_dataset_summary_table(table, markdown):
+    """`_highlight_cells(table, markdown, ...)` for `DATASET_SUMMARY_
+    HIGHLIGHT_CELLS` -- every Dataset summary figure the manuscript cites
+    directly.
+    """
+    return _highlight_cells(table, markdown, [(table.index == row, col) for row, col in DATASET_SUMMARY_HIGHLIGHT_CELLS])
+
+
 @click.command(help=__doc__)
 @click.argument(
     "condensed_file",
@@ -3683,7 +3933,7 @@ def main(
         )
 
         markdown_report = build_report_text(
-            table,
+            highlight_dataset_summary_table(table, markdown=True),
             gene_breakdown,
             markdown_genomic_variant_summary,
             markdown_genes_with_multiple_datasets_summary,

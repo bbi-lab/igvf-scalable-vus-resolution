@@ -566,6 +566,13 @@ ASSERTION_CLINGEN_REPO_COL = "Assertion_ClinGen_repo"
 CONCORDANT_LABEL = "Concordant"
 DISCORDANT_LABEL = "Discordant"
 CONTROL_VUS_LABEL = "VUS"
+# Directional breakdown of CONCORDANT_LABEL -- mutually exclusive and
+# exhaustive over the concordant rows, mirroring DISCORDANT_LABEL's own
+# directional breakdown below (a concordant row's control classification is
+# either pathogenic- or benign-leaning, and the evidence source agrees in
+# that same direction).
+CONCORDANT_CONTROL_PLP_TO_EVIDENCE_PLP_LABEL = "  ...control PLP, evidence PLP"
+CONCORDANT_CONTROL_BLB_TO_EVIDENCE_BLB_LABEL = "  ...control BLB, evidence BLB"
 # Directional breakdown of DISCORDANT_LABEL -- mutually exclusive and exhaustive
 # over the discordant rows, since a row's control classification is either
 # pathogenic- or benign-leaning (never both), and it disagrees with the
@@ -574,11 +581,30 @@ DISCORDANT_CONTROL_PLP_TO_EVIDENCE_BLB_LABEL = "  ...control PLP, evidence BLB"
 DISCORDANT_CONTROL_BLB_TO_EVIDENCE_PLP_LABEL = "  ...control BLB, evidence PLP"
 CONTROL_CONCORDANCE_LABELS_ORDER = [
     CONCORDANT_LABEL,
+    CONCORDANT_CONTROL_PLP_TO_EVIDENCE_PLP_LABEL,
+    CONCORDANT_CONTROL_BLB_TO_EVIDENCE_BLB_LABEL,
     DISCORDANT_LABEL,
     DISCORDANT_CONTROL_PLP_TO_EVIDENCE_BLB_LABEL,
     DISCORDANT_CONTROL_BLB_TO_EVIDENCE_PLP_LABEL,
     CONTROL_VUS_LABEL,
 ]
+# -1-point ("at threshold") diagnostics for the combined gene-specific
+# evidence rows only (COMBINED_EVIDENCE_LABEL_BY_PREDICTOR/COMBINED_EVIDENCE_
+# CALIBRATED_LABEL_BY_PREDICTOR) -- not computed for OddsPath alone (no
+# separate functional/predictive split to report) or the universal-calibration
+# rows (out of scope for this diagnostic; see compute_control_concordance's
+# `_combined_evidence_result`). CONTROL_BLB_AT_THRESHOLD_LABEL is reported as
+# a percent of that row's own BLB count (`CONTROL_BLB_LABEL`), not of Total --
+# named to stand on its own since `CONTROL_POPULATION_LABELS_ORDER` (its
+# logical parent row) is only shown for the ClinGen table, not ClinVar's.
+# DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_LABEL is a sub-row of
+# DISCORDANT_CONTROL_PLP_TO_EVIDENCE_BLB_LABEL (percent of that row's own
+# count, which is shown for both tables); DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_
+# BENIGN_EXPERIMENTAL_LABEL is a sub-row of that (percent of its own count)
+# -- see format_control_concordance_report.
+CONTROL_BLB_AT_THRESHOLD_LABEL = "BLB controls at -1 point (threshold)"
+DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_LABEL = "    ...at -1 point (threshold)"
+DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_BENIGN_EXPERIMENTAL_LABEL = "      ...with benign experimental evidence"
 # The control classification alone (independent of the evidence source) --
 # mutually exclusive and exhaustive over a row's `in_scope` population, so
 # these two always sum to that row's `Total`. Reported only for the ClinGen
@@ -1954,8 +1980,11 @@ def control_concordance_flags(control_group, pathogenic_values, benign_values, a
     Series already derived from whichever evidence source is being compared
     (e.g. `OP_points > 0`/`< 0` for OddsPath alone, or `Class_REVEL` category
     membership for the combined-with-REVEL evidence) -- a row with neither
-    set counts as VUS. `DISCORDANT_LABEL` also carries two mutually-exclusive
-    sub-flags (`DISCORDANT_CONTROL_PLP_TO_EVIDENCE_BLB_LABEL`/
+    set counts as VUS. `CONCORDANT_LABEL` carries two mutually-exclusive
+    sub-flags (`CONCORDANT_CONTROL_PLP_TO_EVIDENCE_PLP_LABEL`/
+    `CONCORDANT_CONTROL_BLB_TO_EVIDENCE_BLB_LABEL`) breaking concordant rows
+    out by direction, and `DISCORDANT_LABEL` likewise carries two
+    mutually-exclusive sub-flags (`DISCORDANT_CONTROL_PLP_TO_EVIDENCE_BLB_LABEL`/
     `DISCORDANT_CONTROL_BLB_TO_EVIDENCE_PLP_LABEL`) breaking discordant rows
     out by direction. `CONTROL_PLP_LABEL`/`CONTROL_BLB_LABEL` carry the
     control classification alone (`is_pathogenic`/`is_benign`), independent
@@ -1967,7 +1996,9 @@ def control_concordance_flags(control_group, pathogenic_values, benign_values, a
     is_benign = control_group.isin(benign_values)
     in_scope = is_pathogenic | is_benign
 
-    concordant = (is_pathogenic & assigned_pathogenic) | (is_benign & assigned_benign)
+    concordant_plp_to_plp = is_pathogenic & assigned_pathogenic
+    concordant_blb_to_blb = is_benign & assigned_benign
+    concordant = concordant_plp_to_plp | concordant_blb_to_blb
     discordant_plp_to_blb = is_pathogenic & assigned_benign
     discordant_blb_to_plp = is_benign & assigned_pathogenic
     discordant = discordant_plp_to_blb | discordant_blb_to_plp
@@ -1976,6 +2007,8 @@ def control_concordance_flags(control_group, pathogenic_values, benign_values, a
     flags = pd.DataFrame(
         {
             CONCORDANT_LABEL: concordant,
+            CONCORDANT_CONTROL_PLP_TO_EVIDENCE_PLP_LABEL: concordant_plp_to_plp,
+            CONCORDANT_CONTROL_BLB_TO_EVIDENCE_BLB_LABEL: concordant_blb_to_blb,
             DISCORDANT_LABEL: discordant,
             DISCORDANT_CONTROL_PLP_TO_EVIDENCE_BLB_LABEL: discordant_plp_to_blb,
             DISCORDANT_CONTROL_BLB_TO_EVIDENCE_PLP_LABEL: discordant_blb_to_plp,
@@ -2042,11 +2075,25 @@ def compute_control_concordance(
     so it's computed unconditionally, unlike the universal rows which require
     `universal_workbook`.
 
+    The gene-specific rows (`COMBINED_EVIDENCE_LABEL_BY_PREDICTOR[predictor]`/
+    `COMBINED_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR[predictor]`, not OddsPath
+    alone or the universal rows) additionally carry three -1-point
+    diagnostics -- see `CONTROL_BLB_AT_THRESHOLD_LABEL`/`DISCORDANT_PLP_TO_
+    BLB_AT_THRESHOLD_LABEL`/`DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_BENIGN_
+    EXPERIMENTAL_LABEL`'s module-level comment and `_combined_evidence_
+    result`: how many BLB controls landed at the -1-point (`LIKELY_BENIGN_
+    POINTS_THRESHOLD`) threshold, how many of the PLP-to-BLB discordances did
+    the same, and of those, how many combined benign-direction experimental
+    evidence (`Fxn_points < 0`) with a damaging-direction predictor score
+    (that predictor's own points `> 0`) -- the two necessarily opposite in
+    sign to still sum to -1.
+
     Returns {(control_source_label, evidence_label): (total, table, n_genes)}.
     `table` is the `summarize_flags` output over the in-scope rows, covering
     `CONTROL_CONCORDANCE_LABELS_ORDER` plus, for every row,
     `CONTROL_POPULATION_LABELS_ORDER` (the control classification alone --
-    see `control_concordance_flags`). `n_genes` is the number of distinct
+    see `control_concordance_flags`), plus, for the gene-specific rows above,
+    the three -1-point diagnostic labels. `n_genes` is the number of distinct
     genes (`GENE_COL`) among the in-scope rows -- reported alongside
     `Total` in `format_control_concordance_report`'s ClinGen table, since
     unlike ClinVar's, the ClinGen control set is small enough that its
@@ -2060,7 +2107,16 @@ def compute_control_concordance(
             df = df[df[SIMPLIFIED_CONSEQUENCE_COL] == consequence_filter]
         return df
 
-    def _combined_evidence_result(df, control_col, pathogenic_values, benign_values, class_col, extra_mask=None):
+    def _combined_evidence_result(
+        df, control_col, pathogenic_values, benign_values, class_col, points_col=None, predictor_points_col=None, extra_mask=None
+    ):
+        """`points_col`/`predictor_points_col`, given only for the gene-specific
+        evidence rows (not the universal-calibration rows), add the -1-point
+        diagnostics (`CONTROL_BLB_AT_THRESHOLD_LABEL`/`DISCORDANT_PLP_TO_BLB_
+        AT_THRESHOLD_LABEL`/`DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_BENIGN_
+        EXPERIMENTAL_LABEL`) to the returned table -- see those labels'
+        module-level comment.
+        """
         combined_flags, combined_in_scope = control_concordance_flags(
             df[control_col],
             pathogenic_values,
@@ -2068,10 +2124,28 @@ def compute_control_concordance(
             df[class_col].isin(CLASS_PATHOGENIC_VALUES),
             df[class_col].isin(CLASS_BENIGN_VALUES),
         )
+        table_labels = list(CONTROL_CONCORDANCE_TABLE_LABELS_ORDER)
+        if points_col is not None:
+            at_threshold = df[points_col] == LIKELY_BENIGN_POINTS_THRESHOLD
+            combined_flags[CONTROL_BLB_AT_THRESHOLD_LABEL] = combined_flags[CONTROL_BLB_LABEL] & at_threshold
+            discordant_plp_to_blb_at_threshold = (
+                combined_flags[DISCORDANT_CONTROL_PLP_TO_EVIDENCE_BLB_LABEL] & at_threshold
+            )
+            combined_flags[DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_LABEL] = discordant_plp_to_blb_at_threshold
+            combined_flags[DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_BENIGN_EXPERIMENTAL_LABEL] = (
+                discordant_plp_to_blb_at_threshold
+                & (df[FUNCTIONAL_POINTS_COL] < 0)
+                & (df[predictor_points_col] > 0)
+            )
+            table_labels += [
+                CONTROL_BLB_AT_THRESHOLD_LABEL,
+                DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_LABEL,
+                DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_BENIGN_EXPERIMENTAL_LABEL,
+            ]
         if extra_mask is not None:
             combined_in_scope = combined_in_scope & extra_mask
         return (
-            *summarize_flags(combined_flags.loc[combined_in_scope, CONTROL_CONCORDANCE_TABLE_LABELS_ORDER]),
+            *summarize_flags(combined_flags.loc[combined_in_scope, table_labels]),
             int(df.loc[combined_in_scope, GENE_COL].nunique()),
         )
 
@@ -2097,9 +2171,11 @@ def compute_control_concordance(
         for predictor in VARIANT_CLASSIFICATION_PREDICTORS:
             sheets = VARIANT_CLASSIFICATION_CATEGORY_SHEETS_BY_PREDICTOR[predictor]
             class_col = VARIANT_CLASSIFICATION_CLASS_COL_BY_PREDICTOR[predictor]
+            points_col = VARIANT_CLASSIFICATION_POINTS_COL_BY_PREDICTOR[predictor]
+            predictor_points_col = VARIANT_CLASSIFICATION_PREDICTOR_POINTS_COL_BY_PREDICTOR[predictor]
             df = _filtered(workbook, sheets[category])
             results[(control_label, COMBINED_EVIDENCE_LABEL_BY_PREDICTOR[predictor])] = _combined_evidence_result(
-                df, control_col, pathogenic_values, benign_values, class_col
+                df, control_col, pathogenic_values, benign_values, class_col, points_col, predictor_points_col
             )
             results[(control_label, COMBINED_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR[predictor])] = (
                 _combined_evidence_result(
@@ -2108,6 +2184,8 @@ def compute_control_concordance(
                     pathogenic_values,
                     benign_values,
                     class_col,
+                    points_col,
+                    predictor_points_col,
                     extra_mask=df[FUNCTIONAL_CLASS_POINTS_COL].notna(),
                 )
             )
@@ -2174,6 +2252,18 @@ def format_control_concordance_report(
     `control_sources`/`title` are overridden together for the missense-only
     companion table -- see `MISSENSE_CONTROL_CONCORDANCE_SOURCES`/
     `MISSENSE_CONTROL_CONCORDANCE_TITLE`.
+
+    For the gene-specific rows only (`COMBINED_EVIDENCE_LABEL_BY_PREDICTOR`/
+    `COMBINED_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR` -- not OddsPath alone or
+    the universal rows), three more columns report `compute_control_
+    concordance`'s -1-point diagnostics, each as a percent of its own stated
+    denominator rather than that row's `Total` (unlike every other column
+    here): `CONTROL_BLB_AT_THRESHOLD_LABEL` (percent of the row's own BLB
+    count), `DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_LABEL` (percent of the row's
+    own `DISCORDANT_CONTROL_PLP_TO_EVIDENCE_BLB_LABEL` count), and
+    `DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_BENIGN_EXPERIMENTAL_LABEL` (percent of
+    that -1-point-discordant count). Omitted (rendered as `NaN`) for rows
+    without them.
     """
     first_control_label = next(iter(control_sources))
     has_universal = (
@@ -2204,6 +2294,20 @@ def format_control_concordance_report(
                 label: _format_count_and_pct(int(table.loc[label, "count"]), total)
                 for label in CONTROL_CONCORDANCE_LABELS_ORDER
             }
+            if CONTROL_BLB_AT_THRESHOLD_LABEL in table.index:
+                blb_total = int(table.loc[CONTROL_BLB_LABEL, "count"])
+                discordant_plp_to_blb_total = int(table.loc[DISCORDANT_CONTROL_PLP_TO_EVIDENCE_BLB_LABEL, "count"])
+                at_threshold_total = int(table.loc[DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_LABEL, "count"])
+                row[CONTROL_BLB_AT_THRESHOLD_LABEL] = _format_count_and_pct(
+                    int(table.loc[CONTROL_BLB_AT_THRESHOLD_LABEL, "count"]), blb_total
+                )
+                row[DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_LABEL] = _format_count_and_pct(
+                    at_threshold_total, discordant_plp_to_blb_total
+                )
+                row[DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_BENIGN_EXPERIMENTAL_LABEL] = _format_count_and_pct(
+                    int(table.loc[DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_BENIGN_EXPERIMENTAL_LABEL, "count"]),
+                    at_threshold_total,
+                )
             rows[evidence_label] = row
         report_table = pd.DataFrame(rows).T
         heading = f"{control_label} controls ({sheet_pattern} sheets):"

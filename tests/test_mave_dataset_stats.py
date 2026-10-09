@@ -18,8 +18,11 @@ from src.mave_dataset_stats import (
     COMBINED_UNIVERSAL_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR,
     COMBINED_UNIVERSAL_EVIDENCE_LABEL_BY_PREDICTOR,
     COMPOSITE_SCORE_DATASETS_TITLE,
+    CONCORDANT_CONTROL_BLB_TO_EVIDENCE_BLB_LABEL,
+    CONCORDANT_CONTROL_PLP_TO_EVIDENCE_PLP_LABEL,
     CONCORDANT_LABEL,
     CONFLICTING_EVIDENCE_VALUE,
+    CONTROL_BLB_AT_THRESHOLD_LABEL,
     CONTROL_BLB_LABEL,
     CONTROL_CONCORDANCE_EVIDENCE_CALIBRATED_LABEL,
     CONTROL_CONCORDANCE_EVIDENCE_LABEL,
@@ -33,6 +36,8 @@ from src.mave_dataset_stats import (
     DISCORDANT_CONTROL_PLP_TO_EVIDENCE_BLB_LABEL,
     DISCORDANT_LABEL,
     DISCORDANT_PATHOGENIC_TO_BENIGN_LABEL,
+    DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_BENIGN_EXPERIMENTAL_LABEL,
+    DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_LABEL,
     FUNCTIONAL_POINTS_COL,
     GENE_DISCORDANCE_TITLE,
     GNOMAD_LABEL,
@@ -2453,6 +2458,11 @@ def test_control_concordance_flags_concordant_discordant_vus():
     # PLP-to-BLB direction; no row is discordant in the opposite direction.
     assert list(flags[DISCORDANT_CONTROL_PLP_TO_EVIDENCE_BLB_LABEL]) == [False, False, True, False, False]
     assert list(flags[DISCORDANT_CONTROL_BLB_TO_EVIDENCE_PLP_LABEL]) == [False, False, False, False, False]
+    # row 1 (control Pathogenic, assigned pathogenic) is the sole PLP-direction
+    # concordant row; row 2 (control Benign, assigned benign) is the sole
+    # BLB-direction one.
+    assert list(flags[CONCORDANT_CONTROL_PLP_TO_EVIDENCE_PLP_LABEL]) == [True, False, False, False, False]
+    assert list(flags[CONCORDANT_CONTROL_BLB_TO_EVIDENCE_BLB_LABEL]) == [False, True, False, False, False]
 
 
 def _write_control_concordance_workbook(path):
@@ -2534,30 +2544,65 @@ def _write_control_concordance_workbook(path):
     def _with_op_and_gene(rows, op_points, genes):
         return [(row[0], op, row[1], gene) for row, op, gene in zip(rows, op_points, genes)]
 
+    def _with_neutral_points(df, suffix):
+        # The -1-point diagnostics (`CONTROL_BLB_AT_THRESHOLD_LABEL` and
+        # friends) need these three columns present on every gene-specific
+        # sheet, same as the real Supplementary Data 5 sheets -- all zero
+        # here (no row is single-source/conflicting at the -1-point
+        # threshold) so none of this fixture's existing hand-derived
+        # Concordant/Discordant/VUS counts are affected; see
+        # test_compute_control_concordance_at_threshold_diagnostics for a
+        # fixture that actually exercises these columns.
+        return df.assign(
+            **{
+                f"Total_Points_{suffix}": 0,
+                "Fxn_points": 0,
+                f"Points_{suffix}_GeneSpecific_GenomeWide": 0,
+            }
+        )
+
     with pd.ExcelWriter(path) as writer:
-        pd.DataFrame(
-            _with_gene(clinvar_rows_revel, clinvar_genes),
-            columns=["clnsig_group_18_25", "OP_points", "Class_REVEL", "Gene"],
+        _with_neutral_points(
+            pd.DataFrame(
+                _with_gene(clinvar_rows_revel, clinvar_genes),
+                columns=["clnsig_group_18_25", "OP_points", "Class_REVEL", "Gene"],
+            ),
+            "REVEL",
         ).to_excel(writer, sheet_name="controls_REVEL_GeneSpecific", index=False)
-        pd.DataFrame(
-            _with_gene(clingen_rows_revel, clingen_genes),
-            columns=["Updated_Classification_ClinGen_repo", "OP_points", "Class_REVEL", "Gene"],
+        _with_neutral_points(
+            pd.DataFrame(
+                _with_gene(clingen_rows_revel, clingen_genes),
+                columns=["Updated_Classification_ClinGen_repo", "OP_points", "Class_REVEL", "Gene"],
+            ),
+            "REVEL",
         ).to_excel(writer, sheet_name="ClinGen_Repo_REVEL_GeneSpecific", index=False)
-        pd.DataFrame(
-            _with_op_and_gene(clinvar_rows_am, clinvar_op_points, clinvar_genes),
-            columns=["clnsig_group_18_25", "OP_points", "Class_AM", "Gene"],
+        _with_neutral_points(
+            pd.DataFrame(
+                _with_op_and_gene(clinvar_rows_am, clinvar_op_points, clinvar_genes),
+                columns=["clnsig_group_18_25", "OP_points", "Class_AM", "Gene"],
+            ),
+            "AM",
         ).to_excel(writer, sheet_name="controls_AM_GeneSpecific", index=False)
-        pd.DataFrame(
-            _with_op_and_gene(clingen_rows_am, clingen_op_points, clingen_genes),
-            columns=["Updated_Classification_ClinGen_repo", "OP_points", "Class_AM", "Gene"],
+        _with_neutral_points(
+            pd.DataFrame(
+                _with_op_and_gene(clingen_rows_am, clingen_op_points, clingen_genes),
+                columns=["Updated_Classification_ClinGen_repo", "OP_points", "Class_AM", "Gene"],
+            ),
+            "AM",
         ).to_excel(writer, sheet_name="ClinGen_Repo_AM_GeneSpecific", index=False)
-        pd.DataFrame(
-            _with_op_and_gene(clinvar_rows_mp2, clinvar_op_points, clinvar_genes),
-            columns=["clnsig_group_18_25", "OP_points", "Class_MP2", "Gene"],
+        _with_neutral_points(
+            pd.DataFrame(
+                _with_op_and_gene(clinvar_rows_mp2, clinvar_op_points, clinvar_genes),
+                columns=["clnsig_group_18_25", "OP_points", "Class_MP2", "Gene"],
+            ),
+            "MP2",
         ).to_excel(writer, sheet_name="controls_MP2_GeneSpecific", index=False)
-        pd.DataFrame(
-            _with_op_and_gene(clingen_rows_mp2, clingen_op_points, clingen_genes),
-            columns=["Updated_Classification_ClinGen_repo", "OP_points", "Class_MP2", "Gene"],
+        _with_neutral_points(
+            pd.DataFrame(
+                _with_op_and_gene(clingen_rows_mp2, clingen_op_points, clingen_genes),
+                columns=["Updated_Classification_ClinGen_repo", "OP_points", "Class_MP2", "Gene"],
+            ),
+            "MP2",
         ).to_excel(writer, sheet_name="ClinGen_Repo_MP2_GeneSpecific", index=False)
 
 
@@ -2740,6 +2785,100 @@ def test_compute_control_concordance_clinvar_and_clingen(tmp_path):
     assert clingen_mp2_calibrated_table.loc[CONCORDANT_LABEL, "count"] == 1
     assert clingen_mp2_calibrated_table.loc[DISCORDANT_LABEL, "count"] == 1
     assert clingen_mp2_calibrated_genes == 1
+
+
+def _write_control_concordance_at_threshold_workbook(path):
+    """ClinVar-only, 4 rows reused identically across REVEL/AM/MP2's own
+    `controls_<predictor>_GeneSpecific` sheets, exercising the -1-point
+    diagnostics (`CONTROL_BLB_AT_THRESHOLD_LABEL`/`DISCORDANT_PLP_TO_BLB_AT_
+    THRESHOLD_LABEL`/`DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_BENIGN_EXPERIMENTAL_
+    LABEL`), none of which `_write_control_concordance_workbook` triggers
+    (its Total_Points_*/Fxn_points/Points_*_GeneSpecific_GenomeWide are all
+    neutral zeros):
+
+    - row A: control Pathogenic, concordant, well above threshold.
+    - row B: control Benign, concordant, single-source at the -1-point
+      threshold (Fxn_points=0) -- the sole BLB row, so BLB total is 1.
+    - row C: control Pathogenic, discordant to Benign at the -1-point
+      threshold, combining benign-direction experimental evidence
+      (Fxn_points=-3) with a damaging-direction predictor score (+2).
+    - row D: control Pathogenic, discordant to Benign at the -1-point
+      threshold, the opposite combination -- damaging-direction experimental
+      evidence (Fxn_points=+4) outweighed by a benign-direction predictor
+      score (-5) -- so it does *not* count toward the benign-experimental
+      sub-split.
+    """
+    # (clnsig_group_18_25, OP_points, Class_<predictor>, Total_Points_<predictor>, Fxn_points,
+    #  Points_<predictor>_GeneSpecific_GenomeWide, Gene)
+    rows = [
+        ("Pathogenic", 2, "Pathogenic", 6, 6, 0, "GENEA"),
+        ("Benign", -1, "Benign", -1, 0, -1, "GENEA"),
+        ("Pathogenic", -1, "Benign", -1, -3, 2, "GENEB"),
+        ("Pathogenic", 1, "Benign", -1, 4, -5, "GENEC"),
+    ]
+    with pd.ExcelWriter(path) as writer:
+        for suffix in ("REVEL", "AM", "MP2"):
+            columns = [
+                "clnsig_group_18_25",
+                "OP_points",
+                f"Class_{suffix}",
+                f"Total_Points_{suffix}",
+                "Fxn_points",
+                f"Points_{suffix}_GeneSpecific_GenomeWide",
+                "Gene",
+            ]
+            pd.DataFrame(rows, columns=columns).to_excel(
+                writer, sheet_name=f"controls_{suffix}_GeneSpecific", index=False
+            )
+
+
+def test_compute_control_concordance_at_threshold_diagnostics(tmp_path):
+    path = tmp_path / "controls.xlsx"
+    _write_control_concordance_at_threshold_workbook(path)
+
+    concordance = compute_control_concordance(pd.ExcelFile(path), control_sources=_CLINVAR_ONLY_CONTROL_SOURCE)
+
+    for predictor in VARIANT_CLASSIFICATION_PREDICTORS:
+        total, table, _genes = concordance[("ClinVar", COMBINED_EVIDENCE_LABEL_BY_PREDICTOR[predictor])]
+        assert total == 4
+        # Row A (PLP-concordant) + row B (BLB-concordant).
+        assert table.loc[CONCORDANT_LABEL, "count"] == 2
+        assert table.loc[CONCORDANT_CONTROL_PLP_TO_EVIDENCE_PLP_LABEL, "count"] == 1
+        assert table.loc[CONCORDANT_CONTROL_BLB_TO_EVIDENCE_BLB_LABEL, "count"] == 1
+        # Rows C and D, both PLP-to-BLB.
+        assert table.loc[DISCORDANT_LABEL, "count"] == 2
+        assert table.loc[DISCORDANT_CONTROL_PLP_TO_EVIDENCE_BLB_LABEL, "count"] == 2
+        assert table.loc[DISCORDANT_CONTROL_BLB_TO_EVIDENCE_PLP_LABEL, "count"] == 0
+        # Row B is the sole BLB row, and it's at the -1-point threshold.
+        assert table.loc[CONTROL_BLB_LABEL, "count"] == 1
+        assert table.loc[CONTROL_BLB_AT_THRESHOLD_LABEL, "count"] == 1
+        # Rows C and D are both at the -1-point threshold; only row C combines
+        # benign-direction experimental evidence with a damaging prediction.
+        assert table.loc[DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_LABEL, "count"] == 2
+        assert table.loc[DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_BENIGN_EXPERIMENTAL_LABEL, "count"] == 1
+
+    # The OddsPath-alone row has no functional/predictive split to report, so
+    # it doesn't carry these three labels at all.
+    _oddspath_total, oddspath_table, _oddspath_genes = concordance[("ClinVar", CONTROL_CONCORDANCE_EVIDENCE_LABEL)]
+    assert CONTROL_BLB_AT_THRESHOLD_LABEL not in oddspath_table.index
+
+
+def test_format_control_concordance_report_at_threshold_diagnostics(tmp_path):
+    path = tmp_path / "controls.xlsx"
+    _write_control_concordance_at_threshold_workbook(path)
+    concordance = compute_control_concordance(pd.ExcelFile(path), control_sources=_CLINVAR_ONLY_CONTROL_SOURCE)
+
+    text = format_control_concordance_report(concordance, control_sources=_CLINVAR_ONLY_CONTROL_SOURCE)
+
+    assert CONTROL_BLB_AT_THRESHOLD_LABEL in text
+    assert DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_LABEL.strip() in text
+    assert DISCORDANT_PLP_TO_BLB_AT_THRESHOLD_BENIGN_EXPERIMENTAL_LABEL.strip() in text
+    # BLB at threshold: 1 of 1 BLB controls (not 1 of 4 Total).
+    assert "1 of 1 (100.0%)" in text
+    # PLP-to-BLB discordances at threshold: 2 of 2 discordances (not 2 of 4 Total).
+    assert "2 of 2 (100.0%)" in text
+    # Of those, 1 of 2 combined benign experimental evidence with a damaging prediction.
+    assert "1 of 2 (50.0%)" in text
 
 
 def test_format_control_concordance_report(tmp_path):
@@ -3225,8 +3364,17 @@ def _write_missense_control_concordance_workbook(path):
     ]
     with pd.ExcelWriter(path) as writer:
         for suffix in ("REVEL", "AM", "MP2"):
+            # Neutral (all-zero) Total_Points_*/Fxn_points/Points_*_GeneSpecific_
+            # GenomeWide, same as _write_control_concordance_workbook -- needed
+            # for the -1-point diagnostics' column lookups, zero so they don't
+            # affect this fixture's existing hand-derived counts.
+            neutral_points = {
+                f"Total_Points_{suffix}": 0,
+                "Fxn_points": 0,
+                f"Points_{suffix}_GeneSpecific_GenomeWide": 0,
+            }
             clinvar_columns = ["clnsig_group_18_25", "OP_points", f"Class_{suffix}", SIMPLIFIED_CONSEQUENCE_COL, "Gene"]
-            pd.DataFrame(clinvar_rows, columns=clinvar_columns).to_excel(
+            pd.DataFrame(clinvar_rows, columns=clinvar_columns).assign(**neutral_points).to_excel(
                 writer, sheet_name=f"controls_{suffix}_GeneSpecific", index=False
             )
             clingen_columns = [
@@ -3236,7 +3384,7 @@ def _write_missense_control_concordance_workbook(path):
                 SIMPLIFIED_CONSEQUENCE_COL,
                 "Gene",
             ]
-            pd.DataFrame(clingen_rows, columns=clingen_columns).to_excel(
+            pd.DataFrame(clingen_rows, columns=clingen_columns).assign(**neutral_points).to_excel(
                 writer, sheet_name=f"ClinGen_Repo_{suffix}_GeneSpecific", index=False
             )
 
@@ -3314,12 +3462,17 @@ def test_format_control_concordance_report_missense_only(tmp_path):
     # gene-specific x 2 each for their own identical calibrated-only companion).
     assert "Genes" not in clinvar_section
     assert clinvar_section.count("2 of 3 (66.7%)") == 8
-    assert clinvar_section.count("1 of 3 (33.3%)") == 8 * 2  # Discordant + its PLP-to-BLB sub-column
+    # Discordant + its PLP-to-BLB sub-column, plus the two new Concordant
+    # directional sub-columns (1 PLP-concordant + 1 BLB-concordant row, same
+    # 1-of-3 shape as Discordant's own split).
+    assert clinvar_section.count("1 of 3 (33.3%)") == 8 * 4
 
     # ClinGen: same shape, plus Genes=2 and a PLP/BLB population split (2 of 3 / 1 of 3).
     assert "Genes" in clingen_section
     assert clingen_section.count("2 of 3 (66.7%)") == 8 * 2  # Concordant + PLP
-    assert clingen_section.count("1 of 3 (33.3%)") == 8 * 3  # Discordant + its PLP-to-BLB sub-column + BLB
+    # Discordant + its PLP-to-BLB sub-column + BLB, plus the two new Concordant
+    # directional sub-columns (same reasoning as ClinVar above).
+    assert clingen_section.count("1 of 3 (33.3%)") == 8 * 5
 
 
 def test_reclassification_flags_agree_disagree_and_no_evidence():

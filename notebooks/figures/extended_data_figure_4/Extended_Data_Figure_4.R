@@ -50,22 +50,17 @@ nature_theme <- theme_linedraw() +
 # Load main table -- keep_consequence = TRUE so panel a (condensed_assay_plot)
 # can overlay a Missense-only series on the aggregate ("All") one; every
 # other use below restricts back to Consequence == 'All' to stay unaffected.
-# 2026-10-07's export blanks LogOR/LogOR_LI/LogOR_UI for every row with <= 20
-# carrier cases or controls, which is exactly the data LOW_CARRIER_STYLE
-# below needs to draw -- so this stays on 2026-10-06_merged (confirmed to
-# still carry real values for those rows) rather than the newer export.
 or_df <- load_biobank_or_table(
-  "../../../data/input/biobank/AoU-OR-estimates_2026-10-06_merged.tsv.gz",
+  "../../../data/input/biobank/AoU-OR-estimates_2026-10-07.tsv.gz",
   keep_consequence = TRUE
 )
 
-# TSC2_IGVF has a real, non-NA odds ratio in this dataset (unlike the
-# 2026-10-07 export -- see the or_df comment above), but almost every one of
-# its ExCALIBR bins is built on <= 20 carriers (see SHOW_LOW_CARRIER_STYLE
-# below), so without that style on it reads as an ordinary, well-powered
-# gene rather than the mostly-unstable one it is. Off by default; pairs with
-# SHOW_LOW_CARRIER_STYLE = TRUE. Affects gene_groups_df, condensed_assay_datasets,
-# and figure_predictor_plot_df's gene filter below.
+# TSC2_IGVF has a non-NA odds ratio only in the older 2026-10-06_merged
+# export; under the current 2026-10-07 export it is NA, like every other
+# gene's <= 20-carrier ExCALIBR bins (see SHOW_LOW_CARRIER_STYLE below), so
+# flipping this on currently adds nothing but blank data. Off by default;
+# pairs with SHOW_LOW_CARRIER_STYLE = TRUE. Affects gene_groups_df,
+# condensed_assay_datasets, and figure_predictor_plot_df's gene filter below.
 INCLUDE_TSC2 <- FALSE
 
 # Broad gene-phenotype classes
@@ -315,7 +310,10 @@ SHOW_SAMPLE_SIZE_ANNOTATIONS <- FALSE
 # figure, which this mirrors) can be visually set apart rather than dropped.
 # Off by default; set to TRUE to draw those points with a thinner, dashed
 # CI (point/marker size is unchanged -- see low_carrier below and
-# geom_errorbar()/geom_pointrange() further down).
+# geom_errorbar()/geom_pointrange() further down). The current data source
+# (2026-10-07, see or_df above) blanks LogOR/LogOR_LI/LogOR_UI for every
+# low-carrier row, so turning this on currently has nothing to draw --
+# only the older 2026-10-06_merged export still carried real values there.
 SHOW_LOW_CARRIER_STYLE <- FALSE
 
 # Plain comma-grouped integer up to 9,999 (e.g. "1,410"); above that, one

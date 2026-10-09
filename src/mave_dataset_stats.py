@@ -2573,6 +2573,7 @@ def _compute_variant_classification_stats_for_predictor(workbook, predictor):
         at_threshold = is_benign & (df[points_col] == LIKELY_BENIGN_POINTS_THRESHOLD)
         single_source = (df[FUNCTIONAL_POINTS_COL] == 0) | (df[predictor_points_col] == 0)
         conflicting = df[conflicting_col] == CONFLICTING_EVIDENCE_VALUE
+        conflicting_benign_experimental = at_threshold & conflicting & (df[FUNCTIONAL_POINTS_COL] < 0)
         has_experimental = df[FUNCTIONAL_POINTS_COL] != 0
         has_predictive = df[predictor_points_col] != 0
         only_experimental = has_experimental & ~has_predictive
@@ -2591,6 +2592,7 @@ def _compute_variant_classification_stats_for_predictor(workbook, predictor):
             "resolved_benign_at_threshold": int(at_threshold.sum()),
             "resolved_benign_at_threshold_single_source": int((at_threshold & single_source).sum()),
             "resolved_benign_at_threshold_conflicting": int((at_threshold & conflicting).sum()),
+            "resolved_benign_at_threshold_conflicting_benign_experimental": int(conflicting_benign_experimental.sum()),
             "unresolved": int(is_unresolved.sum()),
             "unresolved_concordant": int((is_unresolved & both_evidence & ~conflicting).sum()),
             "unresolved_discordant": int((is_unresolved & both_evidence & conflicting).sum()),
@@ -2658,7 +2660,11 @@ def compute_variant_classification_stats(workbook):
       exclusive and exhaustive: `Total_Points_* == Fxn_points +
       Points_*_GeneSpecific_GenomeWide`, and two same-signed nonzero terms
       can't sum to a magnitude-1 total, so every -1-point row is either
-      single-source or conflicting, never both or neither.
+      single-source or conflicting, never both or neither. Of the conflicting
+      rows, a further count reports how many had benign-direction
+      experimental evidence (`Fxn_points < 0`, outweighed by a larger
+      positive predictor score) rather than pathogenic-direction
+      experimental evidence outweighed by a larger negative predictor score.
       Separately, `VUS` also reports how many variants are "unresolved" --
       still `Uncertain` after this pipeline -- and what percent of VUS that
       is, further split by the same evidence-source combination used above,
@@ -2759,6 +2765,9 @@ def format_variant_classification_table(stats_by_predictor, title=VARIANT_CLASSI
                 "  ...from only one source": _pct_col(f"{at_threshold_key}_single_source", at_threshold_key),
                 "  ...conflicting functional/predictive data": _pct_col(
                     f"{at_threshold_key}_conflicting", at_threshold_key
+                ),
+                "    ...with benign experimental evidence": _pct_col(
+                    f"{at_threshold_key}_conflicting_benign_experimental", f"{at_threshold_key}_conflicting"
                 ),
             },
             index=predictors,

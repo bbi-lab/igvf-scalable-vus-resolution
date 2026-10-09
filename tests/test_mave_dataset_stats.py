@@ -1453,13 +1453,16 @@ def test_cli_prints_table_and_writes_output(full_dataset_files, tmp_path):
     # unresolved rows at all. Unobserved: row 106 (Pathogenic, of 2 Unobserved) resolves pathogenic;
     # no Unobserved row resolves benign; row 107 (Uncertain, fxn 3/predictor 0) is the sole
     # unresolved Unobserved, experimental-only. Counts below were verified against the actual
-    # rendered table rather than hand-derived, given how many columns now overlap.
+    # rendered table rather than hand-derived, given how many columns now overlap. The
+    # "...with benign experimental evidence" sub-row adds one more all-zero "0 of 0 (nan%)"
+    # cell per predictor in each of the three "resolved" tables (VUS/gnomAD/Unobserved), since
+    # this fixture's rows never populate it.
     assert variant_classification_section.count("1 of 2 (50.0%)") == 9
     assert variant_classification_section.count("1 of 3 (33.3%)") == 12
     assert variant_classification_section.count("0 of 2 (0.0%)") == 6
     assert variant_classification_section.count("1 of 1 (100.0%)") == 33
     assert variant_classification_section.count("0 of 1 (0.0%)") == 66
-    assert variant_classification_section.count("0 of 0 (nan%)") == 51
+    assert variant_classification_section.count("0 of 0 (nan%)") == 60
 
     # Chi-squared section: gnomAD (1/1 PLP, 0/1 BLB), VUS (1/3 PLP, 1/3 BLB), and
     # Unobserved (1/2 PLP) from the same rows above -- every comparison's 2x2 table
@@ -3480,6 +3483,8 @@ def test_compute_variant_classification_stats(tmp_path):
         "vus_resolved_benign_at_threshold": 2,
         "vus_resolved_benign_at_threshold_single_source": 1,
         "vus_resolved_benign_at_threshold_conflicting": 1,
+        # row 108's experimental evidence (fxn +2) is pathogenic-direction, not benign.
+        "vus_resolved_benign_at_threshold_conflicting_benign_experimental": 0,
         # row 104 (fxn 2, predictor 0): experimental only. row 109 (fxn 2, predictor 3, both
         # same sign): concordant. row 110 (fxn 8, predictor -5, opposite signs): discordant.
         "vus_unresolved": 3,
@@ -3506,6 +3511,7 @@ def test_compute_variant_classification_stats(tmp_path):
         "gnomad_resolved_benign_at_threshold": 0,
         "gnomad_resolved_benign_at_threshold_single_source": 0,
         "gnomad_resolved_benign_at_threshold_conflicting": 0,
+        "gnomad_resolved_benign_at_threshold_conflicting_benign_experimental": 0,
         "gnomad_unresolved": 0,
         "gnomad_unresolved_concordant": 0,
         "gnomad_unresolved_discordant": 0,
@@ -3528,6 +3534,7 @@ def test_compute_variant_classification_stats(tmp_path):
         "unobserved_resolved_benign_at_threshold": 0,
         "unobserved_resolved_benign_at_threshold_single_source": 0,
         "unobserved_resolved_benign_at_threshold_conflicting": 0,
+        "unobserved_resolved_benign_at_threshold_conflicting_benign_experimental": 0,
         # row 107 (fxn 3, predictor 0), the sole unresolved Unobserved: experimental only.
         "unobserved_unresolved": 1,
         "unobserved_unresolved_concordant": 0,
@@ -3540,6 +3547,37 @@ def test_compute_variant_classification_stats(tmp_path):
     }
     for predictor in VARIANT_CLASSIFICATION_PREDICTORS:
         assert stats_by_predictor[predictor] == expected
+
+
+def test_compute_variant_classification_stats_conflicting_benign_experimental_split(tmp_path):
+    controls_path = tmp_path / "controls.xlsx"
+    _write_variant_classification_sheets_by_predictor(
+        controls_path,
+        {
+            "controls": [],
+            "ClinGen_Repo": [],
+            "VUS": [
+                # -1-point threshold, conflicting, benign-direction experimental
+                # evidence (fxn -3) outweighed by pathogenic-direction predictor
+                # points (+2).
+                ("GENEX", 1, 200, "A", "G", "Benign", -1, -3, 2),
+                # -1-point threshold, conflicting, pathogenic-direction experimental
+                # evidence (fxn +4) outweighed by benign-direction predictor
+                # points (-5).
+                ("GENEX", 1, 201, "A", "G", "Benign", -1, 4, -5),
+            ],
+            "gnomAD": [],
+            "Unobserved": [],
+        },
+        mode="w",
+    )
+
+    stats_by_predictor = compute_variant_classification_stats(pd.ExcelFile(controls_path))
+
+    for predictor in VARIANT_CLASSIFICATION_PREDICTORS:
+        stats = stats_by_predictor[predictor]
+        assert stats["vus_resolved_benign_at_threshold_conflicting"] == 2
+        assert stats["vus_resolved_benign_at_threshold_conflicting_benign_experimental"] == 1
 
 
 def _variant_classification_stats_by_predictor(stats):
@@ -3564,6 +3602,7 @@ def test_format_variant_classification_table():
         "vus_resolved_benign_at_threshold": 1,
         "vus_resolved_benign_at_threshold_single_source": 1,
         "vus_resolved_benign_at_threshold_conflicting": 0,
+        "vus_resolved_benign_at_threshold_conflicting_benign_experimental": 0,
         # vus_total (3) - vus_resolved (2) = 1 unresolved row, experimental-only.
         "vus_unresolved": 1,
         "vus_unresolved_concordant": 0,
@@ -3588,6 +3627,7 @@ def test_format_variant_classification_table():
         "gnomad_resolved_benign_at_threshold": 1,
         "gnomad_resolved_benign_at_threshold_single_source": 1,
         "gnomad_resolved_benign_at_threshold_conflicting": 0,
+        "gnomad_resolved_benign_at_threshold_conflicting_benign_experimental": 0,
         "gnomad_unresolved": 1,
         "gnomad_unresolved_concordant": 0,
         "gnomad_unresolved_discordant": 0,
@@ -3610,6 +3650,7 @@ def test_format_variant_classification_table():
         "unobserved_resolved_benign_at_threshold": 0,
         "unobserved_resolved_benign_at_threshold_single_source": 0,
         "unobserved_resolved_benign_at_threshold_conflicting": 0,
+        "unobserved_resolved_benign_at_threshold_conflicting_benign_experimental": 0,
         # unobserved_total (2) - unobserved_resolved (1) = 1 unresolved row, concordant.
         "unobserved_unresolved": 1,
         "unobserved_unresolved_concordant": 1,
@@ -3643,7 +3684,7 @@ def test_format_variant_classification_table():
     assert text.count("0 of 2 (0.0%)") == 6
     assert text.count("1 of 1 (100.0%)") == 36
     assert text.count("0 of 1 (0.0%)") == 84
-    assert text.count("0 of 0 (nan%)") == 15
+    assert text.count("0 of 0 (nan%)") == 24
 
 
 def test_format_variant_classification_table_uses_given_title():
@@ -3664,6 +3705,7 @@ def test_format_variant_classification_table_uses_given_title():
             "vus_resolved_benign_at_threshold",
             "vus_resolved_benign_at_threshold_single_source",
             "vus_resolved_benign_at_threshold_conflicting",
+            "vus_resolved_benign_at_threshold_conflicting_benign_experimental",
             "vus_unresolved",
             "vus_unresolved_concordant",
             "vus_unresolved_discordant",
@@ -3685,6 +3727,7 @@ def test_format_variant_classification_table_uses_given_title():
             "gnomad_resolved_benign_at_threshold",
             "gnomad_resolved_benign_at_threshold_single_source",
             "gnomad_resolved_benign_at_threshold_conflicting",
+            "gnomad_resolved_benign_at_threshold_conflicting_benign_experimental",
             "gnomad_unresolved",
             "gnomad_unresolved_concordant",
             "gnomad_unresolved_discordant",
@@ -3706,6 +3749,7 @@ def test_format_variant_classification_table_uses_given_title():
             "unobserved_resolved_benign_at_threshold",
             "unobserved_resolved_benign_at_threshold_single_source",
             "unobserved_resolved_benign_at_threshold_conflicting",
+            "unobserved_resolved_benign_at_threshold_conflicting_benign_experimental",
             "unobserved_unresolved",
             "unobserved_unresolved_concordant",
             "unobserved_unresolved_discordant",
@@ -3743,6 +3787,7 @@ def test_format_variant_classification_table_handles_zero_totals():
             "vus_resolved_benign_at_threshold",
             "vus_resolved_benign_at_threshold_single_source",
             "vus_resolved_benign_at_threshold_conflicting",
+            "vus_resolved_benign_at_threshold_conflicting_benign_experimental",
             "vus_unresolved",
             "vus_unresolved_concordant",
             "vus_unresolved_discordant",
@@ -3764,6 +3809,7 @@ def test_format_variant_classification_table_handles_zero_totals():
             "gnomad_resolved_benign_at_threshold",
             "gnomad_resolved_benign_at_threshold_single_source",
             "gnomad_resolved_benign_at_threshold_conflicting",
+            "gnomad_resolved_benign_at_threshold_conflicting_benign_experimental",
             "gnomad_unresolved",
             "gnomad_unresolved_concordant",
             "gnomad_unresolved_discordant",
@@ -3785,6 +3831,7 @@ def test_format_variant_classification_table_handles_zero_totals():
             "unobserved_resolved_benign_at_threshold",
             "unobserved_resolved_benign_at_threshold_single_source",
             "unobserved_resolved_benign_at_threshold_conflicting",
+            "unobserved_resolved_benign_at_threshold_conflicting_benign_experimental",
             "unobserved_unresolved",
             "unobserved_unresolved_concordant",
             "unobserved_unresolved_discordant",

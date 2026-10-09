@@ -481,6 +481,12 @@ Files included in this GitHub repository are:
 - Figure-generation scripts and notebooks
 - Small supporting inputs
 
+## License
+
+This project's own code is released under the [BSD 3-Clause
+License](LICENSE). See below for the licenses of third-party data files
+bundled in the repository.
+
 ## Third-Party Data & Licenses
 
 `data/input/genes/` bundles three external gene-level reference files used to

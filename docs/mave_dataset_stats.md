@@ -271,6 +271,10 @@ poetry run python -m src.mave_dataset_stats \
   [--output stats.txt]
 ```
 
+When `--output` is given, a Markdown rendering of the same report is also
+written alongside it (e.g. `stats.md`), for pasting into or citing from a
+Markdown-aware document.
+
 All arguments default to the paths above, so a bare invocation works from the
 repo root.
 

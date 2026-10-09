@@ -9,6 +9,8 @@ Examples:
   src/scripts/run_mave_dataset_stats.sh --output data/output/mave_dataset_stats.txt
 
 Notes:
+  - When --output is given, a Markdown rendering of the same report is also
+    written alongside it (same path, .md extension).
   - Defaults to data/output/maves/integrated_variant_effect_dataset.condensed.tsv.gz
     and data/output/supplementary_data/Supplementary_Data_3.xlsx (both bind-mounted
     at /usr/src/app since this service only reads locally-generated

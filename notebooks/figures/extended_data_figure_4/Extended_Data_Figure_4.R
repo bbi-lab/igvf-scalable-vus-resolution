@@ -206,7 +206,16 @@ figure_predictor_plot <- figure_predictor_plot_df %>%
     predictor_plot_df %>%
       filter(Gene == 'MSH2') %>%
       summarize(max(OR_UI))
-  )))
+  ))) +
+  # Pin every per-gene/per-dataset panel's x-axis (scales = 'free_x' above)
+  # to span at least 0.9-3.0, same broadcast-constant trick as the MSH2
+  # geom_blank just above: a scalar aes(x=...) with no `data` argument
+  # inherits figure_predictor_plot_df, so it's recycled across every row and
+  # lands one invisible point per existing Gene/Dataset facet. A panel whose
+  # real OR_LI/OR_UI already exceeds this range is unaffected; one narrower
+  # than it gets extended out to exactly 0.9 and/or 3.0.
+  geom_blank(aes(x = 0.9)) +
+  geom_blank(aes(x = 3.0))
 
 
 # Assay plot component
@@ -641,6 +650,18 @@ condensed_assay_plot <- ggplot(
     aes(linewidth = low_carrier & SHOW_LOW_CARRIER_STYLE, linetype = low_carrier & SHOW_LOW_CARRIER_STYLE),
     position = position_dodge(width=0.5), fill='white'
   ) +
+  # Pin every per-Disease/Gene panel's x-axis (facet_nested_wrap scales =
+  # 'free_x' above) to span at least Odds Ratio 0.9-3.0, same
+  # broadcast-constant geom_blank trick as figure_predictor_plot uses for its
+  # MSH2 panel above: a scalar aes(x=...) with no `data` argument inherits
+  # condensed_assay_plot_df, so it's recycled across every row and lands one
+  # invisible point per existing Disease/Gene facet. x is log10'd here (see
+  # this plot's own x aes above) since scale_x_continuous(), not
+  # scale_x_log10(), does the display work. A panel whose real OR_LI/OR_UI
+  # already exceeds this range is unaffected; one narrower than it gets
+  # extended out to exactly 0.9 and/or 3.0.
+  geom_blank(aes(x = log10(0.9))) +
+  geom_blank(aes(x = log10(3.0))) +
   # Sample-size annotation ("N cases" / "N controls"), positioned below
   # each panel's native gene-name strip -- in the room that strip's own
   # enlarged bottom margin reserves for it above -- rather than inside the

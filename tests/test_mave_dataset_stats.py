@@ -7,18 +7,24 @@ from click.testing import CliRunner
 
 from src.mave_dataset_stats import (
     AGREE_LABEL,
+    ANY_EVIDENCE_LABEL,
     BENIGN_VALUES,
     CALM_MERGED_LABEL,
     CLINGEN_EVIDENCE_REPOSITORY_TITLE,
     CLINVAR_CONFLICT_LABEL,
+    COMBINED_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR,
     COMBINED_EVIDENCE_LABEL_BY_PREDICTOR,
     COMBINED_REVEL_EVIDENCE_LABEL,
+    COMBINED_UNIVERSAL_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR,
     COMBINED_UNIVERSAL_EVIDENCE_LABEL_BY_PREDICTOR,
     COMPOSITE_SCORE_DATASETS_TITLE,
     CONCORDANT_LABEL,
     CONFLICTING_EVIDENCE_VALUE,
     CONTROL_BLB_LABEL,
+    CONTROL_CONCORDANCE_EVIDENCE_CALIBRATED_LABEL,
     CONTROL_CONCORDANCE_EVIDENCE_LABEL,
+    CONTROL_CONCORDANCE_SOURCES,
+    CONTROL_EVIDENCE_COVERAGE_TITLE,
     CONTROL_PLP_LABEL,
     CONTROL_VUS_LABEL,
     DISAGREE_LABEL,
@@ -36,6 +42,7 @@ from src.mave_dataset_stats import (
     MISSENSE_CONTROL_CONCORDANCE_TITLE,
     MUTPRED2_TRAINING_STEP_LABEL,
     NO_ANNOTATION_LABEL,
+    NO_EVIDENCE_AT_ALL_LABEL,
     NO_EVIDENCE_LABEL,
     PATHOGENIC_OR_BENIGN_LABEL,
     PATHOGENIC_VALUES,
@@ -45,6 +52,7 @@ from src.mave_dataset_stats import (
     SNV_LABEL,
     UNIVERSAL_CALIBRATION_CATEGORY_SHEETS_BY_PREDICTOR,
     UNIVERSAL_CALIBRATION_CLASS_COL_BY_PREDICTOR,
+    UNIVERSAL_PREDICTOR_POINTS_COL_BY_PREDICTOR,
     VARIANT_CLASSIFICATION_CATEGORY_SHEETS_BY_PREDICTOR,
     VARIANT_CLASSIFICATION_CHI_SQUARED_COMPARISONS,
     VARIANT_CLASSIFICATION_CHI_SQUARED_TITLE,
@@ -55,13 +63,18 @@ from src.mave_dataset_stats import (
     VARIANT_CLASSIFICATION_PREDICTORS,
     VARIANT_CLASSIFICATION_TITLE,
     VUS_LABEL,
+    _format_prose_lines,
+    _format_table_text,
+    _format_title,
     build_reclassification_report,
+    build_report_text,
     clinvar_classification_from_flags,
     clinvar_significance_flags,
     compute_all_stats,
     compute_clingen_evidence_repository_stats,
     compute_composite_score_datasets,
     compute_control_concordance,
+    compute_control_evidence_coverage,
     compute_excalibr_calibration_stats,
     compute_gene_discordance_stats,
     compute_igvf_dataset_measurement_counts,
@@ -78,6 +91,9 @@ from src.mave_dataset_stats import (
     format_clingen_evidence_repository_summary,
     format_composite_score_datasets,
     format_control_concordance_report,
+    format_control_evidence_coverage_report,
+    format_count_table,
+    format_gene_breakdown,
     format_gene_discordance_summary,
     format_genomic_variant_count,
     format_igvf_dataset_measurement_counts,
@@ -300,6 +316,7 @@ def _write_universal_calibration_sheets_by_predictor(path, mode="w"):
                         "Gene": "GENEX",
                         "clnsig_group_18_25": "Pathogenic",
                         "Updated_Classification_ClinGen_repo": None,
+                        "OP_points": 1,
                         class_col: "Pathogenic",
                         "simplified_consequence": "missense_variant",
                     }
@@ -311,6 +328,7 @@ def _write_universal_calibration_sheets_by_predictor(path, mode="w"):
                         "Gene": "GENEX",
                         "clnsig_group_18_25": None,
                         "Updated_Classification_ClinGen_repo": "Pathogenic",
+                        "OP_points": 1,
                         class_col: "Pathogenic",
                         "simplified_consequence": "missense_variant",
                     }
@@ -1408,6 +1426,18 @@ def test_cli_prints_table_and_writes_output(full_dataset_files, tmp_path):
     assert "Score coverage" in output_text
     assert "ClinVar 2025, except ClinVar 2018 for BRCA1/PTEN/MSH2/TP53" in output_text
 
+    # A Markdown sibling is written alongside --output, at the same path with
+    # a .md extension -- real ATX headings and `|`-delimited tables, not the
+    # text report dumped inside a code fence.
+    markdown_path = output_path.with_suffix(".md")
+    assert markdown_path.exists()
+    markdown_text = markdown_path.read_text()
+    assert markdown_text.strip() != ""
+    assert re.search(r"^##+ ", markdown_text, re.MULTILINE)
+    assert any(line.count("|") >= 2 for line in markdown_text.splitlines())
+    # The text report is unaffected by the Markdown report also being written.
+    assert output_path.read_text() == output_text
+
 
 def test_cli_allow_clinvar_conflicts_flag_toggles_conflict_handling(tmp_path):
     condensed_path = tmp_path / "condensed.tsv"
@@ -2351,10 +2381,21 @@ def _write_control_concordance_workbook(path):
     rows (GENEA x2, GENEB x2, GENEC x1), 2 distinct across the 3 ClinGen rows
     (GENEA x2, GENEB x1) -- reused identically across all three predictors'
     sheets, since every sheet shares the same rows here and only the
-    evidence columns (`OP_points`/`Class_*`) vary by predictor.
+    `Class_*` evidence column varies by predictor.
+
+    Every predictor's own sheet also carries `OP_points` -- real Supplementary
+    Data 5 gene-specific sheets carry it alongside their own `Class_*`
+    (see `compute_control_concordance`'s `COMBINED_EVIDENCE_CALIBRATED_LABEL_
+    BY_PREDICTOR` companion) -- reusing the REVEL sheet's own `OP_points`
+    values row-for-row, since it's the same underlying rows/datasets, just
+    with a different predictor's `Class_*` outcome. `clinvar_rows_revel`/
+    `clingen_rows_revel`'s row 5/row 3 (`OP_points=None`) is the one row each
+    predictor's calibrated-only companion drops.
     """
     clinvar_genes = ["GENEA", "GENEA", "GENEB", "GENEB", "GENEC"]
     clingen_genes = ["GENEA", "GENEA", "GENEB"]
+    clinvar_op_points = [2, -1, -1, 0, None]
+    clingen_op_points = [1, 1, None]
     clinvar_rows_revel = [
         # (clnsig_group_18_25, OP_points, Class_REVEL)
         ("Pathogenic", 2, "Pathogenic"),  # both concordant
@@ -2369,7 +2410,9 @@ def _write_control_concordance_workbook(path):
         ("Benign", 1, "Uncertain"),  # OddsPath discordant, combined VUS
         ("Likely Pathogenic", None, "Likely Benign"),  # OddsPath VUS, combined discordant
     ]
-    # AM: concordant=3, discordant=1, vus=1 (ClinVar); concordant=2, discordant=0, vus=1 (ClinGen)
+    # AM: concordant=3, discordant=1, vus=1 (ClinVar); concordant=2, discordant=0, vus=1 (ClinGen).
+    # Calibrated-only (row 5/ClinVar, row 3/ClinGen drop out): concordant=2,
+    # discordant=1, vus=1 (ClinVar); concordant=2, discordant=0, vus=0 (ClinGen).
     clinvar_rows_am = [
         ("Pathogenic", "Pathogenic"),
         ("Benign", "Benign"),
@@ -2382,7 +2425,10 @@ def _write_control_concordance_workbook(path):
         ("Benign", "Likely Benign"),
         ("Likely Pathogenic", "Uncertain"),
     ]
-    # MP2: concordant=2, discordant=2, vus=1 (ClinVar); concordant=2, discordant=1, vus=0 (ClinGen)
+    # MP2: concordant=2, discordant=2, vus=1 (ClinVar); concordant=2, discordant=1, vus=0 (ClinGen).
+    # Calibrated-only (row 5/ClinVar, row 3/ClinGen drop out): concordant=2,
+    # discordant=1 (BLB-to-PLP only), vus=1 (ClinVar); concordant=1,
+    # discordant=1 (ClinGen).
     clinvar_rows_mp2 = [
         ("Pathogenic", "Uncertain"),
         ("Benign", "Pathogenic"),
@@ -2396,30 +2442,38 @@ def _write_control_concordance_workbook(path):
         ("Likely Pathogenic", "Likely Pathogenic"),
     ]
 
-    def _with_genes(rows, genes):
+    def _with_gene(rows, genes):
+        # `rows` already embeds OP_points as its 2nd element (see
+        # clinvar_rows_revel/clingen_rows_revel above).
         return [(*row, gene) for row, gene in zip(rows, genes)]
+
+    def _with_op_and_gene(rows, op_points, genes):
+        return [(row[0], op, row[1], gene) for row, op, gene in zip(rows, op_points, genes)]
 
     with pd.ExcelWriter(path) as writer:
         pd.DataFrame(
-            _with_genes(clinvar_rows_revel, clinvar_genes), columns=["clnsig_group_18_25", "OP_points", "Class_REVEL", "Gene"]
+            _with_gene(clinvar_rows_revel, clinvar_genes),
+            columns=["clnsig_group_18_25", "OP_points", "Class_REVEL", "Gene"],
         ).to_excel(writer, sheet_name="controls_REVEL_GeneSpecific", index=False)
         pd.DataFrame(
-            _with_genes(clingen_rows_revel, clingen_genes),
+            _with_gene(clingen_rows_revel, clingen_genes),
             columns=["Updated_Classification_ClinGen_repo", "OP_points", "Class_REVEL", "Gene"],
         ).to_excel(writer, sheet_name="ClinGen_Repo_REVEL_GeneSpecific", index=False)
         pd.DataFrame(
-            _with_genes(clinvar_rows_am, clinvar_genes), columns=["clnsig_group_18_25", "Class_AM", "Gene"]
+            _with_op_and_gene(clinvar_rows_am, clinvar_op_points, clinvar_genes),
+            columns=["clnsig_group_18_25", "OP_points", "Class_AM", "Gene"],
         ).to_excel(writer, sheet_name="controls_AM_GeneSpecific", index=False)
         pd.DataFrame(
-            _with_genes(clingen_rows_am, clingen_genes),
-            columns=["Updated_Classification_ClinGen_repo", "Class_AM", "Gene"],
+            _with_op_and_gene(clingen_rows_am, clingen_op_points, clingen_genes),
+            columns=["Updated_Classification_ClinGen_repo", "OP_points", "Class_AM", "Gene"],
         ).to_excel(writer, sheet_name="ClinGen_Repo_AM_GeneSpecific", index=False)
         pd.DataFrame(
-            _with_genes(clinvar_rows_mp2, clinvar_genes), columns=["clnsig_group_18_25", "Class_MP2", "Gene"]
+            _with_op_and_gene(clinvar_rows_mp2, clinvar_op_points, clinvar_genes),
+            columns=["clnsig_group_18_25", "OP_points", "Class_MP2", "Gene"],
         ).to_excel(writer, sheet_name="controls_MP2_GeneSpecific", index=False)
         pd.DataFrame(
-            _with_genes(clingen_rows_mp2, clingen_genes),
-            columns=["Updated_Classification_ClinGen_repo", "Class_MP2", "Gene"],
+            _with_op_and_gene(clingen_rows_mp2, clingen_op_points, clingen_genes),
+            columns=["Updated_Classification_ClinGen_repo", "OP_points", "Class_MP2", "Gene"],
         ).to_excel(writer, sheet_name="ClinGen_Repo_MP2_GeneSpecific", index=False)
 
 
@@ -2440,6 +2494,19 @@ def test_compute_control_concordance_clinvar_and_clingen(tmp_path):
     # GENEA, GENEB, GENEC across the 5 ClinVar rows.
     assert clinvar_oddspath_genes == 3
 
+    # Calibrated-only companion: row 5 (OP_points=None) drops out, leaving
+    # rows 1-4 -- row 4's OP_points=0 still counts as calibrated (a real "no
+    # evidence" call), unlike row 5's missing calibration.
+    clinvar_calibrated_total, clinvar_calibrated_table, clinvar_calibrated_genes = concordance[
+        ("ClinVar", CONTROL_CONCORDANCE_EVIDENCE_CALIBRATED_LABEL)
+    ]
+    assert clinvar_calibrated_total == 4
+    assert clinvar_calibrated_table.loc[CONCORDANT_LABEL, "count"] == 2
+    assert clinvar_calibrated_table.loc[DISCORDANT_LABEL, "count"] == 1
+    assert clinvar_calibrated_table.loc[CONTROL_VUS_LABEL, "count"] == 1
+    # GENEC (row 5) drops out, leaving GENEA, GENEB.
+    assert clinvar_calibrated_genes == 2
+
     clinvar_combined_total, clinvar_combined_table, _clinvar_combined_genes = concordance[
         ("ClinVar", COMBINED_REVEL_EVIDENCE_LABEL)
     ]
@@ -2447,6 +2514,21 @@ def test_compute_control_concordance_clinvar_and_clingen(tmp_path):
     assert clinvar_combined_table.loc[CONCORDANT_LABEL, "count"] == 3
     assert clinvar_combined_table.loc[DISCORDANT_LABEL, "count"] == 1
     assert clinvar_combined_table.loc[CONTROL_VUS_LABEL, "count"] == 1
+
+    # Gene-specific calibrated-only companion (same population restriction as
+    # CONTROL_CONCORDANCE_EVIDENCE_CALIBRATED_LABEL above, still combined with
+    # REVEL's own Class_REVEL, not swapped for OP_points): row 5 drops out,
+    # leaving rows 1, 3, 4 (still concordant) and row 2 (still VUS) -- row 5
+    # was the sole discordant row.
+    revel_calibrated_label = COMBINED_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR["REVEL"]
+    clinvar_revel_calibrated_total, clinvar_revel_calibrated_table, clinvar_revel_calibrated_genes = concordance[
+        ("ClinVar", revel_calibrated_label)
+    ]
+    assert clinvar_revel_calibrated_total == 4
+    assert clinvar_revel_calibrated_table.loc[CONCORDANT_LABEL, "count"] == 3
+    assert clinvar_revel_calibrated_table.loc[DISCORDANT_LABEL, "count"] == 0
+    assert clinvar_revel_calibrated_table.loc[CONTROL_VUS_LABEL, "count"] == 1
+    assert clinvar_revel_calibrated_genes == 2
 
     clingen_oddspath_total, clingen_oddspath_table, clingen_oddspath_genes = concordance[
         ("ClinGen", CONTROL_CONCORDANCE_EVIDENCE_LABEL)
@@ -2461,6 +2543,17 @@ def test_compute_control_concordance_clinvar_and_clingen(tmp_path):
     assert clingen_oddspath_table.loc[CONTROL_PLP_LABEL, "count"] == 2
     assert clingen_oddspath_table.loc[CONTROL_BLB_LABEL, "count"] == 1
 
+    # Calibrated-only companion: row 3 (OP_points=None) drops out, leaving
+    # rows 1-2 -- both GENEA, so genes drops from 2 to 1.
+    clingen_calibrated_total, clingen_calibrated_table, clingen_calibrated_genes = concordance[
+        ("ClinGen", CONTROL_CONCORDANCE_EVIDENCE_CALIBRATED_LABEL)
+    ]
+    assert clingen_calibrated_total == 2
+    assert clingen_calibrated_table.loc[CONCORDANT_LABEL, "count"] == 1
+    assert clingen_calibrated_table.loc[DISCORDANT_LABEL, "count"] == 1
+    assert clingen_calibrated_table.loc[CONTROL_VUS_LABEL, "count"] == 0
+    assert clingen_calibrated_genes == 1
+
     clingen_combined_total, clingen_combined_table, clingen_combined_genes = concordance[
         ("ClinGen", COMBINED_REVEL_EVIDENCE_LABEL)
     ]
@@ -2472,12 +2565,34 @@ def test_compute_control_concordance_clinvar_and_clingen(tmp_path):
     assert clingen_combined_table.loc[CONTROL_PLP_LABEL, "count"] == 2
     assert clingen_combined_table.loc[CONTROL_BLB_LABEL, "count"] == 1
 
+    # Row 3 (OP_points=None) drops out, leaving rows 1 (concordant) and 2 (VUS)
+    # -- row 3 was the sole discordant row.
+    clingen_revel_calibrated_total, clingen_revel_calibrated_table, clingen_revel_calibrated_genes = concordance[
+        ("ClinGen", revel_calibrated_label)
+    ]
+    assert clingen_revel_calibrated_total == 2
+    assert clingen_revel_calibrated_table.loc[CONCORDANT_LABEL, "count"] == 1
+    assert clingen_revel_calibrated_table.loc[DISCORDANT_LABEL, "count"] == 0
+    assert clingen_revel_calibrated_table.loc[CONTROL_VUS_LABEL, "count"] == 1
+    assert clingen_revel_calibrated_genes == 1
+
     am_label = COMBINED_EVIDENCE_LABEL_BY_PREDICTOR["AlphaMissense"]
     clinvar_am_total, clinvar_am_table, _clinvar_am_genes = concordance[("ClinVar", am_label)]
     assert clinvar_am_total == 5
     assert clinvar_am_table.loc[CONCORDANT_LABEL, "count"] == 3
     assert clinvar_am_table.loc[DISCORDANT_LABEL, "count"] == 1
     assert clinvar_am_table.loc[CONTROL_VUS_LABEL, "count"] == 1
+
+    # Calibrated-only companion (row 5 drops out): row 5 was one of AM's 3
+    # concordant rows, so concordant drops from 3 to 2; discordant/VUS unchanged.
+    am_calibrated_label = COMBINED_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR["AlphaMissense"]
+    clinvar_am_calibrated_total, clinvar_am_calibrated_table, _clinvar_am_calibrated_genes = concordance[
+        ("ClinVar", am_calibrated_label)
+    ]
+    assert clinvar_am_calibrated_total == 4
+    assert clinvar_am_calibrated_table.loc[CONCORDANT_LABEL, "count"] == 2
+    assert clinvar_am_calibrated_table.loc[DISCORDANT_LABEL, "count"] == 1
+    assert clinvar_am_calibrated_table.loc[CONTROL_VUS_LABEL, "count"] == 1
 
     clingen_am_total, clingen_am_table, clingen_am_genes = concordance[("ClinGen", am_label)]
     assert clingen_am_total == 3
@@ -2487,6 +2602,17 @@ def test_compute_control_concordance_clinvar_and_clingen(tmp_path):
     assert clingen_am_genes == 2
     assert clingen_am_table.loc[CONTROL_PLP_LABEL, "count"] == 2
     assert clingen_am_table.loc[CONTROL_BLB_LABEL, "count"] == 1
+
+    # Row 3 (OP_points=None) drops out -- row 3 was AM's sole VUS row, so this
+    # calibrated companion is concordant=2, discordant=0, vus=0.
+    clingen_am_calibrated_total, clingen_am_calibrated_table, clingen_am_calibrated_genes = concordance[
+        ("ClinGen", am_calibrated_label)
+    ]
+    assert clingen_am_calibrated_total == 2
+    assert clingen_am_calibrated_table.loc[CONCORDANT_LABEL, "count"] == 2
+    assert clingen_am_calibrated_table.loc[DISCORDANT_LABEL, "count"] == 0
+    assert clingen_am_calibrated_table.loc[CONTROL_VUS_LABEL, "count"] == 0
+    assert clingen_am_calibrated_genes == 1
 
     mp2_label = COMBINED_EVIDENCE_LABEL_BY_PREDICTOR["MutPred2"]
     clinvar_mp2_total, clinvar_mp2_table, _clinvar_mp2_genes = concordance[("ClinVar", mp2_label)]
@@ -2499,6 +2625,19 @@ def test_compute_control_concordance_clinvar_and_clingen(tmp_path):
     assert clinvar_mp2_table.loc[DISCORDANT_CONTROL_PLP_TO_EVIDENCE_BLB_LABEL, "count"] == 1
     assert clinvar_mp2_table.loc[DISCORDANT_CONTROL_BLB_TO_EVIDENCE_PLP_LABEL, "count"] == 1
 
+    # Calibrated-only companion (row 5 drops out): row 5 was the sole
+    # PLP-to-BLB discordance, so only the BLB-to-PLP one (row 2) remains.
+    mp2_calibrated_label = COMBINED_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR["MutPred2"]
+    clinvar_mp2_calibrated_total, clinvar_mp2_calibrated_table, _clinvar_mp2_calibrated_genes = concordance[
+        ("ClinVar", mp2_calibrated_label)
+    ]
+    assert clinvar_mp2_calibrated_total == 4
+    assert clinvar_mp2_calibrated_table.loc[CONCORDANT_LABEL, "count"] == 2
+    assert clinvar_mp2_calibrated_table.loc[DISCORDANT_LABEL, "count"] == 1
+    assert clinvar_mp2_calibrated_table.loc[DISCORDANT_CONTROL_PLP_TO_EVIDENCE_BLB_LABEL, "count"] == 0
+    assert clinvar_mp2_calibrated_table.loc[DISCORDANT_CONTROL_BLB_TO_EVIDENCE_PLP_LABEL, "count"] == 1
+    assert clinvar_mp2_calibrated_table.loc[CONTROL_VUS_LABEL, "count"] == 1
+
     clingen_mp2_total, clingen_mp2_table, clingen_mp2_genes = concordance[("ClinGen", mp2_label)]
     assert clingen_mp2_total == 3
     assert clingen_mp2_genes == 2
@@ -2507,6 +2646,16 @@ def test_compute_control_concordance_clinvar_and_clingen(tmp_path):
     assert clingen_mp2_table.loc[CONCORDANT_LABEL, "count"] == 2
     assert clingen_mp2_table.loc[DISCORDANT_LABEL, "count"] == 1
     assert clingen_mp2_table.loc[CONTROL_VUS_LABEL, "count"] == 0
+
+    # Row 3 (OP_points=None) drops out -- row 3 was one of MP2's 2 concordant
+    # rows, so this calibrated companion is concordant=1, discordant=1 (unchanged).
+    clingen_mp2_calibrated_total, clingen_mp2_calibrated_table, clingen_mp2_calibrated_genes = concordance[
+        ("ClinGen", mp2_calibrated_label)
+    ]
+    assert clingen_mp2_calibrated_total == 2
+    assert clingen_mp2_calibrated_table.loc[CONCORDANT_LABEL, "count"] == 1
+    assert clingen_mp2_calibrated_table.loc[DISCORDANT_LABEL, "count"] == 1
+    assert clingen_mp2_calibrated_genes == 1
 
 
 def test_format_control_concordance_report(tmp_path):
@@ -2523,9 +2672,20 @@ def test_format_control_concordance_report(tmp_path):
     assert "ClinVar controls (controls_*_GeneSpecific sheets):" in text
     assert "ClinGen controls (ClinGen_Repo_*_GeneSpecific sheets):" in text
     assert CONTROL_CONCORDANCE_EVIDENCE_LABEL in text
+    assert CONTROL_CONCORDANCE_EVIDENCE_CALIBRATED_LABEL in text
+    # The calibrated-only row is rendered immediately after its unrestricted
+    # counterpart.
+    assert text.index(CONTROL_CONCORDANCE_EVIDENCE_LABEL) < text.index(CONTROL_CONCORDANCE_EVIDENCE_CALIBRATED_LABEL)
     assert COMBINED_REVEL_EVIDENCE_LABEL in text
     assert COMBINED_EVIDENCE_LABEL_BY_PREDICTOR["AlphaMissense"] in text
     assert COMBINED_EVIDENCE_LABEL_BY_PREDICTOR["MutPred2"] in text
+    # Each predictor's gene-specific-calibrated companion is rendered
+    # immediately after its own unrestricted row.
+    for predictor in VARIANT_CLASSIFICATION_PREDICTORS:
+        gene_specific_label = COMBINED_EVIDENCE_LABEL_BY_PREDICTOR[predictor]
+        gene_specific_calibrated_label = COMBINED_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR[predictor]
+        assert gene_specific_calibrated_label in text
+        assert text.index(gene_specific_label) < text.index(gene_specific_calibrated_label)
     # ClinVar/OddsPath row: 2 concordant of 5 total.
     assert "2 of 5 (40.0%)" in text
     # ClinGen/AlphaMissense row: 2 concordant of 3 total.
@@ -2552,9 +2712,22 @@ def _write_universal_control_concordance_workbook(path):
     `UNIVERSAL_CALIBRATION_CLASS_COL_BY_PREDICTOR` column. Deliberately
     different concordance patterns from `_write_control_concordance_workbook`
     (which a test reading the wrong workbook/column would fail to reproduce).
+
+    Each sheet also carries `OP_points` -- the same raw-OddsPath-evidence
+    column real Supplementary Data 6 sheets carry alongside `Class_OP_*` --
+    for the `COMBINED_UNIVERSAL_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR`
+    companion row: `clinvar_op_points`/`clingen_op_points` are reused
+    identically across all three predictors' sheets (same underlying rows),
+    with `None` on rows 2 and 4 (ClinVar) / row 2 (ClinGen) -- deliberately
+    spanning concordant, discordant, and VUS rows, not just VUS ones, so the
+    calibrated-only restriction is shown to drop rows regardless of their
+    `Class_OP_*`-derived outcome, and row 5's `OP_points=0` is kept (a real
+    calibration that assigns no evidence, unlike a missing one).
     """
     clinvar_genes = ["GENEA", "GENEA", "GENEB", "GENEB", "GENEC"]
     clingen_genes = ["GENEA", "GENEA", "GENEB"]
+    clinvar_op_points = [3, None, -2, None, 0]
+    clingen_op_points = [1, None, -1]
     # REVEL universal: concordant=2, discordant=1, vus=2 (ClinVar); concordant=2, discordant=0, vus=1 (ClinGen)
     clinvar_rows_revel = [
         ("Pathogenic", "Pathogenic"),
@@ -2595,33 +2768,36 @@ def _write_universal_control_concordance_workbook(path):
         ("Likely Pathogenic", "Likely Pathogenic"),
     ]
 
-    def _with_genes(rows, genes):
-        return [(*row, gene) for row, gene in zip(rows, genes)]
+    def _with_op_and_gene(rows, op_points, genes):
+        return [(row[0], op, row[1], gene) for row, op, gene in zip(rows, op_points, genes)]
 
     def _sheet(predictor, category):
         return UNIVERSAL_CALIBRATION_CATEGORY_SHEETS_BY_PREDICTOR[predictor][category]
 
     with pd.ExcelWriter(path) as writer:
         pd.DataFrame(
-            _with_genes(clinvar_rows_revel, clinvar_genes), columns=["clnsig_group_18_25", "Class_OP_REVEL", "Gene"]
+            _with_op_and_gene(clinvar_rows_revel, clinvar_op_points, clinvar_genes),
+            columns=["clnsig_group_18_25", "OP_points", "Class_OP_REVEL", "Gene"],
         ).to_excel(writer, sheet_name=_sheet("REVEL", "controls"), index=False)
         pd.DataFrame(
-            _with_genes(clingen_rows_revel, clingen_genes),
-            columns=["Updated_Classification_ClinGen_repo", "Class_OP_REVEL", "Gene"],
+            _with_op_and_gene(clingen_rows_revel, clingen_op_points, clingen_genes),
+            columns=["Updated_Classification_ClinGen_repo", "OP_points", "Class_OP_REVEL", "Gene"],
         ).to_excel(writer, sheet_name=_sheet("REVEL", "ClinGen_Repo"), index=False)
         pd.DataFrame(
-            _with_genes(clinvar_rows_am, clinvar_genes), columns=["clnsig_group_18_25", "Class_OP_AM", "Gene"]
+            _with_op_and_gene(clinvar_rows_am, clinvar_op_points, clinvar_genes),
+            columns=["clnsig_group_18_25", "OP_points", "Class_OP_AM", "Gene"],
         ).to_excel(writer, sheet_name=_sheet("AlphaMissense", "controls"), index=False)
         pd.DataFrame(
-            _with_genes(clingen_rows_am, clingen_genes),
-            columns=["Updated_Classification_ClinGen_repo", "Class_OP_AM", "Gene"],
+            _with_op_and_gene(clingen_rows_am, clingen_op_points, clingen_genes),
+            columns=["Updated_Classification_ClinGen_repo", "OP_points", "Class_OP_AM", "Gene"],
         ).to_excel(writer, sheet_name=_sheet("AlphaMissense", "ClinGen_Repo"), index=False)
         pd.DataFrame(
-            _with_genes(clinvar_rows_mp2, clinvar_genes), columns=["clnsig_group_18_25", "Class_OP_MP2", "Gene"]
+            _with_op_and_gene(clinvar_rows_mp2, clinvar_op_points, clinvar_genes),
+            columns=["clnsig_group_18_25", "OP_points", "Class_OP_MP2", "Gene"],
         ).to_excel(writer, sheet_name=_sheet("MutPred2", "controls"), index=False)
         pd.DataFrame(
-            _with_genes(clingen_rows_mp2, clingen_genes),
-            columns=["Updated_Classification_ClinGen_repo", "Class_OP_MP2", "Gene"],
+            _with_op_and_gene(clingen_rows_mp2, clingen_op_points, clingen_genes),
+            columns=["Updated_Classification_ClinGen_repo", "OP_points", "Class_OP_MP2", "Gene"],
         ).to_excel(writer, sheet_name=_sheet("MutPred2", "ClinGen_Repo"), index=False)
 
 
@@ -2648,6 +2824,26 @@ def test_compute_control_concordance_with_universal_workbook(tmp_path):
     assert clingen_table.loc[CONTROL_VUS_LABEL, "count"] == 1
     assert clingen_genes == 2
 
+    # Calibrated-only companion: OP_points=None on rows 2 and 4 (ClinVar) /
+    # row 2 (ClinGen) drops those rows regardless of their own
+    # Class_OP_REVEL-derived concordant/discordant/VUS outcome.
+    revel_universal_calibrated_label = COMBINED_UNIVERSAL_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR["REVEL"]
+    clinvar_calibrated_total, clinvar_calibrated_table, clinvar_calibrated_genes = concordance[
+        ("ClinVar", revel_universal_calibrated_label)
+    ]
+    assert clinvar_calibrated_total == 3
+    assert clinvar_calibrated_table.loc[CONCORDANT_LABEL, "count"] == 1
+    assert clinvar_calibrated_table.loc[DISCORDANT_LABEL, "count"] == 1
+    assert clinvar_calibrated_table.loc[CONTROL_VUS_LABEL, "count"] == 1
+
+    clingen_calibrated_total, clingen_calibrated_table, _clingen_calibrated_genes = concordance[
+        ("ClinGen", revel_universal_calibrated_label)
+    ]
+    assert clingen_calibrated_total == 2
+    assert clingen_calibrated_table.loc[CONCORDANT_LABEL, "count"] == 1
+    assert clingen_calibrated_table.loc[DISCORDANT_LABEL, "count"] == 0
+    assert clingen_calibrated_table.loc[CONTROL_VUS_LABEL, "count"] == 1
+
     am_label = COMBINED_UNIVERSAL_EVIDENCE_LABEL_BY_PREDICTOR["AlphaMissense"]
     clinvar_am_total, clinvar_am_table, _clinvar_am_genes = concordance[("ClinVar", am_label)]
     assert clinvar_am_total == 5
@@ -2666,6 +2862,7 @@ def test_compute_control_concordance_with_universal_workbook(tmp_path):
     # Without universal_workbook (the default), no universal-evidence keys are computed at all.
     gene_specific_only = compute_control_concordance(pd.ExcelFile(path))
     assert ("ClinVar", revel_universal_label) not in gene_specific_only
+    assert ("ClinVar", revel_universal_calibrated_label) not in gene_specific_only
 
 
 def test_format_control_concordance_report_includes_universal_rows(tmp_path):
@@ -2679,11 +2876,19 @@ def test_format_control_concordance_report_includes_universal_rows(tmp_path):
 
     for predictor in VARIANT_CLASSIFICATION_PREDICTORS:
         gene_specific_label = COMBINED_EVIDENCE_LABEL_BY_PREDICTOR[predictor]
+        gene_specific_calibrated_label = COMBINED_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR[predictor]
         universal_label = COMBINED_UNIVERSAL_EVIDENCE_LABEL_BY_PREDICTOR[predictor]
+        universal_calibrated_label = COMBINED_UNIVERSAL_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR[predictor]
+        assert gene_specific_calibrated_label in text
         assert universal_label in text
-        # Each predictor's universal row is rendered immediately after its own
-        # gene-specific row.
-        assert text.index(gene_specific_label) < text.index(universal_label)
+        assert universal_calibrated_label in text
+        # Each predictor's rows render in order: gene-specific, its own
+        # calibrated-only companion, universal, universal's calibrated-only
+        # companion -- so the gene-specific-calibrated and universal-calibrated
+        # rows (same population, same predictor) are directly comparable.
+        assert text.index(gene_specific_label) < text.index(gene_specific_calibrated_label)
+        assert text.index(gene_specific_calibrated_label) < text.index(universal_label)
+        assert text.index(universal_label) < text.index(universal_calibrated_label)
 
     # Without a universal_workbook, compute_control_concordance never produces
     # universal-evidence keys, so format_control_concordance_report shows none
@@ -2691,6 +2896,224 @@ def test_format_control_concordance_report_includes_universal_rows(tmp_path):
     gene_specific_only_text = format_control_concordance_report(compute_control_concordance(pd.ExcelFile(path)))
     for predictor in VARIANT_CLASSIFICATION_PREDICTORS:
         assert COMBINED_UNIVERSAL_EVIDENCE_LABEL_BY_PREDICTOR[predictor] not in gene_specific_only_text
+        assert COMBINED_UNIVERSAL_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR[predictor] not in gene_specific_only_text
+
+
+# CONTROL_CONCORDANCE_SOURCES restricted to ClinVar -- every fixture below
+# only writes "controls" category sheets (no "ClinGen_Repo" ones), so
+# compute_control_evidence_coverage's per-predictor sheet lookups need
+# control_sources narrowed to match, same as compute_control_concordance's
+# tests would if they didn't also write ClinGen_Repo sheets.
+_CLINVAR_ONLY_CONTROL_SOURCE = {"ClinVar": CONTROL_CONCORDANCE_SOURCES["ClinVar"]}
+
+
+def _write_control_evidence_coverage_workbook(path):
+    """One `controls_<predictor>_GeneSpecific` sheet per predictor (REVEL,
+    AlphaMissense, MutPred2), each with the same 4 rows exercising every
+    combination of functional (`Fxn_points`)/predictive (that predictor's own
+    gene-specific points column) evidence:
+
+    - row 1 (GENEA): both zero -- no evidence at all.
+    - row 2 (GENEA): functional only (-3) -- enough on its own to classify
+      Benign under `compute_control_concordance`.
+    - row 3 (GENEB): predictive only (+2) -- *not* enough to classify (the
+      Uncertain range is 0-5, see `LIKELY_PATHOGENIC_POINTS_THRESHOLD`), so
+      `compute_control_concordance` would count this row as `VUS`, but it
+      still received evidence, which is the distinction this section exists
+      to surface.
+    - row 4 (GENEC): both nonzero (-4, -3) -- classifies Benign.
+
+    3 distinct genes (GENEA x2, GENEB, GENEC).
+
+    Also carries `OP_points` -- real Supplementary Data 5 gene-specific
+    sheets carry it alongside `Fxn_points` (see
+    `compute_control_evidence_coverage`'s `COMBINED_EVIDENCE_CALIBRATED_
+    LABEL_BY_PREDICTOR` companion) -- non-null on rows 1-3, `None` on row 4,
+    so the calibrated-only companion drops row 4 (GENEC) despite its nonzero
+    evidence.
+    """
+    columns = ["clnsig_group_18_25", "Gene", "Fxn_points", "predictor_points", "OP_points"]
+    rows = [
+        ("Pathogenic", "GENEA", 0, 0, 0),
+        ("Benign", "GENEA", -3, 0, -3),
+        ("Pathogenic", "GENEB", 0, 2, 0),
+        ("Likely benign", "GENEC", -4, -3, None),
+    ]
+    with pd.ExcelWriter(path) as writer:
+        for predictor in VARIANT_CLASSIFICATION_PREDICTORS:
+            sheets = VARIANT_CLASSIFICATION_CATEGORY_SHEETS_BY_PREDICTOR[predictor]
+            predictor_points_col = VARIANT_CLASSIFICATION_PREDICTOR_POINTS_COL_BY_PREDICTOR[predictor]
+            df = pd.DataFrame(rows, columns=columns).rename(columns={"predictor_points": predictor_points_col})
+            df.to_excel(writer, sheet_name=sheets["controls"], index=False)
+
+
+def _write_universal_control_evidence_coverage_workbook(path):
+    """One `controls_<predictor>_OP` sheet per predictor, the same 4 rows as
+    `_write_control_evidence_coverage_workbook` (functional side now
+    `OP_points`, predictive side that predictor's own
+    `UNIVERSAL_PREDICTOR_POINTS_COL_BY_PREDICTOR` column), plus a 5th row
+    (GENED) with `OP_points=None` -- an assay-dataset lacking its own
+    OddsPath calibration, dropped by the
+    `COMBINED_UNIVERSAL_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR` companion
+    (see `compute_control_evidence_coverage`) despite having nonzero
+    predictive evidence (+2) of its own.
+    """
+    columns = ["clnsig_group_18_25", "Gene", "OP_points", "predictor_points"]
+    rows = [
+        ("Pathogenic", "GENEA", 0, 0),
+        ("Benign", "GENEA", -3, 0),
+        ("Pathogenic", "GENEB", 0, 2),
+        ("Likely benign", "GENEC", -4, -3),
+        ("Pathogenic", "GENED", None, 2),
+    ]
+    with pd.ExcelWriter(path) as writer:
+        for predictor in VARIANT_CLASSIFICATION_PREDICTORS:
+            sheets = UNIVERSAL_CALIBRATION_CATEGORY_SHEETS_BY_PREDICTOR[predictor]
+            predictor_points_col = UNIVERSAL_PREDICTOR_POINTS_COL_BY_PREDICTOR[predictor]
+            df = pd.DataFrame(rows, columns=columns).rename(columns={"predictor_points": predictor_points_col})
+            df.to_excel(writer, sheet_name=sheets["controls"], index=False)
+
+
+def test_compute_control_evidence_coverage_gene_specific(tmp_path):
+    path = tmp_path / "controls.xlsx"
+    _write_control_evidence_coverage_workbook(path)
+
+    coverage = compute_control_evidence_coverage(pd.ExcelFile(path), control_sources=_CLINVAR_ONLY_CONTROL_SOURCE)
+
+    for predictor in VARIANT_CLASSIFICATION_PREDICTORS:
+        total, table, n_genes = coverage[("ClinVar", COMBINED_EVIDENCE_LABEL_BY_PREDICTOR[predictor])]
+        assert total == 4
+        assert table.loc[ANY_EVIDENCE_LABEL, "count"] == 3
+        assert table.loc[NO_EVIDENCE_AT_ALL_LABEL, "count"] == 1
+        assert table.loc[ANY_EVIDENCE_LABEL, "pct"] == pytest.approx(75.0)
+        assert n_genes == 3
+
+        # Calibrated-only companion: row 4 (GENEC, OP_points=None) drops out,
+        # leaving rows 1-3 -- row 4 was one of the 3 any-evidence rows, so
+        # any-evidence drops from 3 to 2; the no-evidence row (row 1) is
+        # unaffected.
+        calibrated_total, calibrated_table, calibrated_genes = coverage[
+            ("ClinVar", COMBINED_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR[predictor])
+        ]
+        assert calibrated_total == 3
+        assert calibrated_table.loc[ANY_EVIDENCE_LABEL, "count"] == 2
+        assert calibrated_table.loc[NO_EVIDENCE_AT_ALL_LABEL, "count"] == 1
+        assert calibrated_genes == 2
+
+
+def test_format_control_evidence_coverage_report(tmp_path):
+    path = tmp_path / "controls.xlsx"
+    _write_control_evidence_coverage_workbook(path)
+
+    coverage = compute_control_evidence_coverage(pd.ExcelFile(path), control_sources=_CLINVAR_ONLY_CONTROL_SOURCE)
+    text = format_control_evidence_coverage_report(coverage, control_sources=_CLINVAR_ONLY_CONTROL_SOURCE)
+
+    assert text.startswith(CONTROL_EVIDENCE_COVERAGE_TITLE)
+    assert "ClinVar controls (controls_*_GeneSpecific sheets):" in text
+    assert COMBINED_REVEL_EVIDENCE_LABEL in text
+    assert COMBINED_EVIDENCE_LABEL_BY_PREDICTOR["AlphaMissense"] in text
+    assert COMBINED_EVIDENCE_LABEL_BY_PREDICTOR["MutPred2"] in text
+    assert ANY_EVIDENCE_LABEL in text
+    assert NO_EVIDENCE_AT_ALL_LABEL in text
+    assert "3 of 4 (75.0%)" in text
+    for predictor in VARIANT_CLASSIFICATION_PREDICTORS:
+        gene_specific_label = COMBINED_EVIDENCE_LABEL_BY_PREDICTOR[predictor]
+        gene_specific_calibrated_label = COMBINED_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR[predictor]
+        assert gene_specific_calibrated_label in text
+        assert text.index(gene_specific_label) < text.index(gene_specific_calibrated_label)
+
+
+def test_compute_control_evidence_coverage_with_universal_workbook(tmp_path):
+    gene_specific_path = tmp_path / "controls.xlsx"
+    universal_path = tmp_path / "universal_controls.xlsx"
+    _write_control_evidence_coverage_workbook(gene_specific_path)
+    _write_universal_control_evidence_coverage_workbook(universal_path)
+
+    coverage = compute_control_evidence_coverage(
+        pd.ExcelFile(gene_specific_path),
+        control_sources=_CLINVAR_ONLY_CONTROL_SOURCE,
+        universal_workbook=pd.ExcelFile(universal_path),
+    )
+
+    universal_label = COMBINED_UNIVERSAL_EVIDENCE_LABEL_BY_PREDICTOR["REVEL"]
+    total, table, n_genes = coverage[("ClinVar", universal_label)]
+    assert total == 5
+    assert table.loc[ANY_EVIDENCE_LABEL, "count"] == 4
+    assert table.loc[NO_EVIDENCE_AT_ALL_LABEL, "count"] == 1
+    assert n_genes == 4
+
+    # Calibrated-only companion: row 5 (OP_points=None) drops out, leaving
+    # rows 1-4 -- row 3's OP_points=0 still counts as calibrated (a real "no
+    # functional evidence" call), unlike row 5's missing calibration.
+    calibrated_label = COMBINED_UNIVERSAL_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR["REVEL"]
+    calibrated_total, calibrated_table, calibrated_genes = coverage[("ClinVar", calibrated_label)]
+    assert calibrated_total == 4
+    assert calibrated_table.loc[ANY_EVIDENCE_LABEL, "count"] == 3
+    assert calibrated_table.loc[NO_EVIDENCE_AT_ALL_LABEL, "count"] == 1
+    assert calibrated_genes == 3
+
+    # Gene-specific evidence is unaffected by universal_workbook being given.
+    gene_specific_total, gene_specific_table, _gene_specific_genes = coverage[
+        ("ClinVar", COMBINED_REVEL_EVIDENCE_LABEL)
+    ]
+    assert gene_specific_total == 4
+    assert gene_specific_table.loc[ANY_EVIDENCE_LABEL, "count"] == 3
+
+    # Gene-specific evidence's own calibrated-only companion also doesn't
+    # need universal_workbook -- computed from gene_specific_path alone.
+    gene_specific_calibrated_total, gene_specific_calibrated_table, _gene_specific_calibrated_genes = coverage[
+        ("ClinVar", COMBINED_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR["REVEL"])
+    ]
+    assert gene_specific_calibrated_total == 3
+    assert gene_specific_calibrated_table.loc[ANY_EVIDENCE_LABEL, "count"] == 2
+
+    # Without universal_workbook (the default), no universal-evidence keys are computed at all.
+    gene_specific_only = compute_control_evidence_coverage(
+        pd.ExcelFile(gene_specific_path), control_sources=_CLINVAR_ONLY_CONTROL_SOURCE
+    )
+    assert ("ClinVar", universal_label) not in gene_specific_only
+    assert ("ClinVar", calibrated_label) not in gene_specific_only
+
+
+def test_format_control_evidence_coverage_report_includes_universal_rows(tmp_path):
+    gene_specific_path = tmp_path / "controls.xlsx"
+    universal_path = tmp_path / "universal_controls.xlsx"
+    _write_control_evidence_coverage_workbook(gene_specific_path)
+    _write_universal_control_evidence_coverage_workbook(universal_path)
+
+    coverage = compute_control_evidence_coverage(
+        pd.ExcelFile(gene_specific_path),
+        control_sources=_CLINVAR_ONLY_CONTROL_SOURCE,
+        universal_workbook=pd.ExcelFile(universal_path),
+    )
+    text = format_control_evidence_coverage_report(coverage, control_sources=_CLINVAR_ONLY_CONTROL_SOURCE)
+
+    for predictor in VARIANT_CLASSIFICATION_PREDICTORS:
+        gene_specific_label = COMBINED_EVIDENCE_LABEL_BY_PREDICTOR[predictor]
+        gene_specific_calibrated_label = COMBINED_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR[predictor]
+        universal_label = COMBINED_UNIVERSAL_EVIDENCE_LABEL_BY_PREDICTOR[predictor]
+        universal_calibrated_label = COMBINED_UNIVERSAL_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR[predictor]
+        assert gene_specific_calibrated_label in text
+        assert universal_label in text
+        assert universal_calibrated_label in text
+        # Each predictor's rows render in order: gene-specific, its own
+        # calibrated-only companion, universal, universal's calibrated-only
+        # companion.
+        assert text.index(gene_specific_label) < text.index(gene_specific_calibrated_label)
+        assert text.index(gene_specific_calibrated_label) < text.index(universal_label)
+        assert text.index(universal_label) < text.index(universal_calibrated_label)
+
+    # Without a universal_workbook, compute_control_evidence_coverage never
+    # produces universal-evidence keys, so the report shows none of them.
+    gene_specific_only_text = format_control_evidence_coverage_report(
+        compute_control_evidence_coverage(
+            pd.ExcelFile(gene_specific_path), control_sources=_CLINVAR_ONLY_CONTROL_SOURCE
+        ),
+        control_sources=_CLINVAR_ONLY_CONTROL_SOURCE,
+    )
+    for predictor in VARIANT_CLASSIFICATION_PREDICTORS:
+        assert COMBINED_UNIVERSAL_EVIDENCE_LABEL_BY_PREDICTOR[predictor] not in gene_specific_only_text
+        assert COMBINED_UNIVERSAL_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR[predictor] not in gene_specific_only_text
 
 
 def _write_missense_control_concordance_workbook(path):
@@ -2801,15 +3224,18 @@ def test_format_control_concordance_report_missense_only(tmp_path):
     assert "ClinGen controls (ClinGen_Repo_*_GeneSpecific sheets):" in text
 
     clinvar_section, clingen_section = text.split("ClinGen controls (ClinGen_Repo_*_GeneSpecific sheets):")
-    # ClinVar: 2 concordant, 1 discordant (all PLP-to-BLB), of 3 total, for every evidence source.
+    # ClinVar: 2 concordant, 1 discordant (all PLP-to-BLB), of 3 total, for every
+    # evidence source -- 8 rows total (OddsPath alone + its calibrated-only
+    # companion, identical here since every OP_points value is non-null, + 3
+    # gene-specific x 2 each for their own identical calibrated-only companion).
     assert "Genes" not in clinvar_section
-    assert clinvar_section.count("2 of 3 (66.7%)") == 4
-    assert clinvar_section.count("1 of 3 (33.3%)") == 4 * 2  # Discordant + its PLP-to-BLB sub-column
+    assert clinvar_section.count("2 of 3 (66.7%)") == 8
+    assert clinvar_section.count("1 of 3 (33.3%)") == 8 * 2  # Discordant + its PLP-to-BLB sub-column
 
     # ClinGen: same shape, plus Genes=2 and a PLP/BLB population split (2 of 3 / 1 of 3).
     assert "Genes" in clingen_section
-    assert clingen_section.count("2 of 3 (66.7%)") == 4 * 2  # Concordant + PLP
-    assert clingen_section.count("1 of 3 (33.3%)") == 4 * 3  # Discordant + its PLP-to-BLB sub-column + BLB
+    assert clingen_section.count("2 of 3 (66.7%)") == 8 * 2  # Concordant + PLP
+    assert clingen_section.count("1 of 3 (33.3%)") == 8 * 3  # Discordant + its PLP-to-BLB sub-column + BLB
 
 
 def test_reclassification_flags_agree_disagree_and_no_evidence():
@@ -3357,4 +3783,141 @@ def test_format_gene_discordance_summary():
     assert "GENEA" in text
     assert "GENEB" in text
     assert "GENEC" not in text  # truncated by top_n
+
+
+# --- Markdown report support (_format_title/_format_table_text/_format_prose_lines) ---
+
+
+def test_format_title_text_mode_is_byte_identical():
+    assert _format_title("=== Section ===", markdown=False) == "=== Section ==="
+    assert _format_title("Bare heading", markdown=False) == "Bare heading"
+
+
+def test_format_title_markdown_mode_strips_decoration_and_renders_atx_heading():
+    assert _format_title("=== Section ===", markdown=True) == "## Section"
+    assert _format_title("Bare heading", markdown=True) == "## Bare heading"
+    assert _format_title("Sub-heading", markdown=True, level=3) == "### Sub-heading"
+
+
+def test_format_table_text_text_mode_matches_to_string():
+    table = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
+    assert _format_table_text(table, markdown=False) == table.to_string()
+    assert _format_table_text(table, markdown=False, index=False) == table.to_string(index=False)
+
+
+def test_format_table_text_markdown_mode_renders_pipe_table():
+    table = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
+
+    text = _format_table_text(table, markdown=True)
+
+    assert text == table.to_markdown()
+    lines = text.splitlines()
+    assert lines[0].startswith("|")
+    assert all(line.count("|") >= 2 for line in lines)
+
+
+def test_format_prose_lines_text_mode_is_noop():
+    lines = ["Total: 5", "  Pathogenic: 2", ""]
+    assert _format_prose_lines(lines, markdown=False) is lines
+
+
+def test_format_prose_lines_markdown_mode_bulletizes_preserving_indent():
+    lines = ["Total: 5", "  Pathogenic: 2", "    Likely Pathogenic: 1", ""]
+
+    bulleted = _format_prose_lines(lines, markdown=True)
+
+    assert bulleted == [
+        "- Total: 5",
+        "  - Pathogenic: 2",
+        "    - Likely Pathogenic: 1",
+        "",
+    ]
+
+
+def test_format_count_table_markdown_mode_renders_level_three_heading_and_table():
+    flags = pd.DataFrame({"score_a": [True, False], "score_b": [True, True]})
+    total, table = summarize_flags(flags)
+
+    text = format_count_table("Score coverage -- test", total, table, markdown=True)
+
+    assert text.startswith("### Score coverage -- test")
+    assert "- Total: 2" in text
+    assert any(line.count("|") >= 2 for line in text.splitlines())
+
+
+def test_format_gene_breakdown_markdown_mode_bulletizes_each_group():
+    gene_breakdown = {"IGVF only": ["BRCA1"], "Community (non-IGVF) only": ["GENED"]}
+
+    text = format_gene_breakdown(gene_breakdown, markdown=True)
+
+    assert text.startswith("## Genes represented")
+    assert "- IGVF only (1): BRCA1" in text
+    assert "- Community (non-IGVF) only (1): GENED" in text
+
+
+def test_build_report_text_text_mode_is_byte_identical_to_before_markdown_support():
+    table = pd.DataFrame({"datasets": [1]}, index=["Combined"])
+    gene_breakdown = {"IGVF only": ["BRCA1"]}
+
+    text = build_report_text(
+        table,
+        gene_breakdown,
+        "genomic summary",
+        "igvf summary",
+        "composite summary",
+        ["score section"],
+        ["clinical section"],
+        "calibration summary",
+        "funnel summary",
+        "clingen summary",
+        ["reclass section"],
+        "concordance summary",
+        "missense concordance summary",
+        "coverage summary",
+        "classification summary",
+        "chi squared summary",
+        "discordance summary",
+        "splice summary",
+    )
+
+    assert text.startswith("=== Dataset summary ===")
+    assert "=== Score coverage (REVEL, AlphaMissense, MutPred2) ===" in text
+    assert "=== Reclassification agreement (Figure 4c) ===" in text
+    assert "score section" in text
+    assert "## " not in text
+
+
+def test_build_report_text_markdown_mode_produces_real_headings_and_tables():
+    table = pd.DataFrame({"datasets": [1]}, index=["Combined"])
+    gene_breakdown = {"IGVF only": ["BRCA1"]}
+
+    text = build_report_text(
+        table,
+        gene_breakdown,
+        "genomic summary",
+        "igvf summary",
+        "composite summary",
+        ["### Score coverage -- test"],
+        ["### Clinical attributes -- test"],
+        "calibration summary",
+        "funnel summary",
+        "clingen summary",
+        ["### ExCALIBR evidence -- test"],
+        "concordance summary",
+        "missense concordance summary",
+        "coverage summary",
+        "classification summary",
+        "chi squared summary",
+        "discordance summary",
+        "splice summary",
+        markdown=True,
+    )
+
+    assert "## Dataset summary" in text
+    assert "## Score coverage (REVEL, AlphaMissense, MutPred2)" in text
+    assert "## Clinical attributes (ClinVar 2025" in text
+    assert "## Reclassification agreement (Figure 4c)" in text
+    assert "## Genes represented" in text
+    assert "- IGVF only (1): BRCA1" in text
+    assert any(line.count("|") >= 2 for line in text.splitlines())
 

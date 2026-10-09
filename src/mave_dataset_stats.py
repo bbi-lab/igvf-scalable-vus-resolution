@@ -169,8 +169,14 @@ Supplementary_Data_5.xlsx) respectively:
   (not the ExCALIBR/OddsPath "Current" per-gene pick) with that predictor's
   genome-wide-only ("universal") calibration, with no gene-specific fallback --
   see `docs/conflicting_evidence_concordance.md`'s `OddsPath`/`Universal` axis
-  definitions. Rendered as one table per control source with a row per
-  evidence source so all seven can be compared at a glance. Discordant is
+  definitions. Immediately after `OddsPath calibration` alone, and after each
+  predictor's `OddsPath + <predictor> universal` row, a companion row repeats
+  the same statistics restricted to variants in datasets with an actual
+  OddsPath calibration (`OP_points` not null on that row's own sheet, rather
+  than null because that assay-dataset lacked enough controls for OddsPath's
+  own calculation -- see "Why Supplementary Data 5 and 6 populations differ"
+  below). Rendered as one table per control source with a row per evidence
+  source so all eleven can be compared at a glance. Discordant is
   further broken out by direction: control
   Pathogenic/Likely Pathogenic reclassified Benign/Likely Benign by the
   evidence source, vs. the reverse -- the two sum to the Discordant count.
@@ -189,6 +195,18 @@ Supplementary_Data_5.xlsx) respectively:
   ClinGen's `Genes`/`PLP`/`BLB` columns -- restricted to
   `simplified_consequence == "missense_variant"` rows before scoring --
   see `MISSENSE_CONTROL_CONCORDANCE_SOURCES`/`MISSENSE_CONSEQUENCE_VALUE`.
+
+- **Control evidence coverage**: a looser companion to Control concordance's
+  gene-specific and universal rows -- how many of the same in-scope ClinVar/
+  ClinGen control variants received *any* nonzero evidence (functional and/or
+  predictive), whether or not the combined total crossed the classification
+  threshold, vs. Control concordance's `Total - VUS` (evidence *sufficient*
+  to classify). "Any evidence" is `Fxn_points`/`OP_points` (functional) or
+  the predictor's own gene-specific/universal points column (predictive)
+  being nonzero -- the two terms each row's combined total sums, so a
+  variant that lands in the Uncertain range because those terms only reached
+  a partial magnitude (e.g. +2 points) still counts here. See
+  `compute_control_evidence_coverage`.
 
 - **Variant classification**: how many distinct DNA variants have a
   classification, how many of those are pathogenic or benign, and how many
@@ -250,7 +268,9 @@ those with at least one of those four scores at or above 0.2. See
 `compute_consequence_splice_breakdown`.
 
 Both file arguments are optional and default to the paths above. Output is
-written as plain text (to stdout, and optionally to `--output` as well).
+written as plain text (to stdout, and optionally to `--output` as well); when
+`--output` is given, a Markdown rendering of the same report is also written
+alongside it (same path, `.md` extension).
 
 A "Filtering effects on the reclassification dataset" section, immediately
 after the ExCALIBR calibration coverage section, shows a sequential funnel:
@@ -270,6 +290,7 @@ docstring for the exact steps and `--checkpoint-file`/`--chek2-file` for the
 two extra inputs this section needs.
 """
 
+import re
 import unicodedata
 from pathlib import Path
 
@@ -508,6 +529,18 @@ VARIANT_CLASSIFICATION_PREDICTOR_POINTS_COL_BY_PREDICTOR = {
     "AlphaMissense": "Points_AM_GeneSpecific_GenomeWide",
     "MutPred2": "Points_MP2_GeneSpecific_GenomeWide",
 }
+# Supplementary Data 6 (universal-calibration workbook) counterpart of
+# VARIANT_CLASSIFICATION_PREDICTOR_POINTS_COL_BY_PREDICTOR above -- the
+# genome-wide-only predictor points column, i.e. the predictive-side term of
+# that workbook's own Total_Points_OP_<predictor> (Total_Points_OP_<predictor>
+# == OP_points.fillna(0) + this column.fillna(0), the universal-calibration
+# analogue of Total_Points_* == Fxn_points + Points_*_GeneSpecific_GenomeWide
+# above).
+UNIVERSAL_PREDICTOR_POINTS_COL_BY_PREDICTOR = {
+    "REVEL": "Points_REVEL_GenomeWide",
+    "AlphaMissense": "Points_AM_GenomeWide",
+    "MutPred2": "Points_MP2_GenomeWide",
+}
 VARIANT_CLASSIFICATION_CONFLICTING_COL_BY_PREDICTOR = {
     "REVEL": "Conflicting_REVEL",
     "AlphaMissense": "Conflicting_AM",
@@ -558,10 +591,37 @@ CONTROL_BLB_LABEL = "BLB"
 CONTROL_POPULATION_LABELS_ORDER = [CONTROL_PLP_LABEL, CONTROL_BLB_LABEL]
 CONTROL_CONCORDANCE_TABLE_LABELS_ORDER = CONTROL_CONCORDANCE_LABELS_ORDER + CONTROL_POPULATION_LABELS_ORDER
 CONTROL_CONCORDANCE_EVIDENCE_LABEL = "OddsPath calibration"
+# Companion to CONTROL_CONCORDANCE_EVIDENCE_LABEL (and, below,
+# COMBINED_UNIVERSAL_EVIDENCE_LABEL_BY_PREDICTOR) restricted to rows whose
+# FUNCTIONAL_CLASS_POINTS_COL (OP_points) is not null -- i.e. the variant's
+# own assay-dataset actually produced an OddsPath calibration, rather than
+# `OP_points` being NaN because that dataset lacked enough controls for
+# OddsPath's own calculation (see docs/variant_classification.md's "Why
+# Supplementary Data 5 and 6 populations differ" section). Unlike the
+# unrestricted row, a "VUS" here always means a real indeterminate call from
+# an existing calibration (e.g. `OP_points == 0`), never a missing one.
+CONTROL_CONCORDANCE_EVIDENCE_CALIBRATED_LABEL = "OddsPath calibration (OddsPath-calibrated datasets only)"
 COMBINED_EVIDENCE_LABEL_BY_PREDICTOR = {
     predictor: f"ExCALIBR/OddsPath + {predictor} gene-specific" for predictor in VARIANT_CLASSIFICATION_PREDICTORS
 }
 COMBINED_REVEL_EVIDENCE_LABEL = COMBINED_EVIDENCE_LABEL_BY_PREDICTOR["REVEL"]
+# Companion to COMBINED_EVIDENCE_LABEL_BY_PREDICTOR restricted to rows whose
+# FUNCTIONAL_CLASS_POINTS_COL (OP_points) is not null on that predictor's own
+# gene-specific sheet -- see CONTROL_CONCORDANCE_EVIDENCE_CALIBRATED_LABEL.
+# Unlike that row (and COMBINED_UNIVERSAL_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR
+# below), this doesn't swap which functional evidence feeds the combined
+# score -- it's still Fxn_points (the pipeline's actual "Current" per-gene
+# pick, ExCALIBR for most genes), just restricted to the same
+# OddsPath-calibrated-dataset population the universal-calibrated row uses.
+# That makes it directly comparable to
+# COMBINED_UNIVERSAL_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR: same population
+# (datasets with their own OddsPath calibration), same predictor, gene-specific
+# vs. universal calibration as the only difference -- see
+# `compute_control_concordance`.
+COMBINED_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR = {
+    predictor: f"ExCALIBR/OddsPath + {predictor} gene-specific (OddsPath-calibrated datasets only)"
+    for predictor in VARIANT_CLASSIFICATION_PREDICTORS
+}
 
 # Universal (genome-wide) calibration companion to the gene-specific evidence
 # above -- read from Supplementary Data 6's own `{controls,ClinGen_Repo}_
@@ -596,6 +656,39 @@ UNIVERSAL_CALIBRATION_CLASS_COL_BY_PREDICTOR = {
 COMBINED_UNIVERSAL_EVIDENCE_LABEL_BY_PREDICTOR = {
     predictor: f"OddsPath + {predictor} universal" for predictor in VARIANT_CLASSIFICATION_PREDICTORS
 }
+# Companion to COMBINED_UNIVERSAL_EVIDENCE_LABEL_BY_PREDICTOR restricted to
+# rows whose FUNCTIONAL_CLASS_POINTS_COL (OP_points) is not null on that same
+# Supplementary Data 6 sheet -- see CONTROL_CONCORDANCE_EVIDENCE_CALIBRATED_LABEL.
+COMBINED_UNIVERSAL_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR = {
+    predictor: f"OddsPath + {predictor} universal (OddsPath-calibrated datasets only)"
+    for predictor in VARIANT_CLASSIFICATION_PREDICTORS
+}
+
+# --- Control evidence coverage (any evidence, even if insufficient to classify) --
+# Companion to the Control concordance table above: that table's `VUS` column
+# (equivalently `Total - (Concordant + Discordant)`) counts variants whose
+# combined evidence didn't cross the classification threshold
+# (LIKELY_PATHOGENIC_POINTS_THRESHOLD/LIKELY_BENIGN_POINTS_THRESHOLD) -- some
+# of those still received nonzero evidence from one or both sources (e.g. +2
+# points), just not enough to resolve. This section reports that looser
+# "received any evidence at all" cut instead, for the two evidence sources
+# where the distinction is meaningful (the combined gene-specific and
+# combined universal rows, each summing two components that can be nonzero
+# without crossing the magnitude threshold) -- see
+# `compute_control_evidence_coverage`. The `OddsPath calibration` row itself
+# has no such companion: its assigned_pathogenic/assigned_benign are just
+# `OP_points > 0`/`< 0` (sign alone, no magnitude threshold -- see
+# `compute_control_concordance`), so "any evidence" and "sufficient for
+# classification" already coincide there.
+ANY_EVIDENCE_LABEL = "Any evidence assigned"
+NO_EVIDENCE_AT_ALL_LABEL = "No evidence assigned"
+CONTROL_EVIDENCE_COVERAGE_LABELS_ORDER = [ANY_EVIDENCE_LABEL, NO_EVIDENCE_AT_ALL_LABEL]
+CONTROL_EVIDENCE_COVERAGE_TABLE_LABELS_ORDER = CONTROL_EVIDENCE_COVERAGE_LABELS_ORDER + CONTROL_POPULATION_LABELS_ORDER
+CONTROL_EVIDENCE_COVERAGE_TITLE = (
+    "=== Control evidence coverage (any evidence assigned, even if insufficient for classification; "
+    "ExCALIBR/OddsPath + REVEL/AlphaMissense/MutPred2 gene-specific vs. OddsPath + universal) ==="
+)
+
 # {control source label: (category key into VARIANT_CLASSIFICATION_CATEGORY_SHEETS_BY_PREDICTOR,
 #  control classification column, pathogenic values, benign values)}
 CONTROL_CONCORDANCE_SOURCES = {
@@ -915,10 +1008,54 @@ def compute_gene_breakdown(igvf_genes, non_igvf_genes):
     }
 
 
-def format_gene_breakdown(gene_breakdown):
-    lines = ["=== Genes represented ==="]
-    for label, genes in gene_breakdown.items():
-        lines.append(f"{label} ({len(genes)}): {', '.join(genes)}")
+def _format_title(title, markdown, level=2):
+    """Render a section title for either the text or Markdown report.
+
+    Text mode returns `title` completely unchanged (including any
+    "=== ... ===" decoration it already has, or no decoration at all) --
+    text-mode output must stay byte-identical to before Markdown support
+    existed. Markdown mode strips any "=== ... ===" decoration (bare titles
+    pass through the regex untouched) and renders the result as a
+    `level`-deep ATX heading.
+    """
+    if not markdown:
+        return title
+    text = re.sub(r"^===\s*|\s*===$", "", title)
+    return f"{'#' * level} {text}"
+
+
+def _format_table_text(table, markdown, index=True):
+    """Render a DataFrame as a fixed-width text table or a Markdown table."""
+    if markdown:
+        return table.to_markdown(index=index)
+    return table.to_string(index=index)
+
+
+def _format_prose_lines(lines, markdown):
+    """Convert plain description lines into Markdown bullets, one per line,
+    preserving each line's leading-space indent as nested bullet depth
+    (CommonMark aligns a nested item's marker under its parent's content
+    column, which "- " -- 2 characters -- conveniently matches a 2-space
+    indent step). No-op in text mode. Blank lines pass through unchanged
+    (they're paragraph/list separators either way).
+    """
+    if not markdown:
+        return lines
+    out = []
+    for line in lines:
+        if line == "":
+            out.append(line)
+            continue
+        stripped = line.lstrip(" ")
+        indent = len(line) - len(stripped)
+        out.append(" " * indent + "- " + stripped)
+    return out
+
+
+def format_gene_breakdown(gene_breakdown, markdown=False):
+    lines = [_format_title("=== Genes represented ===", markdown)]
+    body = [f"{label} ({len(genes)}): {', '.join(genes)}" for label, genes in gene_breakdown.items()]
+    lines.extend(_format_prose_lines(body, markdown))
     return "\n".join(lines)
 
 
@@ -964,10 +1101,10 @@ def compute_igvf_dataset_measurement_counts(condensed, metadata):
     ).reset_index(drop=True)
 
 
-def format_igvf_dataset_measurement_counts(table):
-    lines = [IGVF_DATASET_MEASUREMENT_COUNTS_TITLE]
+def format_igvf_dataset_measurement_counts(table, markdown=False):
+    lines = [_format_title(IGVF_DATASET_MEASUREMENT_COUNTS_TITLE, markdown)]
     if len(table):
-        lines.append(table.to_string(index=False))
+        lines.append(_format_table_text(table, markdown, index=False))
     return "\n".join(lines)
 
 
@@ -1009,10 +1146,11 @@ def compute_composite_score_datasets(condensed, metadata, merge_calm_genes=False
     return table.sort_values(["Scores", "Dataset"], ascending=[False, True], kind="stable").reset_index(drop=True)
 
 
-def format_composite_score_datasets(table):
-    lines = [COMPOSITE_SCORE_DATASETS_TITLE, f"Total composite scores: {int(table['Scores'].sum())}"]
+def format_composite_score_datasets(table, markdown=False):
+    lines = [_format_title(COMPOSITE_SCORE_DATASETS_TITLE, markdown)]
+    lines.extend(_format_prose_lines([f"Total composite scores: {int(table['Scores'].sum())}"], markdown))
     if len(table):
-        lines.append(table.to_string(index=False))
+        lines.append(_format_table_text(table, markdown, index=False))
     return "\n".join(lines)
 
 
@@ -1047,7 +1185,7 @@ def stats_to_dataframe(stats):
     return table
 
 
-def format_genomic_variant_count(expanded_path, expanded):
+def format_genomic_variant_count(expanded_path, expanded, markdown=False):
     """One line reporting the row count of `expanded_path` (the DNA/genomic-
     resolution expanded file `expanded` was read from) -- every row is one
     genomic-variant measurement, so this is `len(expanded)`, i.e. `wc -l`
@@ -1059,7 +1197,8 @@ def format_genomic_variant_count(expanded_path, expanded):
     characters, so a single quoted field containing an embedded newline
     would silently inflate its count relative to the true record count.
     """
-    return f"Genomic variants (rows in {expanded_path}): {len(expanded)}"
+    line = f"Genomic variants (rows in {expanded_path}): {len(expanded)}"
+    return _format_prose_lines([line], markdown)[0]
 
 
 def mixed_year_clinvar_series(df):
@@ -1198,12 +1337,13 @@ def summarize_flags(flags):
     return total, pd.DataFrame({"count": counts, "pct": pct})
 
 
-def format_count_table(title, total, table):
-    lines = [title, f"Total: {total}"]
+def format_count_table(title, total, table, markdown=False):
+    lines = [_format_title(title, markdown, level=3)]
+    lines.extend(_format_prose_lines([f"Total: {total}"], markdown))
     if total:
         body = table.copy()
         body["pct"] = body["pct"].map(lambda x: f"{x:.1f}%")
-        lines.append(body.to_string())
+        lines.append(_format_table_text(body, markdown))
     return "\n".join(lines)
 
 
@@ -1228,14 +1368,15 @@ def summarize_clinical_flags(flags, snv_label):
     return total, snv_total, table
 
 
-def format_clinical_table(title, total, snv_total, table, snv_label):
-    lines = [title, f"Total: {total} ({snv_total} {snv_label})"]
+def format_clinical_table(title, total, snv_total, table, snv_label, markdown=False):
+    lines = [_format_title(title, markdown, level=3)]
+    lines.extend(_format_prose_lines([f"Total: {total} ({snv_total} {snv_label})"], markdown))
     if total:
         body = table.copy()
         body["pct"] = body["pct"].map(lambda x: f"{x:.1f}%")
         pct_snv_col = f"% of {snv_label}"
         body[pct_snv_col] = body[pct_snv_col].map(lambda x: f"{x:.1f}%")
-        lines.append(body.to_string())
+        lines.append(_format_table_text(body, markdown))
     return "\n".join(lines)
 
 
@@ -1249,7 +1390,9 @@ CLINICAL_LABELS_ORDER = [
 ]
 
 
-def build_variant_level_reports(condensed, expanded, condensed_path, expanded_path, allow_clinvar_conflicts=False):
+def build_variant_level_reports(
+    condensed, expanded, condensed_path, expanded_path, allow_clinvar_conflicts=False, markdown=False
+):
     """Build the score-coverage and clinical-attribute text sections.
 
     Each is reported at four levels: assayed (protein-resolution, from the
@@ -1271,7 +1414,9 @@ def build_variant_level_reports(condensed, expanded, condensed_path, expanded_pa
     for label, df, source, snv_label, flags_fn in levels:
         flags = flags_fn(df, snv_label, allow_clinvar_conflicts=allow_clinvar_conflicts)
         total, table = summarize_flags(flags[SCORE_LABELS])
-        score_sections.append(format_count_table(f"Score coverage -- {label} (from {source})", total, table))
+        score_sections.append(
+            format_count_table(f"Score coverage -- {label} (from {source})", total, table, markdown=markdown)
+        )
 
         mixed_flags = flags_fn(
             df, snv_label, clinvar_series=mixed_year_clinvar_series(df), allow_clinvar_conflicts=allow_clinvar_conflicts
@@ -1284,6 +1429,7 @@ def build_variant_level_reports(condensed, expanded, condensed_path, expanded_pa
                 mixed_snv_total,
                 mixed_table,
                 snv_label,
+                markdown=markdown,
             )
         )
 
@@ -1361,7 +1507,7 @@ def compute_excalibr_calibration_stats(calibrations, metadata, merge_calm_genes=
     }
 
 
-def format_calibration_summary(stats):
+def format_calibration_summary(stats, markdown=False):
     total = stats["genes_with_excalibr_calibrations"]
     with_evidence = stats["genes_with_evidence_assigned"]
     pct = 100 * with_evidence / total if total else float("nan")
@@ -1369,16 +1515,20 @@ def format_calibration_summary(stats):
     with_evidence_excl = stats["genes_with_evidence_assigned_excl"]
     pct_excl = 100 * with_evidence_excl / total_excl if total_excl else float("nan")
     excl_suffix = "excluding F9/TP53/SFPQ"
-    return "\n".join(
-        [
-            "=== ExCALIBR calibration coverage (Extended Data Figure 4) ===",
-            f"Genes with ExCALIBR calibrations: {total} ({total_excl} {excl_suffix})",
-            (
-                f"Genes with >=1 dataset assigning >=1 point of evidence (pathogenic or benign): "
-                f"{with_evidence} ({pct:.1f}%) ({with_evidence_excl} ({pct_excl:.1f}%) {excl_suffix})"
-            ),
-        ]
+    lines = [_format_title("=== ExCALIBR calibration coverage (Extended Data Figure 4) ===", markdown)]
+    lines.extend(
+        _format_prose_lines(
+            [
+                f"Genes with ExCALIBR calibrations: {total} ({total_excl} {excl_suffix})",
+                (
+                    f"Genes with >=1 dataset assigning >=1 point of evidence (pathogenic or benign): "
+                    f"{with_evidence} ({pct:.1f}%) ({with_evidence_excl} ({pct_excl:.1f}%) {excl_suffix})"
+                ),
+            ],
+            markdown,
+        )
     )
+    return "\n".join(lines)
 
 
 def funnel_distinct_dna_variants(df):
@@ -1601,7 +1751,7 @@ def _reclassification_funnel_table_row(step):
     }
 
 
-def format_reclassification_filter_funnel(steps):
+def format_reclassification_filter_funnel(steps, markdown=False):
     """Render `compute_reclassification_filter_funnel`'s steps as a table,
     plus a two-line "reclassified out of original" summary at each
     resolution.
@@ -1633,19 +1783,31 @@ def format_reclassification_filter_funnel(steps):
     dna_pct = 100 * final["distinct_dna_variants"] / starting_dna if starting_dna else float("nan")
     assayed_pct = 100 * final["distinct_assayed_variants"] / starting_assayed if starting_assayed else float("nan")
 
-    lines = [
-        "=== Filtering effects on the reclassification dataset ===",
-        table.to_string(),
-        "-" * 80,
-        "Alternative endpoints (mutually exclusive, neither applied on top of the other):",
-        alternatives_table.to_string(),
-        "",
-        (f"Distinct DNA variants reclassified: {final['distinct_dna_variants']} of {starting_dna} ({dna_pct:.1f}%)"),
-        (
-            f"Distinct assayed variants reclassified: {final['distinct_assayed_variants']} "
-            f"of {starting_assayed} ({assayed_pct:.1f}%)"
-        ),
-    ]
+    lines = [_format_title("=== Filtering effects on the reclassification dataset ===", markdown)]
+    lines.append(_format_table_text(table, markdown))
+    lines.append("-" * 80)
+    lines.extend(
+        _format_prose_lines(
+            ["Alternative endpoints (mutually exclusive, neither applied on top of the other):"], markdown
+        )
+    )
+    lines.append(_format_table_text(alternatives_table, markdown))
+    lines.append("")
+    lines.extend(
+        _format_prose_lines(
+            [
+                (
+                    f"Distinct DNA variants reclassified: {final['distinct_dna_variants']} of {starting_dna} "
+                    f"({dna_pct:.1f}%)"
+                ),
+                (
+                    f"Distinct assayed variants reclassified: {final['distinct_assayed_variants']} "
+                    f"of {starting_assayed} ({assayed_pct:.1f}%)"
+                ),
+            ],
+            markdown,
+        )
+    )
     return "\n".join(lines)
 
 
@@ -1693,18 +1855,20 @@ def compute_reclassification_agreement(controls_df):
     return results
 
 
-def format_reclassification_table(title, total, determinate, agreement_pct, table):
-    lines = [title, f"Total control variants: {total}", f"Determinate calls (evidence assigned): {determinate}"]
+def format_reclassification_table(title, total, determinate, agreement_pct, table, markdown=False):
+    lines = [_format_title(title, markdown, level=3)]
+    prose = [f"Total control variants: {total}", f"Determinate calls (evidence assigned): {determinate}"]
     if determinate:
-        lines.append(f"Agreement with ClinVar PLP/BLB (of determinate calls): {agreement_pct:.1f}%")
+        prose.append(f"Agreement with ClinVar PLP/BLB (of determinate calls): {agreement_pct:.1f}%")
+    lines.extend(_format_prose_lines(prose, markdown))
     if total:
         body = table.copy()
         body["pct"] = body["pct"].map(lambda x: f"{x:.1f}%")
-        lines.append(body.to_string())
+        lines.append(_format_table_text(body, markdown))
     return "\n".join(lines)
 
 
-def build_reclassification_report(workbook):
+def build_reclassification_report(workbook, markdown=False):
     """One section per (`controls_`-prefixed sheet, points column) pair in
     `workbook` (an open `pd.ExcelFile` over the controls file). See the module
     docstring's "Reclassification agreement" note for why every such sheet is
@@ -1717,7 +1881,9 @@ def build_reclassification_report(workbook):
         agreement = compute_reclassification_agreement(controls_df)
         for label, (total, determinate, agreement_pct, table) in agreement.items():
             sections.append(
-                format_reclassification_table(f"{label} -- {sheet}", total, determinate, agreement_pct, table)
+                format_reclassification_table(
+                    f"{label} -- {sheet}", total, determinate, agreement_pct, table, markdown=markdown
+                )
             )
     return sections
 
@@ -1795,6 +1961,30 @@ def compute_control_concordance(
     axis definitions. Omitted (the default) when only Supplementary Data 5
     is available.
 
+    Every evidence source above -- `CONTROL_CONCORDANCE_EVIDENCE_LABEL` alone,
+    each `COMBINED_EVIDENCE_LABEL_BY_PREDICTOR[predictor]`, and (when
+    `universal_workbook` is given) each
+    `COMBINED_UNIVERSAL_EVIDENCE_LABEL_BY_PREDICTOR[predictor]` -- gets a
+    companion row (`CONTROL_CONCORDANCE_EVIDENCE_CALIBRATED_LABEL`/
+    `COMBINED_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR[predictor]`/
+    `COMBINED_UNIVERSAL_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR[predictor]`),
+    further restricted to rows whose `FUNCTIONAL_CLASS_POINTS_COL` (`OP_points`)
+    is not null on that row's own sheet -- i.e. the variant's assay-dataset
+    actually produced an OddsPath calibration, rather than lacking enough
+    controls for OddsPath's own calculation (see docs/variant_classification.md's
+    "Why Supplementary Data 5 and 6 populations differ" section). Unlike the
+    universal row's calibrated companion, the gene-specific row's doesn't
+    swap which functional evidence feeds the combined score (still
+    `Fxn_points`, the "Current" per-gene pick) -- it only restricts the
+    population, so it's directly comparable to
+    `COMBINED_UNIVERSAL_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR[predictor]`:
+    same population (datasets with their own OddsPath calibration), same
+    predictor, gene-specific vs. universal calibration the only difference.
+    The gene-specific row's companion only needs `workbook` (Supplementary
+    Data 5 already carries its own `OP_points` column per predictor sheet),
+    so it's computed unconditionally, unlike the universal rows which require
+    `universal_workbook`.
+
     Returns {(control_source_label, evidence_label): (total, table, n_genes)}.
     `table` is the `summarize_flags` output over the in-scope rows, covering
     `CONTROL_CONCORDANCE_LABELS_ORDER` plus, for every row,
@@ -1813,7 +2003,7 @@ def compute_control_concordance(
             df = df[df[SIMPLIFIED_CONSEQUENCE_COL] == consequence_filter]
         return df
 
-    def _combined_evidence_result(df, control_col, pathogenic_values, benign_values, class_col):
+    def _combined_evidence_result(df, control_col, pathogenic_values, benign_values, class_col, extra_mask=None):
         combined_flags, combined_in_scope = control_concordance_flags(
             df[control_col],
             pathogenic_values,
@@ -1821,6 +2011,8 @@ def compute_control_concordance(
             df[class_col].isin(CLASS_PATHOGENIC_VALUES),
             df[class_col].isin(CLASS_BENIGN_VALUES),
         )
+        if extra_mask is not None:
+            combined_in_scope = combined_in_scope & extra_mask
         return (
             *summarize_flags(combined_flags.loc[combined_in_scope, CONTROL_CONCORDANCE_TABLE_LABELS_ORDER]),
             int(df.loc[combined_in_scope, GENE_COL].nunique()),
@@ -1831,12 +2023,18 @@ def compute_control_concordance(
         revel_sheets = VARIANT_CLASSIFICATION_CATEGORY_SHEETS_BY_PREDICTOR["REVEL"]
         revel_df = _filtered(workbook, revel_sheets[category])
         op_points = revel_df[FUNCTIONAL_CLASS_POINTS_COL]
+        is_calibrated = op_points.notna()
         oddspath_flags, oddspath_in_scope = control_concordance_flags(
             revel_df[control_col], pathogenic_values, benign_values, op_points > 0, op_points < 0
         )
         results[(control_label, CONTROL_CONCORDANCE_EVIDENCE_LABEL)] = (
             *summarize_flags(oddspath_flags.loc[oddspath_in_scope, CONTROL_CONCORDANCE_TABLE_LABELS_ORDER]),
             int(revel_df.loc[oddspath_in_scope, GENE_COL].nunique()),
+        )
+        oddspath_in_scope_calibrated = oddspath_in_scope & is_calibrated
+        results[(control_label, CONTROL_CONCORDANCE_EVIDENCE_CALIBRATED_LABEL)] = (
+            *summarize_flags(oddspath_flags.loc[oddspath_in_scope_calibrated, CONTROL_CONCORDANCE_TABLE_LABELS_ORDER]),
+            int(revel_df.loc[oddspath_in_scope_calibrated, GENE_COL].nunique()),
         )
 
         for predictor in VARIANT_CLASSIFICATION_PREDICTORS:
@@ -1845,6 +2043,16 @@ def compute_control_concordance(
             df = _filtered(workbook, sheets[category])
             results[(control_label, COMBINED_EVIDENCE_LABEL_BY_PREDICTOR[predictor])] = _combined_evidence_result(
                 df, control_col, pathogenic_values, benign_values, class_col
+            )
+            results[(control_label, COMBINED_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR[predictor])] = (
+                _combined_evidence_result(
+                    df,
+                    control_col,
+                    pathogenic_values,
+                    benign_values,
+                    class_col,
+                    extra_mask=df[FUNCTIONAL_CLASS_POINTS_COL].notna(),
+                )
             )
 
         if universal_workbook is not None:
@@ -1855,10 +2063,22 @@ def compute_control_concordance(
                 results[(control_label, COMBINED_UNIVERSAL_EVIDENCE_LABEL_BY_PREDICTOR[predictor])] = (
                     _combined_evidence_result(df, control_col, pathogenic_values, benign_values, class_col)
                 )
+                results[(control_label, COMBINED_UNIVERSAL_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR[predictor])] = (
+                    _combined_evidence_result(
+                        df,
+                        control_col,
+                        pathogenic_values,
+                        benign_values,
+                        class_col,
+                        extra_mask=df[FUNCTIONAL_CLASS_POINTS_COL].notna(),
+                    )
+                )
     return results
 
 
-def format_control_concordance_report(concordance, control_sources=CONTROL_CONCORDANCE_SOURCES, title=CONTROL_CONCORDANCE_TITLE):
+def format_control_concordance_report(
+    concordance, control_sources=CONTROL_CONCORDANCE_SOURCES, title=CONTROL_CONCORDANCE_TITLE, markdown=False
+):
     """Render `compute_control_concordance`'s output as one combined table per
     control source in `control_sources` (default `CONTROL_CONCORDANCE_SOURCES`:
     ClinVar, ClinGen), with one row per evidence source (OddsPath alone, then
@@ -1877,10 +2097,22 @@ def format_control_concordance_report(concordance, control_sources=CONTROL_CONCO
     classification alone, which sums to `Total`) -- not shown for ClinVar,
     whose much larger control set doesn't need this called out per row.
 
+    Immediately after the `OddsPath calibration` row, its `CONTROL_
+    CONCORDANCE_EVIDENCE_CALIBRATED_LABEL` companion is appended, restricted
+    to variants in datasets with an actual OddsPath calibration (`OP_points`
+    not null) -- see `compute_control_concordance`. Likewise, each
+    predictor's gene-specific row is immediately followed by its own
+    `COMBINED_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR` companion (same
+    restriction, same predictor, same evidence -- population-only change).
+
     If `concordance` also carries the universal-calibration evidence sources
     (i.e. `compute_control_concordance` was given a `universal_workbook`),
-    one more row per predictor is appended -- `OddsPath + <predictor>
-    universal` -- after that predictor's gene-specific row.
+    two more rows per predictor are appended after that predictor's
+    gene-specific-calibrated row -- `OddsPath + <predictor> universal`, then
+    its own `COMBINED_UNIVERSAL_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR`
+    companion -- so each predictor's gene-specific and universal rows are
+    directly comparable in pairs: unrestricted vs. unrestricted, then
+    calibrated-only vs. calibrated-only.
 
     `control_sources`/`title` are overridden together for the missense-only
     companion table -- see `MISSENSE_CONTROL_CONCORDANCE_SOURCES`/
@@ -1891,12 +2123,14 @@ def format_control_concordance_report(concordance, control_sources=CONTROL_CONCO
         first_control_label,
         COMBINED_UNIVERSAL_EVIDENCE_LABEL_BY_PREDICTOR["REVEL"],
     ) in concordance
-    evidence_labels = [CONTROL_CONCORDANCE_EVIDENCE_LABEL]
+    evidence_labels = [CONTROL_CONCORDANCE_EVIDENCE_LABEL, CONTROL_CONCORDANCE_EVIDENCE_CALIBRATED_LABEL]
     for predictor in VARIANT_CLASSIFICATION_PREDICTORS:
         evidence_labels.append(COMBINED_EVIDENCE_LABEL_BY_PREDICTOR[predictor])
+        evidence_labels.append(COMBINED_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR[predictor])
         if has_universal:
             evidence_labels.append(COMBINED_UNIVERSAL_EVIDENCE_LABEL_BY_PREDICTOR[predictor])
-    sections = [title]
+            evidence_labels.append(COMBINED_UNIVERSAL_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR[predictor])
+    sections = [_format_title(title, markdown)]
     for control_label, (category, *_rest) in control_sources.items():
         sheet_pattern = VARIANT_CLASSIFICATION_CATEGORY_SHEETS_BY_PREDICTOR["REVEL"][category].replace("REVEL", "*")
         rows = {}
@@ -1915,7 +2149,190 @@ def format_control_concordance_report(concordance, control_sources=CONTROL_CONCO
             }
             rows[evidence_label] = row
         report_table = pd.DataFrame(rows).T
-        sections.append(f"{control_label} controls ({sheet_pattern} sheets):\n{report_table.to_string()}")
+        heading = f"{control_label} controls ({sheet_pattern} sheets):"
+        table_text = _format_table_text(report_table, markdown)
+        if markdown:
+            sections.append(_format_title(heading, markdown, level=3) + "\n\n" + table_text)
+        else:
+            sections.append(f"{heading}\n{table_text}")
+    return "\n\n".join(sections)
+
+
+def compute_control_evidence_coverage(workbook, control_sources=CONTROL_CONCORDANCE_SOURCES, universal_workbook=None):
+    """For each control source in `control_sources` (default
+    `CONTROL_CONCORDANCE_SOURCES`: ClinVar, ClinGen) and each of
+    REVEL/AlphaMissense/MutPred2, how many in-scope control variants (control
+    classification is one of `pathogenic_values`/`benign_values`, same
+    population as `compute_control_concordance`'s `Total`) received *any*
+    nonzero evidence -- functional and/or predictive -- regardless of whether
+    the combined total crossed the classification threshold. This is a
+    looser companion to `compute_control_concordance`'s `Total - VUS`
+    (evidence *sufficient* to classify): e.g. a row with +2 combined points
+    stays `VUS` there but counts as having received evidence here.
+
+    Covers the same two evidence tiers per predictor as
+    `compute_control_concordance`:
+
+    - The combined ExCALIBR/OddsPath + <predictor> gene-specific evidence,
+      read from `workbook`'s (Supplementary Data 5) own
+      `VARIANT_CLASSIFICATION_CATEGORY_SHEETS_BY_PREDICTOR` sheets --
+      "any evidence" is `FUNCTIONAL_POINTS_COL` (`Fxn_points`) or that
+      predictor's own `VARIANT_CLASSIFICATION_PREDICTOR_POINTS_COL_BY_PREDICTOR`
+      column being nonzero (the two terms `Total_Points_* == Fxn_points +
+      Points_*_GeneSpecific_GenomeWide` sums), plus its own
+      `COMBINED_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR` companion restricted
+      to rows whose `FUNCTIONAL_CLASS_POINTS_COL` (`OP_points`, also present
+      on this same sheet) is not null -- same population restriction as the
+      universal row's calibrated companion below, without swapping which
+      functional evidence (`Fxn_points`) feeds the combined score -- see
+      `compute_control_concordance`'s matching companion row.
+    - When `universal_workbook` is given (Supplementary Data 6), the combined
+      OddsPath + <predictor> universal (genome-wide-only) evidence, read from
+      that workbook's own `UNIVERSAL_CALIBRATION_CATEGORY_SHEETS_BY_PREDICTOR`
+      sheets -- "any evidence" is `FUNCTIONAL_CLASS_POINTS_COL` (`OP_points`)
+      or that predictor's own `UNIVERSAL_PREDICTOR_POINTS_COL_BY_PREDICTOR`
+      column being nonzero (the two terms `Total_Points_OP_* == OP_points +
+      <universal predictor points>` sums), plus its own
+      `COMBINED_UNIVERSAL_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR` companion
+      restricted to rows whose `OP_points` is not null on that same sheet --
+      see `compute_control_concordance`'s matching companion rows. Omitted
+      (the default) when only Supplementary Data 5 is available.
+
+    Both points columns can be null (no calibration/score available, treated
+    as contributing 0) -- unlike `compute_control_concordance`, which reuses
+    the sheets' precomputed `Class_*` columns, this reads the raw points
+    columns directly, so nulls are filled explicitly here.
+
+    No companion row is computed for `CONTROL_CONCORDANCE_EVIDENCE_LABEL`
+    (OddsPath calibration alone) -- see the module-level comment above
+    `ANY_EVIDENCE_LABEL` for why that distinction is a no-op there.
+
+    Returns {(control_source_label, evidence_label): (total, table, n_genes)},
+    same shape as `compute_control_concordance`'s result -- `table` covers
+    `CONTROL_EVIDENCE_COVERAGE_TABLE_LABELS_ORDER`.
+    """
+
+    def _coverage_result(df, control_col, pathogenic_values, benign_values, has_experimental, has_predictive, mask=None):
+        in_scope = df[control_col].isin(pathogenic_values) | df[control_col].isin(benign_values)
+        if mask is not None:
+            in_scope = in_scope & mask
+        any_evidence = has_experimental | has_predictive
+        flags = pd.DataFrame(
+            {
+                ANY_EVIDENCE_LABEL: any_evidence,
+                NO_EVIDENCE_AT_ALL_LABEL: ~any_evidence,
+                CONTROL_PLP_LABEL: df[control_col].isin(pathogenic_values),
+                CONTROL_BLB_LABEL: df[control_col].isin(benign_values),
+            }
+        )
+        return (
+            *summarize_flags(flags.loc[in_scope, CONTROL_EVIDENCE_COVERAGE_TABLE_LABELS_ORDER]),
+            int(df.loc[in_scope, GENE_COL].nunique()),
+        )
+
+    results = {}
+    for control_label, (category, control_col, pathogenic_values, benign_values) in control_sources.items():
+        for predictor in VARIANT_CLASSIFICATION_PREDICTORS:
+            sheets = VARIANT_CLASSIFICATION_CATEGORY_SHEETS_BY_PREDICTOR[predictor]
+            df = workbook.parse(sheets[category])
+            predictor_points_col = VARIANT_CLASSIFICATION_PREDICTOR_POINTS_COL_BY_PREDICTOR[predictor]
+            gene_specific_has_experimental = df[FUNCTIONAL_POINTS_COL].fillna(0) != 0
+            gene_specific_has_predictive = df[predictor_points_col].fillna(0) != 0
+            results[(control_label, COMBINED_EVIDENCE_LABEL_BY_PREDICTOR[predictor])] = _coverage_result(
+                df,
+                control_col,
+                pathogenic_values,
+                benign_values,
+                gene_specific_has_experimental,
+                gene_specific_has_predictive,
+            )
+            results[(control_label, COMBINED_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR[predictor])] = _coverage_result(
+                df,
+                control_col,
+                pathogenic_values,
+                benign_values,
+                gene_specific_has_experimental,
+                gene_specific_has_predictive,
+                mask=df[FUNCTIONAL_CLASS_POINTS_COL].notna(),
+            )
+
+            if universal_workbook is not None:
+                universal_sheets = UNIVERSAL_CALIBRATION_CATEGORY_SHEETS_BY_PREDICTOR[predictor]
+                universal_df = universal_workbook.parse(universal_sheets[category])
+                universal_predictor_points_col = UNIVERSAL_PREDICTOR_POINTS_COL_BY_PREDICTOR[predictor]
+                op_points = universal_df[FUNCTIONAL_CLASS_POINTS_COL]
+                has_experimental = op_points.fillna(0) != 0
+                has_predictive = universal_df[universal_predictor_points_col].fillna(0) != 0
+                results[(control_label, COMBINED_UNIVERSAL_EVIDENCE_LABEL_BY_PREDICTOR[predictor])] = (
+                    _coverage_result(
+                        universal_df, control_col, pathogenic_values, benign_values, has_experimental, has_predictive
+                    )
+                )
+                results[(control_label, COMBINED_UNIVERSAL_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR[predictor])] = (
+                    _coverage_result(
+                        universal_df,
+                        control_col,
+                        pathogenic_values,
+                        benign_values,
+                        has_experimental,
+                        has_predictive,
+                        mask=op_points.notna(),
+                    )
+                )
+    return results
+
+
+def format_control_evidence_coverage_report(
+    coverage, control_sources=CONTROL_CONCORDANCE_SOURCES, title=CONTROL_EVIDENCE_COVERAGE_TITLE, markdown=False
+):
+    """Render `compute_control_evidence_coverage`'s output as one combined
+    table per control source in `control_sources`, with one row per predictor
+    (gene-specific, then its own calibrated-only companion, then, if present,
+    the same pair for the universal evidence) -- same layout as
+    `format_control_concordance_report`, with `Any evidence assigned`/
+    `No evidence assigned` in place of that table's `Concordant`/
+    `Discordant`/`VUS` columns.
+
+    The ClinGen table additionally reports `Genes`/`PLP`/`BLB`, same as
+    `format_control_concordance_report`.
+    """
+    first_control_label = next(iter(control_sources))
+    has_universal = (
+        first_control_label,
+        COMBINED_UNIVERSAL_EVIDENCE_LABEL_BY_PREDICTOR["REVEL"],
+    ) in coverage
+    evidence_labels = []
+    for predictor in VARIANT_CLASSIFICATION_PREDICTORS:
+        evidence_labels.append(COMBINED_EVIDENCE_LABEL_BY_PREDICTOR[predictor])
+        evidence_labels.append(COMBINED_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR[predictor])
+        if has_universal:
+            evidence_labels.append(COMBINED_UNIVERSAL_EVIDENCE_LABEL_BY_PREDICTOR[predictor])
+            evidence_labels.append(COMBINED_UNIVERSAL_EVIDENCE_CALIBRATED_LABEL_BY_PREDICTOR[predictor])
+    sections = [_format_title(title, markdown)]
+    for control_label, (category, *_rest) in control_sources.items():
+        sheet_pattern = VARIANT_CLASSIFICATION_CATEGORY_SHEETS_BY_PREDICTOR["REVEL"][category].replace("REVEL", "*")
+        rows = {}
+        for evidence_label in evidence_labels:
+            total, table, n_genes = coverage[(control_label, evidence_label)]
+            row = {"Total": total}
+            if control_label == "ClinGen":
+                row["Genes"] = n_genes
+                row |= {
+                    label: _format_count_and_pct(int(table.loc[label, "count"]), total)
+                    for label in CONTROL_POPULATION_LABELS_ORDER
+                }
+            row |= {
+                label: _format_count_and_pct(int(table.loc[label, "count"]), total)
+                for label in CONTROL_EVIDENCE_COVERAGE_LABELS_ORDER
+            }
+            rows[evidence_label] = row
+        report_table = pd.DataFrame(rows).T
+        heading = f"{control_label} controls ({sheet_pattern} sheets):"
+        table_text = _format_table_text(report_table, markdown)
+        if markdown:
+            sections.append(_format_title(heading, markdown, level=3) + "\n\n" + table_text)
+        else:
+            sections.append(f"{heading}\n{table_text}")
     return "\n\n".join(sections)
 
 
@@ -2040,9 +2457,8 @@ def compute_clingen_evidence_repository_stats(checkpoint, chek2, controls_workbo
 CLINGEN_EVIDENCE_REPOSITORY_TITLE = "=== ClinGen Evidence Repository control set (evidence removed & reclassified) ==="
 
 
-def format_clingen_evidence_repository_summary(stats, title=CLINGEN_EVIDENCE_REPOSITORY_TITLE):
-    lines = [
-        title,
+def format_clingen_evidence_repository_summary(stats, title=CLINGEN_EVIDENCE_REPOSITORY_TITLE, markdown=False):
+    body = [
         "Determinate (Pathogenic/Likely Pathogenic/Benign/Likely Benign) original ClinGen Evidence Repository "
         "classification and MAVE experimental data: "
         f"{stats['pre_removal_total']} distinct DNA variants across {stats['pre_removal_genes']} genes",
@@ -2065,11 +2481,12 @@ def format_clingen_evidence_repository_summary(stats, title=CLINGEN_EVIDENCE_REP
         "amino-acid-resolution variants to a representative DNA variant), retained for analysis:",
     ]
     for predictor in VARIANT_CLASSIFICATION_PREDICTORS:
-        lines.append(
+        body.append(
             f"  {predictor}: {stats[f'{predictor}_total']} variants across {stats[f'{predictor}_genes']} genes "
             f"(Pathogenic or Likely Pathogenic: {stats[f'{predictor}_plp']}, "
             f"Benign or Likely Benign: {stats[f'{predictor}_blb']})"
         )
+    lines = [_format_title(title, markdown), *_format_prose_lines(body, markdown)]
     return "\n".join(lines)
 
 
@@ -2239,7 +2656,7 @@ def _format_count_and_pct(count, total):
     return f"{count} of {total} ({pct:.1f}%)"
 
 
-def format_variant_classification_table(stats_by_predictor, title=VARIANT_CLASSIFICATION_TITLE):
+def format_variant_classification_table(stats_by_predictor, title=VARIANT_CLASSIFICATION_TITLE, markdown=False):
     """One row per predictor in `stats_by_predictor` (see
     `compute_variant_classification_stats`) per section -- follows this
     file's established `<DataFrame>.to_string()` convention (see
@@ -2317,28 +2734,24 @@ def format_variant_classification_table(stats_by_predictor, title=VARIANT_CLASSI
     gnomad_unresolved_table = _unresolved_table("gnomad")
     unobserved_unresolved_table = _unresolved_table("unobserved")
 
-    lines = [
-        title,
-        overall.to_string(),
-        "",
-        "ClinVar VUS resolved (reclassified pathogenic or benign):",
-        vus_table.to_string(),
-        "",
-        "ClinVar VUS unresolved:",
-        vus_unresolved_table.to_string(),
-        "",
-        "gnomAD variants resolved (classified pathogenic or benign):",
-        gnomad_table.to_string(),
-        "",
-        "gnomAD variants unresolved:",
-        gnomad_unresolved_table.to_string(),
-        "",
-        "Unobserved variants resolved (classified pathogenic or benign):",
-        unobserved_table.to_string(),
-        "",
-        "Unobserved variants unresolved:",
-        unobserved_unresolved_table.to_string(),
-    ]
+    lines = [_format_title(title, markdown), _format_table_text(overall, markdown), ""]
+    lines.extend(_format_prose_lines(["ClinVar VUS resolved (reclassified pathogenic or benign):"], markdown))
+    lines.append(_format_table_text(vus_table, markdown))
+    lines.append("")
+    lines.extend(_format_prose_lines(["ClinVar VUS unresolved:"], markdown))
+    lines.append(_format_table_text(vus_unresolved_table, markdown))
+    lines.append("")
+    lines.extend(_format_prose_lines(["gnomAD variants resolved (classified pathogenic or benign):"], markdown))
+    lines.append(_format_table_text(gnomad_table, markdown))
+    lines.append("")
+    lines.extend(_format_prose_lines(["gnomAD variants unresolved:"], markdown))
+    lines.append(_format_table_text(gnomad_unresolved_table, markdown))
+    lines.append("")
+    lines.extend(_format_prose_lines(["Unobserved variants resolved (classified pathogenic or benign):"], markdown))
+    lines.append(_format_table_text(unobserved_table, markdown))
+    lines.append("")
+    lines.extend(_format_prose_lines(["Unobserved variants unresolved:"], markdown))
+    lines.append(_format_table_text(unobserved_unresolved_table, markdown))
     return "\n".join(lines)
 
 
@@ -2406,31 +2819,31 @@ def compute_variant_classification_chi_squared_tests(stats_by_predictor):
 
 
 def format_variant_classification_chi_squared_tests(
-    results_by_predictor, title=VARIANT_CLASSIFICATION_CHI_SQUARED_TITLE
+    results_by_predictor, title=VARIANT_CLASSIFICATION_CHI_SQUARED_TITLE, markdown=False
 ):
     """Text report for `compute_variant_classification_chi_squared_tests`'s
     output: one block per predictor, one comparison per block, each showing
     both groups' count/total/pct, the 2x2 contingency table the test was run
     on, and the resulting chi2 statistic, degrees of freedom, and p-value.
     """
-    lines = [
-        title,
+    body = [
         "Pearson's chi-squared test of independence, 2x2 contingency table "
         "([[group A count, group A total - count], [group B count, group B total - count]]), "
         "with Yates' continuity correction (R's chisq.test() default for a 2x2 table, "
         "equivalent to prop.test(..., correct = TRUE)).",
     ]
     for predictor, comparisons in results_by_predictor.items():
-        lines.append("")
-        lines.append(f"-- {predictor} --")
+        body.append("")
+        body.append(f"-- {predictor} --")
         for comparison in comparisons:
             group_a, group_b = comparison["group_a"], comparison["group_b"]
             table = comparison["table"]
-            lines.append(comparison["label"] + ":")
-            lines.append(f"  {group_a['label']}: " + _format_count_and_pct(group_a["count"], group_a["total"]))
-            lines.append(f"  {group_b['label']}: " + _format_count_and_pct(group_b["count"], group_b["total"]))
-            lines.append(f"  2x2 table: [[{table[0, 0]}, {table[0, 1]}], [{table[1, 0]}, {table[1, 1]}]]")
-            lines.append(f"  chi2 = {comparison['chi2']:.4f}, df = {comparison['dof']}, p = {comparison['p']:.4g}")
+            body.append(comparison["label"] + ":")
+            body.append(f"  {group_a['label']}: " + _format_count_and_pct(group_a["count"], group_a["total"]))
+            body.append(f"  {group_b['label']}: " + _format_count_and_pct(group_b["count"], group_b["total"]))
+            body.append(f"  2x2 table: [[{table[0, 0]}, {table[0, 1]}], [{table[1, 0]}, {table[1, 1]}]]")
+            body.append(f"  chi2 = {comparison['chi2']:.4f}, df = {comparison['dof']}, p = {comparison['p']:.4g}")
+    lines = [_format_title(title, markdown), *_format_prose_lines(body, markdown)]
     return "\n".join(lines)
 
 
@@ -2486,15 +2899,20 @@ def compute_gene_discordance_stats(workbook, top_n=GENE_DISCORDANCE_TOP_N):
     return by_gene, int(discordant.sum()), len(controls_df)
 
 
-def format_gene_discordance_summary(by_gene, total_discordant, total_controls, top_n=GENE_DISCORDANCE_TOP_N):
-    lines = [
-        GENE_DISCORDANCE_TITLE,
-        f"Total discordant control variants: {total_discordant} of {total_controls}",
-        f"Top {top_n} genes by discordant-variant count:",
-    ]
+def format_gene_discordance_summary(by_gene, total_discordant, total_controls, top_n=GENE_DISCORDANCE_TOP_N, markdown=False):
+    lines = [_format_title(GENE_DISCORDANCE_TITLE, markdown)]
+    lines.extend(
+        _format_prose_lines(
+            [
+                f"Total discordant control variants: {total_discordant} of {total_controls}",
+                f"Top {top_n} genes by discordant-variant count:",
+            ],
+            markdown,
+        )
+    )
     top = by_gene.head(top_n)
     if len(top):
-        lines.append(top.to_string())
+        lines.append(_format_table_text(top, markdown))
     return "\n".join(lines)
 
 
@@ -2533,7 +2951,7 @@ def compute_consequence_splice_breakdown(workbook, category_sheets=VARIANT_CLASS
     return breakdown
 
 
-def format_consequence_splice_breakdown_table(breakdown, title=CONSEQUENCE_SPLICE_BREAKDOWN_TITLE):
+def format_consequence_splice_breakdown_table(breakdown, title=CONSEQUENCE_SPLICE_BREAKDOWN_TITLE, markdown=False):
     """Table form of `compute_consequence_splice_breakdown`'s output: one row
     per `simplified_consequence` value (in `NO_CONSEQUENCE_LABEL`-last order),
     one column per category, each cell "{low} / {high}" -- distinct DNA
@@ -2561,12 +2979,17 @@ def format_consequence_splice_breakdown_table(breakdown, title=CONSEQUENCE_SPLIC
         category: f"{breakdown[category]['low'].sum()} / {breakdown[category]['high'].sum()}"
         for category in categories
     }
-    lines = [
-        title,
-        f"Each cell: distinct DNA variants with every SpliceAI score ({', '.join(SPLICEAI_SCORE_COLS)}) "
-        f"{SPLICEAI_LOW_LABEL} / with at least one SpliceAI score {SPLICEAI_HIGH_LABEL}.",
-        result.to_string(),
-    ]
+    lines = [_format_title(title, markdown)]
+    lines.extend(
+        _format_prose_lines(
+            [
+                f"Each cell: distinct DNA variants with every SpliceAI score ({', '.join(SPLICEAI_SCORE_COLS)}) "
+                f"{SPLICEAI_LOW_LABEL} / with at least one SpliceAI score {SPLICEAI_HIGH_LABEL}."
+            ],
+            markdown,
+        )
+    )
+    lines.append(_format_table_text(result, markdown))
     return "\n".join(lines)
 
 
@@ -2584,11 +3007,13 @@ def build_report_text(
     reclassification_sections,
     control_concordance_summary,
     missense_control_concordance_summary,
+    control_evidence_coverage_summary,
     variant_classification_summary,
     variant_classification_chi_squared_summary,
     gene_discordance_summary,
     consequence_splice_breakdown_summary,
     allow_clinvar_conflicts=False,
+    markdown=False,
 ):
     conflict_note = (
         "conflicting/ambiguous ClinVar calls folded in via any-match"
@@ -2596,23 +3021,28 @@ def build_report_text(
         else "conflicting/ambiguous ClinVar calls excluded"
     )
     parts = [
-        "=== Dataset summary ===",
-        table.to_string(),
+        _format_title("=== Dataset summary ===", markdown),
+        _format_table_text(table, markdown),
         genomic_variant_summary,
-        format_gene_breakdown(gene_breakdown),
+        format_gene_breakdown(gene_breakdown, markdown=markdown),
         igvf_dataset_measurement_counts_summary,
         composite_score_datasets_summary,
-        "=== Score coverage (REVEL, AlphaMissense, MutPred2) ===",
+        _format_title("=== Score coverage (REVEL, AlphaMissense, MutPred2) ===", markdown),
         *score_sections,
-        f"=== Clinical attributes (ClinVar 2025, except ClinVar 2018 for BRCA1/PTEN/MSH2/TP53; gnomAD; {conflict_note}) ===",
+        _format_title(
+            "=== Clinical attributes (ClinVar 2025, except ClinVar 2018 for BRCA1/PTEN/MSH2/TP53; gnomAD; "
+            f"{conflict_note}) ===",
+            markdown,
+        ),
         *clinical_sections_mixed_year,
         calibration_summary,
         filter_funnel_summary,
         clingen_evidence_repository_summary,
-        "=== Reclassification agreement (Figure 4c) ===",
+        _format_title("=== Reclassification agreement (Figure 4c) ===", markdown),
         *reclassification_sections,
         control_concordance_summary,
         missense_control_concordance_summary,
+        control_evidence_coverage_summary,
         variant_classification_summary,
         variant_classification_chi_squared_summary,
         gene_discordance_summary,
@@ -2687,7 +3117,11 @@ def build_report_text(
     "--output",
     type=click.Path(dir_okay=False, path_type=Path),
     default=None,
-    help="Optional path to also write the full report as a text file",
+    help=(
+        "Optional path to also write the full report as a text file; a Markdown "
+        "rendering of the same report is also written alongside it, at the same "
+        "path with a '.md' extension"
+    ),
 )
 @click.option(
     "--merge-calm-genes/--no-merge-calm-genes",
@@ -2737,12 +3171,10 @@ def main(
         raise click.ClickException(str(exc)) from exc
 
     table = stats_to_dataframe(stats)
-    igvf_dataset_measurement_counts_summary = format_igvf_dataset_measurement_counts(
-        compute_igvf_dataset_measurement_counts(condensed, metadata)
-    )
-    composite_score_datasets_summary = format_composite_score_datasets(
-        compute_composite_score_datasets(condensed, metadata, merge_calm_genes=merge_calm_genes)
-    )
+    igvf_dataset_measurement_counts = compute_igvf_dataset_measurement_counts(condensed, metadata)
+    igvf_dataset_measurement_counts_summary = format_igvf_dataset_measurement_counts(igvf_dataset_measurement_counts)
+    composite_score_datasets = compute_composite_score_datasets(condensed, metadata, merge_calm_genes=merge_calm_genes)
+    composite_score_datasets_summary = format_composite_score_datasets(composite_score_datasets)
 
     expanded = pd.read_csv(expanded_file, sep="\t", dtype=str, keep_default_na=False)
     genomic_variant_summary = format_genomic_variant_count(expanded_file, expanded)
@@ -2762,29 +3194,30 @@ def main(
     controls_workbook = pd.ExcelFile(controls_file)
     universal_controls_workbook = pd.ExcelFile(universal_controls_file)
     reclassification_sections = build_reclassification_report(controls_workbook)
-    control_concordance_summary = format_control_concordance_report(
-        compute_control_concordance(controls_workbook, universal_workbook=universal_controls_workbook)
+    concordance = compute_control_concordance(controls_workbook, universal_workbook=universal_controls_workbook)
+    control_concordance_summary = format_control_concordance_report(concordance)
+    missense_concordance = compute_control_concordance(
+        controls_workbook,
+        control_sources=MISSENSE_CONTROL_CONCORDANCE_SOURCES,
+        consequence_filter=MISSENSE_CONSEQUENCE_VALUE,
+        universal_workbook=universal_controls_workbook,
     )
     missense_control_concordance_summary = format_control_concordance_report(
-        compute_control_concordance(
-            controls_workbook,
-            control_sources=MISSENSE_CONTROL_CONCORDANCE_SOURCES,
-            consequence_filter=MISSENSE_CONSEQUENCE_VALUE,
-            universal_workbook=universal_controls_workbook,
-        ),
+        missense_concordance,
         control_sources=MISSENSE_CONTROL_CONCORDANCE_SOURCES,
         title=MISSENSE_CONTROL_CONCORDANCE_TITLE,
     )
+    coverage = compute_control_evidence_coverage(controls_workbook, universal_workbook=universal_controls_workbook)
+    control_evidence_coverage_summary = format_control_evidence_coverage_report(coverage)
     variant_classification_stats_by_predictor = compute_variant_classification_stats(controls_workbook)
     variant_classification_summary = format_variant_classification_table(variant_classification_stats_by_predictor)
-    variant_classification_chi_squared_summary = format_variant_classification_chi_squared_tests(
-        compute_variant_classification_chi_squared_tests(variant_classification_stats_by_predictor)
-    )
+    chi_squared_results = compute_variant_classification_chi_squared_tests(variant_classification_stats_by_predictor)
+    variant_classification_chi_squared_summary = format_variant_classification_chi_squared_tests(chi_squared_results)
 
-    gene_discordance_summary = format_gene_discordance_summary(*compute_gene_discordance_stats(controls_workbook))
-    consequence_splice_breakdown_summary = format_consequence_splice_breakdown_table(
-        compute_consequence_splice_breakdown(controls_workbook)
-    )
+    gene_discordance_stats = compute_gene_discordance_stats(controls_workbook)
+    gene_discordance_summary = format_gene_discordance_summary(*gene_discordance_stats)
+    consequence_splice_breakdown = compute_consequence_splice_breakdown(controls_workbook)
+    consequence_splice_breakdown_summary = format_consequence_splice_breakdown_table(consequence_splice_breakdown)
 
     # Deliberately not dtype=str: the CHEK2 merge below matches
     # auth_reported_score/score by exact numeric equality, which only lines
@@ -2795,9 +3228,8 @@ def main(
     funnel_steps = compute_reclassification_filter_funnel(expanded, checkpoint, chek2, condensed)
     filter_funnel_summary = format_reclassification_filter_funnel(funnel_steps)
 
-    clingen_evidence_repository_summary = format_clingen_evidence_repository_summary(
-        compute_clingen_evidence_repository_stats(checkpoint, chek2, controls_workbook)
-    )
+    clingen_evidence_repository_stats = compute_clingen_evidence_repository_stats(checkpoint, chek2, controls_workbook)
+    clingen_evidence_repository_summary = format_clingen_evidence_repository_summary(clingen_evidence_repository_stats)
 
     report = build_report_text(
         table,
@@ -2813,6 +3245,7 @@ def main(
         reclassification_sections,
         control_concordance_summary,
         missense_control_concordance_summary,
+        control_evidence_coverage_summary,
         variant_classification_summary,
         variant_classification_chi_squared_summary,
         gene_discordance_summary,
@@ -2824,6 +3257,76 @@ def main(
     if output:
         output.write_text(report + "\n")
         click.echo(f"\nWrote report to {output}")
+
+        # Re-render every section in Markdown from the same already-computed
+        # data above (no input file is re-read and no compute_* function is
+        # re-run) -- only the cheap format_*/build_* calls are repeated with
+        # markdown=True, mirroring the text-mode calls above.
+        markdown_igvf_dataset_measurement_counts_summary = format_igvf_dataset_measurement_counts(
+            igvf_dataset_measurement_counts, markdown=True
+        )
+        markdown_composite_score_datasets_summary = format_composite_score_datasets(
+            composite_score_datasets, markdown=True
+        )
+        markdown_genomic_variant_summary = format_genomic_variant_count(expanded_file, expanded, markdown=True)
+        markdown_score_sections, markdown_clinical_sections_mixed_year = build_variant_level_reports(
+            condensed,
+            expanded,
+            condensed_file,
+            expanded_file,
+            allow_clinvar_conflicts=allow_clinvar_conflicts,
+            markdown=True,
+        )
+        markdown_calibration_summary = format_calibration_summary(calibration_stats, markdown=True)
+        markdown_reclassification_sections = build_reclassification_report(controls_workbook, markdown=True)
+        markdown_control_concordance_summary = format_control_concordance_report(concordance, markdown=True)
+        markdown_missense_control_concordance_summary = format_control_concordance_report(
+            missense_concordance,
+            control_sources=MISSENSE_CONTROL_CONCORDANCE_SOURCES,
+            title=MISSENSE_CONTROL_CONCORDANCE_TITLE,
+            markdown=True,
+        )
+        markdown_control_evidence_coverage_summary = format_control_evidence_coverage_report(coverage, markdown=True)
+        markdown_variant_classification_summary = format_variant_classification_table(
+            variant_classification_stats_by_predictor, markdown=True
+        )
+        markdown_variant_classification_chi_squared_summary = format_variant_classification_chi_squared_tests(
+            chi_squared_results, markdown=True
+        )
+        markdown_gene_discordance_summary = format_gene_discordance_summary(*gene_discordance_stats, markdown=True)
+        markdown_consequence_splice_breakdown_summary = format_consequence_splice_breakdown_table(
+            consequence_splice_breakdown, markdown=True
+        )
+        markdown_filter_funnel_summary = format_reclassification_filter_funnel(funnel_steps, markdown=True)
+        markdown_clingen_evidence_repository_summary = format_clingen_evidence_repository_summary(
+            clingen_evidence_repository_stats, markdown=True
+        )
+
+        markdown_report = build_report_text(
+            table,
+            gene_breakdown,
+            markdown_genomic_variant_summary,
+            markdown_igvf_dataset_measurement_counts_summary,
+            markdown_composite_score_datasets_summary,
+            markdown_score_sections,
+            markdown_clinical_sections_mixed_year,
+            markdown_calibration_summary,
+            markdown_filter_funnel_summary,
+            markdown_clingen_evidence_repository_summary,
+            markdown_reclassification_sections,
+            markdown_control_concordance_summary,
+            markdown_missense_control_concordance_summary,
+            markdown_control_evidence_coverage_summary,
+            markdown_variant_classification_summary,
+            markdown_variant_classification_chi_squared_summary,
+            markdown_gene_discordance_summary,
+            markdown_consequence_splice_breakdown_summary,
+            allow_clinvar_conflicts=allow_clinvar_conflicts,
+            markdown=True,
+        )
+        markdown_path = output.with_suffix(".md")
+        markdown_path.write_text(markdown_report + "\n")
+        click.echo(f"\nWrote Markdown report to {markdown_path}")
 
 
 if __name__ == "__main__":

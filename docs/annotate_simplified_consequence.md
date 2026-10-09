@@ -31,6 +31,57 @@ A term with no mapping-table entry (e.g. `no_change`, a
 `variant-annotation`-specific value not in Ensembl's own vocabulary) maps to
 an empty string, same as the notebook's `NaN` case for an unmapped term.
 
+## `condensed_consequence` and `splice_var_amino` are per-assayed-variant, not per-candidate
+
+Besides `simplified_consequence`, this script adds three more columns.
+`condensed_consequence` collapses `simplified_consequence`'s pipe-delimited
+per-DNA-candidate values to one value: that value if every candidate agrees,
+else `conflict_consequence` (`compute_condensed_consequence`). `splice_variant`
+is a pipe-delimited, per-candidate Yes/No flag (from `simplified_consequence`
+and the SpliceAI delta-score columns); `splice_var_amino` collapses it the
+same way `condensed_consequence` collapses `simplified_consequence` -- blank
+if no candidate has a value, that value if all non-blank candidates agree,
+else `Yes` (`compute_splice_var_amino`).
+
+`simplified_consequence` and `splice_variant` stay pipe-delimited, one
+segment per DNA candidate, all the way through the rest of the pipeline.
+`condensed_consequence` and `splice_var_amino` don't -- they're already
+single values *per assayed variant* by the time this script runs. That
+distinction matters once step 21 (`flatten_dna_variants.py`, see
+`docs/variant_annotation_pipeline.md`'s "Step 21's explicit
+`--dna-variant-columns`" section) explodes a multi-candidate row into one row
+per DNA candidate: `simplified_consequence`/`splice_variant` are on that
+step's explicit re-split list and get sliced down to each candidate's own
+segment, but `condensed_consequence`/`splice_var_amino` aren't (they were
+never pipe-delimited to begin with) and are simply copied unchanged onto
+every exploded row of the group.
+
+The practical effect shows up most for variants assayed at amino-acid
+resolution (`nucleotide_or_aa == "aa"`): one measured functional score can map
+to several different DNA-level candidates (different nucleotide changes
+producing the same amino-acid substitution), and those candidates don't
+always share a consequence. For example, TSC2's `urn:mavedb:00001267-0-3#56`
+maps to one missense SNV (`NM_000548.5:c.4849G>C`) and three
+splice-site-affecting delins candidates (`c.4849_4851delinsCCA`/`CCG`/`CCT`)
+at the same codon. After the explode, each of those four candidates' own
+`simplified_consequence` is a clean single value (`missense_variant` or
+`splice_site_variant`), but all four rows' `condensed_consequence` still
+reads `conflict_consequence`, inherited from the whole group.
+
+**This is intentional, not a staleness bug.** `condensed_consequence` answers
+an assayed-variant-group-level question -- "did every DNA-level
+interpretation of this measurement agree?" -- not a per-candidate one, and
+downstream code relies on exactly that: `src/ablation_variant_reclassification.py`'s
+`is_missense_only`/`is_missense_or_start_loss` filters use strict
+`condensed_consequence == "missense_variant"` (rather than
+`simplified_consequence`) to build an unambiguous missense-only population
+for predictor-performance comparisons (REVEL/AlphaMissense/MutPred2),
+deliberately excluding any candidate whose assayed-variant group doesn't
+unanimously agree -- see `docs/ablation_variant_reclassification.md`.
+`splice_var_amino` is the mirror-image "did *any* candidate in this group
+affect splicing?" flag, propagated across the same exploded rows the same
+way.
+
 ## Usage
 
 Locally (with the Poetry environment):

@@ -50,6 +50,7 @@ from src.mave_dataset_stats import (
     SIMPLIFIED_CONSEQUENCE_COL,
     SNV_ACCESSIBLE_LABEL,
     SNV_LABEL,
+    SPLICEAI_SCORE_COLS,
     UNIVERSAL_CALIBRATION_CATEGORY_SHEETS_BY_PREDICTOR,
     UNIVERSAL_CALIBRATION_CLASS_COL_BY_PREDICTOR,
     UNIVERSAL_PREDICTOR_POINTS_COL_BY_PREDICTOR,
@@ -259,11 +260,19 @@ def _write_variant_classification_sheets_by_predictor(path, category_rows, mode=
     default) to create a fresh file.
 
     Also adds `clnsig_group_18_25`/`ExC_points_2025`/`OP_points`/
-    `Updated_Classification_ClinGen_repo` placeholder columns: the real
-    Supplementary_Data_5 `controls_*` sheets carry both this function's
-    columns and those `build_reclassification_report` reads, and every
-    `controls_*` sheet (now three, one per predictor) gets scanned by that
-    function too -- without these placeholders it would KeyError on them.
+    `Updated_Classification_ClinGen_repo`/`SIMPLIFIED_CONSEQUENCE_COL`/
+    `SPLICEAI_SCORE_COLS` placeholder columns: the real Supplementary_Data_5
+    `controls_*` sheets carry both this function's columns and those
+    `build_reclassification_report`/`compute_control_concordance`/`compute_
+    consequence_splice_breakdown` read, and every `controls_*` sheet (now
+    three, one per predictor) gets scanned by those functions too --
+    without these placeholders it would KeyError on them.
+    `SIMPLIFIED_CONSEQUENCE_COL` is set to `MISSENSE_CONSEQUENCE_VALUE` and
+    each `SPLICEAI_SCORE_COLS` entry to 0 (below `SPLICEAI_SCORE_THRESHOLD`)
+    for every row (real data is almost entirely missense, low-SpliceAI-score
+    here); callers that need a non-missense/high-splice-score row should
+    overwrite those columns afterward, as `_write_missense_control_
+    concordance_workbook` does with its own hand-built sheet.
 
     The predictor's own `Conflicting_*` column is derived from `fxn_points`/
     `predictor_points`, mirroring `Variant_Classification_analysis.ipynb`'s
@@ -296,6 +305,9 @@ def _write_variant_classification_sheets_by_predictor(path, category_rows, mode=
                 df["ExC_points_2025"] = 0
                 df["OP_points"] = 0
                 df["Updated_Classification_ClinGen_repo"] = None
+                df[SIMPLIFIED_CONSEQUENCE_COL] = MISSENSE_CONSEQUENCE_VALUE
+                for splice_col in SPLICEAI_SCORE_COLS:
+                    df[splice_col] = 0
                 opposite_signs = (df[FUNCTIONAL_POINTS_COL] * df[predictor_points_col]) < 0
                 df[conflicting_col] = df[points_col].where(~opposite_signs, CONFLICTING_EVIDENCE_VALUE)
                 df.to_excel(writer, sheet_name=category_sheets[category], index=False)
@@ -308,12 +320,16 @@ def _write_universal_calibration_sheets_by_predictor(path, mode="w"):
     every row (`Class_OP_<predictor>` agrees with the control label).
     Structurally valid for `compute_control_concordance`'s universal-
     calibration evidence source -- the CLI tests using this only check the
-    row's presence, not its exact counts.
+    row's presence, not its exact counts. Also carries a zeroed-out
+    `UNIVERSAL_PREDICTOR_POINTS_COL_BY_PREDICTOR` column -- present on every
+    real Supplementary Data 6 sheet and read directly (not derived) by
+    `compute_control_evidence_coverage`.
     """
     with pd.ExcelWriter(path, mode=mode, engine="openpyxl") as writer:
         for predictor in VARIANT_CLASSIFICATION_PREDICTORS:
             sheets = UNIVERSAL_CALIBRATION_CATEGORY_SHEETS_BY_PREDICTOR[predictor]
             class_col = UNIVERSAL_CALIBRATION_CLASS_COL_BY_PREDICTOR[predictor]
+            predictor_points_col = UNIVERSAL_PREDICTOR_POINTS_COL_BY_PREDICTOR[predictor]
             pd.DataFrame(
                 [
                     {
@@ -323,6 +339,7 @@ def _write_universal_calibration_sheets_by_predictor(path, mode="w"):
                         "OP_points": 1,
                         class_col: "Pathogenic",
                         "simplified_consequence": "missense_variant",
+                        predictor_points_col: 0,
                     }
                 ]
             ).to_excel(writer, sheet_name=sheets["controls"], index=False)
@@ -335,6 +352,7 @@ def _write_universal_calibration_sheets_by_predictor(path, mode="w"):
                         "OP_points": 1,
                         class_col: "Pathogenic",
                         "simplified_consequence": "missense_variant",
+                        predictor_points_col: 0,
                     }
                 ]
             ).to_excel(writer, sheet_name=sheets["ClinGen_Repo"], index=False)
@@ -390,8 +408,9 @@ def full_dataset_files(tmp_path):
     # levels.
     #
     # p1 is on BRCA1 (a mixed-year gene) with a 2025 call of "Pathogenic" but
-    # a 2018 call of "Uncertain significance", so it should land in a
-    # different clinical-attribute bucket between the two report sections.
+    # a 2018 call of "Uncertain significance", so the (mixed-year) clinical-
+    # attribute report's VUS bucket -- which uses the 2018 call for mixed-
+    # year genes -- picks up p1 instead of pathogenic/benign.
     # p3 is on GENEC (not a mixed-year gene) and carries a 2018 call
     # ("Pathogenic") that must be ignored in favor of its empty 2025 call.
     # Trailing 8 fields on every row are GENOMIC_COLUMNS (mavedb_variant_urn,
@@ -1469,18 +1488,17 @@ def test_cli_prints_table_and_writes_output(full_dataset_files, tmp_path):
     assert "% of SNV-accessible" in result.output
     assert "% of SNV" in result.output
 
-    # The mixed-year section reclassifies p1 (BRCA1) from pathogenic/benign
-    # (its 2025 call) to VUS (its 2018 call), so at the assayed-variants,
-    # distinct level the VUS count rises (1 -> 2) and the pathogenic/benign
-    # count falls (2 -> 1) between the two clinical-attribute sections.
-    clinvar_2025_section, clinvar_mixed_section = result.output.split(
+    # The (mixed-year) clinical-attribute report reclassifies p1 (BRCA1) from
+    # pathogenic/benign (its 2025 call) to VUS (its 2018 call) -- see
+    # full_dataset_files. The plain ClinVar-2025-for-every-gene section this
+    # used to be compared against was dropped as redundant (see
+    # 62eb698 "drop redundant clinical-attributes section"); only this one
+    # section exists now.
+    clinvar_mixed_section = result.output.split(
         "=== Clinical attributes (ClinVar 2025, except ClinVar 2018 for BRCA1/PTEN/MSH2/TP53; "
         "gnomAD; conflicting/ambiguous ClinVar calls excluded) ==="
-    )
-    assayed_distinct_2025 = clinvar_2025_section.split("Clinical attributes -- assayed variants, distinct")[1]
+    )[1]
     assayed_distinct_mixed = clinvar_mixed_section.split("Clinical attributes -- assayed variants, distinct")[1]
-    assert _bucket_count(assayed_distinct_2025, VUS_LABEL) == 1
-    assert _bucket_count(assayed_distinct_2025, PATHOGENIC_OR_BENIGN_LABEL) == 2
     assert _bucket_count(assayed_distinct_mixed, VUS_LABEL) == 2
     assert _bucket_count(assayed_distinct_mixed, PATHOGENIC_OR_BENIGN_LABEL) == 1
 

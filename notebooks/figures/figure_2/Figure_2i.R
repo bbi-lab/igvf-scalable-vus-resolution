@@ -47,7 +47,15 @@ nature_theme <- theme_linedraw() +
 # listed here, so consequence-specific estimates (often the ones driving
 # classification decisions) are visible next to the overall one. Set to
 # c() for the simpler 2-category (Normal/Abnormal) version instead.
-ABNORMAL_BREAKDOWN_CONSEQUENCES <- c('Missense', 'Truncating')
+#
+# Missense is hidden by default -- every gene's Functionally Abnormal
+# (Missense) row is currently empty (no non-NA odds ratio) -- flip
+# INCLUDE_MISSENSE_BREAKDOWN to TRUE once that changes.
+INCLUDE_MISSENSE_BREAKDOWN <- FALSE
+ABNORMAL_BREAKDOWN_CONSEQUENCES <- c(
+  if (INCLUDE_MISSENSE_BREAKDOWN) 'Missense',
+  'Truncating'
+)
 
 # Load main table
 or_df <- load_biobank_or_table(

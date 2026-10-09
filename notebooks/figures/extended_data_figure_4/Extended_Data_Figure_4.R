@@ -50,10 +50,23 @@ nature_theme <- theme_linedraw() +
 # Load main table -- keep_consequence = TRUE so panel a (condensed_assay_plot)
 # can overlay a Missense-only series on the aggregate ("All") one; every
 # other use below restricts back to Consequence == 'All' to stay unaffected.
+# 2026-10-07's export blanks LogOR/LogOR_LI/LogOR_UI for every row with <= 20
+# carrier cases or controls, which is exactly the data LOW_CARRIER_STYLE
+# below needs to draw -- so this stays on 2026-10-06_merged (confirmed to
+# still carry real values for those rows) rather than the newer export.
 or_df <- load_biobank_or_table(
-  "../../../data/input/biobank/AoU-OR-estimates_2026-10-07.tsv.gz",
+  "../../../data/input/biobank/AoU-OR-estimates_2026-10-06_merged.tsv.gz",
   keep_consequence = TRUE
 )
+
+# TSC2_IGVF has a real, non-NA odds ratio in this dataset (unlike the
+# 2026-10-07 export -- see the or_df comment above), but almost every one of
+# its ExCALIBR bins is built on <= 20 carriers (see SHOW_LOW_CARRIER_STYLE
+# below), so without that style on it reads as an ordinary, well-powered
+# gene rather than the mostly-unstable one it is. Off by default; pairs with
+# SHOW_LOW_CARRIER_STYLE = TRUE. Affects gene_groups_df, condensed_assay_datasets,
+# and figure_predictor_plot_df's gene filter below.
+INCLUDE_TSC2 <- FALSE
 
 # Broad gene-phenotype classes
 
@@ -79,9 +92,10 @@ gene_groups_df <- tribble(
   "RAD51D", "Cancer", "Cancer", "Cancer",
   "SCN5A", "Cardiovascular", "Cardio- vascular", "Cardiovascular",
   "TARDBP", "Rare disease", "Rare disease", "Rare disease",
-  "TP53", "Cancer", "Cancer", "Cancer"
-  # "TSC2", "Cancer", "Cancer", "Cancer" # excluded -- no longer has any non-NA odds ratio (see condensed_assay_datasets and figure_predictor_plot_df)
-)
+  "TP53", "Cancer", "Cancer", "Cancer",
+  "TSC2", "Cancer", "Cancer", "Cancer"
+) %>%
+  filter(INCLUDE_TSC2 | Gene != "TSC2")
 
 # Predictor plot component
 
@@ -186,7 +200,8 @@ make_predictor_plot <- function(
 # Make plot frame
 figure_predictor_plot_df <- predictor_plot_df %>%
   filter(
-    Gene %in% c('BRCA1', 'BRCA2', 'MSH2', 'TP53'), # Have gene-specific calibration; TSC2 excluded -- no longer has any non-NA odds ratio
+    # Have gene-specific calibration; TSC2 gated by INCLUDE_TSC2 above.
+    Gene %in% c('BRCA1', 'BRCA2', 'MSH2', 'TP53', if (INCLUDE_TSC2) 'TSC2'),
   )
 
 # Make plot for final figure
@@ -253,11 +268,11 @@ condensed_assay_datasets <- c(
   'RAD51C_Olvera-León_2024',
   'RAD51D_IGVF',
   'SCN5A_Ma_2024',
-  'TP53_Fayer_2021_meta'
+  'TP53_Fayer_2021_meta',
   #'TP53_Boettcher_2019'
   #'TP53_Fortuno_2021',
   #'TP53_Giacomelli_2018_combined_score'
-  #'TSC2_IGVF' # excluded -- no longer has any non-NA odds ratio
+  if (INCLUDE_TSC2) 'TSC2_IGVF'
 )
 
 # Almost every dataset above reports *both* an ExCALIBR score-interval
@@ -292,6 +307,16 @@ SHOW_TOTAL_COUNTS <- TRUE
 # gene panel at all (see assay_count_annotations_df and the geom_text()
 # layer further down). Off by default; set to TRUE to bring it back.
 SHOW_SAMPLE_SIZE_ANNOTATIONS <- FALSE
+
+# Whether a point's "Carrier cases"/"Carrier controls" is privacy-censored
+# (AoU reports only "<= 20" rather than an exact count whenever the true
+# value is 1-20) is a direct signal of an imprecise OR -- these are the bins
+# that otherwise show as insignificant/unstable and (per ExCALIBR's own
+# figure, which this mirrors) can be visually set apart rather than dropped.
+# Off by default; set to TRUE to draw those points with a thinner, dashed
+# CI (point/marker size is unchanged -- see low_carrier below and
+# geom_errorbar()/geom_pointrange() further down).
+SHOW_LOW_CARRIER_STYLE <- FALSE
 
 # Plain comma-grouped integer up to 9,999 (e.g. "1,410"); above that, one
 # decimal place of thousands with a "K" suffix (e.g. "12.9K") up to
@@ -459,7 +484,11 @@ condensed_assay_plot_df <-
   filter(!is.na(Classification)) %>%
   select(-normal_magnitude, -abnormal_magnitude, -magnitude, -bin) %>%
   mutate(
-    Consequence = factor(Consequence, levels = c('All', 'Missense'))
+    Consequence = factor(Consequence, levels = c('All', 'Missense')),
+    # See SHOW_LOW_CARRIER_STYLE above -- `Carrier cases`/`Carrier controls`
+    # are never an exact nonzero count under 21 (AoU always reports those as
+    # "<= 20"), so the censored flag already is the "<= 20" test.
+    low_carrier = `Carrier cases censored` | `Carrier controls censored`
   ) %>%
   left_join(gene_groups_df)
 
@@ -597,8 +626,23 @@ condensed_assay_plot <- ggplot(
       by_layer_x = TRUE
     )
   ) +
-  geom_errorbar(width = 0.5, position = position_dodge(width=0.5)) +
-  geom_pointrange(position = position_dodge(width=0.5), fill='white') +
+  # low_carrier & SHOW_LOW_CARRIER_STYLE (rather than low_carrier alone)
+  # collapses to a single FALSE value for every row when the flag is off, so
+  # the scale_*_manual() calls below are no-ops and every point renders
+  # exactly as before. Point/marker size is left unmapped -- every circle is
+  # the same size regardless of low_carrier, only the CI is styled.
+  # geom_pointrange() draws its own xmin-xmax connecting line on top of
+  # geom_errorbar()'s (the point/range geoms overlap by design, for the
+  # caps) -- linetype has to be mapped on both, or geom_pointrange's always-
+  # solid line shows through underneath geom_errorbar()'s dashed one.
+  geom_errorbar(
+    aes(linetype = low_carrier & SHOW_LOW_CARRIER_STYLE),
+    width = 0.5, position = position_dodge(width=0.5)
+  ) +
+  geom_pointrange(
+    aes(linewidth = low_carrier & SHOW_LOW_CARRIER_STYLE, linetype = low_carrier & SHOW_LOW_CARRIER_STYLE),
+    position = position_dodge(width=0.5), fill='white'
+  ) +
   # Sample-size annotation ("N cases" / "N controls"), positioned below
   # each panel's native gene-name strip -- in the room that strip's own
   # enlarged bottom margin reserves for it above -- rather than inside the
@@ -656,6 +700,17 @@ condensed_assay_plot <- ggplot(
       override.aes = aes(shape = 21, fill = 'white')
     )
   ) +
+  # Low-carrier styling (see SHOW_LOW_CARRIER_STYLE above): dashed, thinner
+  # CI only -- point/marker size is intentionally untouched (and unmapped)
+  # so every circle stays exactly the size it was before this option
+  # existed. 'FALSE' = 1*point_in_mm matches nature_theme's own default
+  # linewidth (confirmed via ggplot_build() against the unmodified script --
+  # nature_theme's element_geom(pointsize = ...) does not end up governing
+  # GeomPointrange's point size here, so don't reuse it as a reference
+  # value). guide = 'none' on both -- this is a data-quality cue, not a new
+  # legend.
+  scale_linetype_manual(values = c('FALSE' = 'solid', 'TRUE' = '22'), guide = 'none') +
+  scale_linewidth_manual(values = c('FALSE' = 1*point_in_mm, 'TRUE' = 0.6*point_in_mm), guide = 'none') +
   geom_vline(xintercept = log10(1), linetype = 'dashed')
 
 # Compose figure together

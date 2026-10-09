@@ -362,15 +362,19 @@ docker compose build r-figures
 # Render the whole .Rmd -- knits every chunk in order and writes each
 # figure's PNGs via ggsave()/save_my_plot()
 docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_6_8_9_11_12 \
-  r-figures -e 'rmarkdown::render("Extended_data_figures.Rmd")'
+  r-figures -e 'rmarkdown::render("Extended_data_figures.Rmd", output_file = "executed_Extended_data_figures.html")'
 ```
 
 `-w` overrides the service's default working directory (see the `r-figures`
 comment in `compose.yaml`) because the `.Rmd` reads/writes paths like
 `../../../data/output/...` assuming its own directory is cwd. The repo is
-bind-mounted into the container, so the rendered `Extended_data_figures.html`
+bind-mounted into the container, so the rendered `executed_Extended_data_figures.html`
 and every chunk's saved PNGs land directly in your working tree, not just
-inside the container.
+inside the container. `output_file` matches the `executed_<name>.html`
+convention used for `Figure5_6.Rmd`/`curation_summary_figure3.Rmd`
+(gitignored, see `.gitignore`) -- without it, `rmarkdown::render()` defaults
+to the `.Rmd`'s own basename (`Extended_data_figures.html`), which isn't
+covered by that ignore pattern and is left behind as untracked clutter.
 
 Every chunk writes under `data/output/figures/assets/`, but not to the same
 subfolder -- the fig6alt/8alt controls and ClinGen chunks save through
@@ -455,7 +459,7 @@ difference is the input workbook. Run it the same way as the main `.Rmd`:
 
 ```bash
 docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_6_8_9_11_12 \
-  r-figures -e 'rmarkdown::render("Extended_data_figures_gene_specific.Rmd")'
+  r-figures -e 'rmarkdown::render("Extended_data_figures_gene_specific.Rmd", output_file = "executed_Extended_data_figures_gene_specific.html")'
 ```
 
 Writes to `data/output/figures/assets/extended_data_figure_8alt_gene_specific/` (PNGs

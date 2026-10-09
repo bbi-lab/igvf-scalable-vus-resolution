@@ -39,6 +39,10 @@ venv/
 .RData
 .Rproj.user/
 
+# R's default graphics device output -- created whenever a plot is drawn
+# (e.g. print()) with no device explicitly open; not a real output file.
+Rplots.pdf
+
 ################################################################################
 # nbconvert/rmarkdown::render() execution byproducts
 ################################################################################

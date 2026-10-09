@@ -2158,9 +2158,18 @@ path_plot_no_lab <- make_three_ring_plot_no_labels(pathogenic, "Pathogenic range
 unc_plot_no_lab  <- make_three_ring_plot_no_labels(uncertain, "Uncertain range")
 ben_plot_no_lab  <- make_three_ring_plot_no_labels(benign, "Benign range")
 
-path_plot
-unc_plot
-ben_plot
+# Inline preview for the knitted HTML -- guarded by knitr.in.progress
+# (set only inside a real knitr::knit()/rmarkdown::render(), unlike
+# interactive(), which is also FALSE during a render) rather than left
+# as bare top-level expressions, so running this chunk's code outside of
+# an actual knit (e.g. copy-pasted into a console, or via knitr::purl())
+# can't fall back to R's default device and leave a stray Rplots.pdf
+# next to this file.
+if (isTRUE(getOption('knitr.in.progress'))) {
+  print(path_plot)
+  print(unc_plot)
+  print(ben_plot)
+}
 
 # nolab filenames -- ben_/unc_ were previously swapped relative to their
 # plot data (pie_ben_..._nolab.png held the uncertain plot and vice versa);
@@ -2258,10 +2267,13 @@ path_plot_no_lab_pc <- make_three_ring_plot_no_labels(pathogenic_pc, "Pathogenic
 unc_plot_no_lab_pc  <- make_three_ring_plot_no_labels(uncertain_pc, "Uncertain range")
 ben_plot_no_lab_pc  <- make_three_ring_plot_no_labels(benign_pc, "Benign range")
 
-path_plot_pc
-unc_plot_pc
-ben_plot_pc
-
+# See the matching guard on path_plot/unc_plot/ben_plot above -- same
+# reasoning applies here.
+if (isTRUE(getOption('knitr.in.progress'))) {
+  print(path_plot_pc)
+  print(unc_plot_pc)
+  print(ben_plot_pc)
+}
 
 # nolab filenames -- ben_/unc_ were previously swapped relative to their
 # plot data, same as the gnomad block above; fixed here too, alongside

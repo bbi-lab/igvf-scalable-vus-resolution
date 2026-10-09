@@ -160,21 +160,42 @@ cfig_theme <- nature_theme +
     ),
     strip.clip = 'off',
     panel.spacing = unit(2, 'pt'),
-    axis.title.x = element_text(margin = margin(0,0,0,0)),
-    legend.position = 'bottom'
+    axis.title.x = element_text(margin = margin(t = 6, 0, 0, 0), hjust = 0.3),
+    legend.position = 'bottom',
+    legend.justification = 0.65,
+    legend.box.spacing = unit(-18, 'pt')
   )
 
 fig6b_plot = combined_points_condensed_plot +
   cfig_theme +
-  theme(axis.text.x = element_text(angle = 60))
+  theme(
+    axis.text.x = element_text(angle = 60),
+    # BARD1 (left-most panel, the only one that prints y-axis tick labels)
+    # has up to 24 categories -- at this figure's 1.55in panel height
+    # (see the ggsave height comment below) nature_theme's inherited 6pt
+    # leaves too little room per row, and the <=/>= glyphs render
+    # overlapping between adjacent rows at sizes above 4pt. Set to 5pt
+    # anyway per explicit request, accepting that overlap.
+    axis.text.y = element_text(size = 5)
+  )
 
 print(fig6b_plot)
 
+# ggh4x::force_panelsizes(rows = unit(1.55, 'in')) would be the direct way to
+# pin the panel height, but it renders the y-axis's <=/>= glyphs
+# overlapping/stacked across rows at this panel height (confirmed with a
+# minimal repro -- a rendering bug in the two-pass layout it forces, not
+# something specific to this plot). Hitting the same panel height by instead
+# tuning the device height avoids that pass entirely: every other element
+# (strips, axis text/title, legend) has a fixed absolute size, so growing or
+# shrinking the overall height changes only the panel -- 66.6mm total here
+# measured out to a 1.55in-tall panel against the fixed ~27.2mm the rest of
+# the figure takes up.
 ggsave(
   '../../../data/output/figures/assets/figure_6/figure_6b.pdf',
   fig6b_plot,
   width = 183, # Max 183
-  height = 90,
+  height = 66.6,
   units = 'mm',
   device = cairo_pdf,
   create.dir = TRUE)
@@ -182,6 +203,6 @@ ggsave(
   '../../../data/output/figures/assets/figure_6/figure_6b.svg',
   fig6b_plot,
   width = 183, # Max 183
-  height = 75,
+  height = 66.6,
   units = 'mm',
   create.dir = TRUE)

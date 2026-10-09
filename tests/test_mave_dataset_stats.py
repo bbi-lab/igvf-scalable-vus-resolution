@@ -89,6 +89,7 @@ from src.mave_dataset_stats import (
     compute_igvf_dataset_measurement_counts,
     compute_reclassification_agreement,
     compute_reclassification_filter_funnel,
+    compute_vamp_seq_codon_nt_coverage,
     compute_variant_classification_chi_squared_tests,
     compute_variant_classification_stats,
     control_concordance_flags,
@@ -99,9 +100,11 @@ from src.mave_dataset_stats import (
     format_clinical_table,
     format_clingen_evidence_repository_summary,
     format_composite_score_datasets,
+    format_consequence_splice_breakdown_table,
     format_control_concordance_report,
     format_control_evidence_coverage_report,
     format_count_table,
+    format_functional_only_sufficient_pathogenic_fraction,
     format_gene_breakdown,
     format_gene_discordance_summary,
     format_genes_with_multiple_datasets,
@@ -109,6 +112,8 @@ from src.mave_dataset_stats import (
     format_igvf_dataset_measurement_counts,
     format_reclassification_filter_funnel,
     format_reclassification_table,
+    format_registered_genetic_tests_summary,
+    format_vamp_seq_codon_nt_coverage,
     format_variant_classification_chi_squared_tests,
     format_variant_classification_table,
     funnel_distinct_dna_variants,
@@ -206,6 +211,21 @@ def _write_chek2_file(path, rows=()):
     """
     columns = ["hgvs_pro", "score", "Filter_CI"]
     pd.DataFrame(rows, columns=columns).to_excel(path, index=False)
+
+
+def _write_testing_registry_file(path, gene_symbols):
+    """Minimal NCBI GTR bulk export: one 'Clinical'/'gene' row per symbol in
+    `gene_symbols`, the only rows `count_registered_genetic_tests` reads --
+    see its own `load_gene_test_counts`.
+    """
+    df = pd.DataFrame(
+        {
+            "test_type": ["Clinical"] * len(gene_symbols),
+            "object": ["gene"] * len(gene_symbols),
+            "gene_symbol": list(gene_symbols),
+        }
+    )
+    df.to_csv(path, sep="\t", index=False, compression="gzip")
 
 
 def _bucket_count(section_text, label):
@@ -1348,6 +1368,8 @@ def test_cli_prints_table_and_writes_output(full_dataset_files, tmp_path):
         universal_controls_path,
     ) = full_dataset_files
     output_path = tmp_path / "report.txt"
+    testing_registry_path = tmp_path / "testing_registry.txt.gz"
+    _write_testing_registry_file(testing_registry_path, ["BRCA1", "GENEB", "GENEC", "GENED"])
 
     result = CliRunner().invoke(
         main,
@@ -1365,6 +1387,8 @@ def test_cli_prints_table_and_writes_output(full_dataset_files, tmp_path):
             str(checkpoint_path),
             "--chek2-file",
             str(chek2_path),
+            "--testing-registry",
+            str(testing_registry_path),
             "--output",
             str(output_path),
         ],
@@ -1613,6 +1637,8 @@ def test_cli_allow_clinvar_conflicts_flag_toggles_conflict_handling(tmp_path):
     _write_chek2_file(chek2_path)
     universal_controls_path = tmp_path / "universal_controls.xlsx"
     _write_universal_calibration_sheets_by_predictor(universal_controls_path)
+    testing_registry_path = tmp_path / "testing_registry.txt.gz"
+    _write_testing_registry_file(testing_registry_path, ["GENEA"])
     extra_args = [
         "--excalibr-calibrations-file",
         str(excalibr_path),
@@ -1624,6 +1650,8 @@ def test_cli_allow_clinvar_conflicts_flag_toggles_conflict_handling(tmp_path):
         str(checkpoint_path),
         "--chek2-file",
         str(chek2_path),
+        "--testing-registry",
+        str(testing_registry_path),
     ]
 
     default_result = CliRunner().invoke(
@@ -4202,6 +4230,8 @@ def test_build_report_text_text_mode_is_byte_identical_to_before_markdown_suppor
         "chi squared summary",
         "discordance summary",
         "splice summary",
+        "vamp-seq summary",
+        "registered genetic tests summary",
     )
 
     assert text.startswith("=== Dataset summary ===")
@@ -4209,6 +4239,8 @@ def test_build_report_text_text_mode_is_byte_identical_to_before_markdown_suppor
     assert "=== Reclassification agreement (Figure 4c) ===" in text
     assert "score section" in text
     assert "genes with multiple datasets summary" in text
+    assert "vamp-seq summary" in text
+    assert "registered genetic tests summary" in text
     assert "## " not in text
 
 
@@ -4236,6 +4268,8 @@ def test_build_report_text_markdown_mode_produces_real_headings_and_tables():
         "chi squared summary",
         "discordance summary",
         "splice summary",
+        "vamp-seq summary",
+        "registered genetic tests summary",
         markdown=True,
     )
 
@@ -4246,4 +4280,98 @@ def test_build_report_text_markdown_mode_produces_real_headings_and_tables():
     assert "## Genes represented" in text
     assert "- IGVF only (1): BRCA1" in text
     assert any(line.count("|") >= 2 for line in text.splitlines())
+
+
+def test_format_consequence_splice_breakdown_table_reports_vus_missense_fraction():
+    # 3 VUS missense rows (2 low-score, 1 high-score) + 1 VUS intron row --
+    # missense fraction should be 3 of 4, not counting the intron row.
+    breakdown = {
+        "VUS": pd.DataFrame({"low": [2, 1], "high": [1, 0]}, index=["missense_variant", "intron_variant"]),
+        "gnomAD": pd.DataFrame({"low": [5], "high": [0]}, index=["missense_variant"]),
+    }
+
+    text = format_consequence_splice_breakdown_table(breakdown)
+
+    assert "ClinVar VUS missense: 3 of 4 (75.0%)" in text
+
+
+def test_format_consequence_splice_breakdown_table_vus_without_missense_rows():
+    breakdown = {"VUS": pd.DataFrame({"low": [4], "high": [1]}, index=["intron_variant"])}
+
+    text = format_consequence_splice_breakdown_table(breakdown)
+
+    assert "ClinVar VUS missense: 0 of 5 (0.0%)" in text
+
+
+def _write_vamp_seq_expanded_rows():
+    """Rows exercising every restriction `compute_vamp_seq_codon_nt_coverage`
+    applies: F9's non-heavy-chain datasets dropped, TSC2's middle (neither
+    RapGAP nor Tuberin) aa_pos dropped, a non-VAMP-seq gene (SGE_GENE)
+    excluded entirely, and a duplicate `mavedb_variant_urn` deduped away.
+
+    Columns: Gene, Dataset, mavedb_variant_urn, aa_pos, aa_ref, aa_alt.
+    """
+    return pd.DataFrame(
+        [
+            # G6PD: 2 distinct variants, 2 distinct positions.
+            ("G6PD", "G6PD_IGVF", "urn:1", "10", "A", "G"),
+            ("G6PD", "G6PD_IGVF", "urn:2", "11", "A", "G"),
+            # Duplicate urn:1 (e.g. a second measurement row) -- deduped away.
+            ("G6PD", "G6PD_IGVF", "urn:1", "10", "A", "G"),
+            # F9 heavy chain: 1 variant kept.
+            ("F9", "F9_Popp_2025_heavy_chain", "urn:3", "20", "C", "T"),
+            # F9 light chain: dropped entirely (not heavy-chain).
+            ("F9", "F9_Popp_2025_light_chain", "urn:4", "21", "C", "T"),
+            # TSC2 RapGAP (aa_pos >= 1512): 1 variant kept.
+            ("TSC2", "TSC2_IGVF", "urn:5", "1512", "D", "E"),
+            # TSC2 Tuberin (aa_pos <= 757): 1 variant kept.
+            ("TSC2", "TSC2_IGVF", "urn:6", "757", "D", "E"),
+            # TSC2 middle (neither domain): dropped entirely.
+            ("TSC2", "TSC2_IGVF", "urn:7", "1000", "D", "E"),
+            # Non-VAMP-seq gene: excluded entirely.
+            ("SGE_GENE", "DS_SGE", "urn:8", "5", "A", "G"),
+        ],
+        columns=["Gene", "Dataset", "mavedb_variant_urn", "aa_pos", "aa_ref", "aa_alt"],
+    )
+
+
+def test_compute_vamp_seq_codon_nt_coverage_applies_gene_dataset_and_domain_restrictions():
+    expanded = _write_vamp_seq_expanded_rows()
+
+    codon_substitutions, nt_positions = compute_vamp_seq_codon_nt_coverage(expanded)
+
+    # Distinct codon substitutions per bucket (urn:1's duplicate deduped
+    # away first): G6PD 2 (urn:1, urn:2) + F9 heavy-chain 1 (urn:3) +
+    # TSC2 RapGAP 1 (urn:5) + TSC2 Tuberin 1 (urn:6) = 5.
+    assert codon_substitutions == 5
+    # Distinct aa_pos per bucket x3: G6PD 2 positions (10, 11) + F9 1 (20) +
+    # RapGAP 1 (1512) + Tuberin 1 (757) = 5 positions x3 = 15.
+    assert nt_positions == 15
+
+
+def test_format_vamp_seq_codon_nt_coverage():
+    text = format_vamp_seq_codon_nt_coverage(29846, 4410)
+
+    assert "Codon substitutions tested: 29846" in text
+    assert "Nucleotide positions tested: 4410" in text
+
+
+def test_format_registered_genetic_tests_summary():
+    per_gene_counts = {"BRCA1": 42, "CALM1, CALM2, CALM3": 7}
+
+    text = format_registered_genetic_tests_summary(49, per_gene_counts)
+
+    assert "Total registered clinical genetic tests across 2 genes: 49" in text
+    assert "BRCA1" in text
+    assert "42" in text
+    assert "CALM1, CALM2, CALM3" in text
+
+
+def test_format_functional_only_sufficient_pathogenic_fraction():
+    functional_only_fractions = {"REVEL": (37271, 43080), "MutPred2": (36975, 86539)}
+
+    text = format_functional_only_sufficient_pathogenic_fraction(functional_only_fractions)
+
+    assert "REVEL: 37271 of 43080 (86.5%)" in text
+    assert "MutPred2: 36975 of 86539 (42.7%)" in text
 

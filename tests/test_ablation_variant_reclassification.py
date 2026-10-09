@@ -44,6 +44,7 @@ from src.ablation_variant_reclassification import (
     clinvar_control_missense_only_truth_direction,
     clinvar_control_truth_direction,
     combined_points_col,
+    compute_functional_only_sufficient_pathogenic_fraction,
     concordance_counts,
     concordance_status,
     control_truth_direction_series,
@@ -620,6 +621,45 @@ def test_direction_pathogenic_conflict_bucket_is_pathogenic_before_conflict():
     category = categorize_synergy(restricted_flags, FUNCTIONAL_ARM_LABEL, "REVEL only", "Functional + REVEL")
     assert list(category) == [CONFLICT_LABEL]
     assert "Pathogenic/Likely Pathogenic agreement" in report
+
+
+# --- compute_functional_only_sufficient_pathogenic_fraction -------------------------------------
+
+
+def test_compute_functional_only_sufficient_pathogenic_fraction(tmp_path):
+    # Row A: functional alone already crosses the Pathogenic threshold
+    # (fxn=8, REVEL=0) -- functional-alone sufficient. Row B: neither alone
+    # crosses it (fxn=3, REVEL=3) but combined (6) does -- true synergy, not
+    # functional-alone. Both predictor-training-exclusion columns are "No" so
+    # apply_notebook_exclusions's per-predictor training exclusion is a no-op.
+    df = _checkpoint_frame(
+        [
+            {
+                "Dataset": "A",
+                "Gene": "G1",
+                "hg38_start": 1,
+                "Fxn_points": 8,
+                "Points_REVEL_GeneSpecific_GenomeWide": 0,
+                "revel_train_amino": "No",
+                "mp2_train_amino": "No",
+            },
+            {
+                "Dataset": "B",
+                "Gene": "G1",
+                "hg38_start": 2,
+                "Fxn_points": 3,
+                "Points_REVEL_GeneSpecific_GenomeWide": 3,
+                "revel_train_amino": "No",
+                "mp2_train_amino": "No",
+            },
+        ]
+    )
+    chek2_path = tmp_path / "chek2.xlsx"
+    pd.DataFrame(columns=["hgvs_pro", "score", "Filter_CI"]).to_excel(chek2_path, index=False)
+
+    result = compute_functional_only_sufficient_pathogenic_fraction(df, chek2_path, predictors=["REVEL"])
+
+    assert result == {"REVEL": (1, 2)}
 
 
 # --- build_ablation_report (end to end, text sanity checks) -------------------------------------

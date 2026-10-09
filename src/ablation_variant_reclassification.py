@@ -1126,6 +1126,35 @@ def synergy_counts(flags, functional_col, predictor_col, combined_col):
     return category.value_counts().reindex(SYNERGY_CATEGORY_ORDER + CONFLICT_ORDER, fill_value=0)
 
 
+def compute_functional_only_sufficient_pathogenic_fraction(checkpoint, chek2_file, predictors=PREDICTOR_POINTS_COLUMNS):
+    """For each predictor, how many of its combined-arm (the pipeline's
+    actual method) Pathogenic/Likely Pathogenic calls were already reached
+    by functional/experimental evidence alone -- `FUNCTIONAL_ALONE_LABEL`,
+    see `categorize_synergy` -- restricted to `DIRECTION_PATHOGENIC`, over
+    every variant (not just a `--scope`-restricted subset).
+
+    `checkpoint`/`chek2_file` are the same inputs `main()` reads
+    (`checkpoint_file`/`--chek2-file`); this applies the same `apply_
+    notebook_exclusions`/`add_ablation_points_columns` preprocessing `main()`
+    does before building arms.
+
+    Returns `{predictor: (functional_only_count, combined_resolved_count)}`.
+    """
+    df = apply_notebook_exclusions(checkpoint, chek2_file)
+    df = add_ablation_points_columns(df)
+    functional_arm = build_arm(df, FUNCTIONAL_POINTS_COL)
+    functional_flags = resolved_flags(functional_arm, FUNCTIONAL_POINTS_COL, DIRECTION_PATHOGENIC)
+
+    results = {}
+    for predictor in predictors:
+        predictor_arm, combined_arm = build_predictor_arms(predictor, df)
+        flags = predictor_flags_for_direction(predictor, predictor_arm, combined_arm, functional_flags, DIRECTION_PATHOGENIC)
+        combined_col = f"Functional + {predictor}"
+        counts = synergy_counts(flags, FUNCTIONAL_ARM_LABEL, f"{predictor} only", combined_col)
+        results[predictor] = (int(counts[FUNCTIONAL_ALONE_LABEL]), int(flags[combined_col].sum()))
+    return results
+
+
 def class_upgrade_status(functional_points, predictor_points, combined_points, category):
     """For variants in one of `CLASS_UPGRADE_CATEGORIES` (a `categorize_
     synergy` label), did the *combined* score reach a stronger, the same, or

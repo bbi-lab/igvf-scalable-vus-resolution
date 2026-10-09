@@ -288,6 +288,23 @@ variant is only counted as filtered out once every one of its DNA-level
 candidates has been). See `compute_reclassification_filter_funnel`'s
 docstring for the exact steps and `--checkpoint-file`/`--chek2-file` for the
 two extra inputs this section needs.
+
+Near the end of the report, a "VAMP-seq codon/nucleotide coverage" section
+reports how many distinct codon (amino-acid) substitutions and nucleotide
+positions were tested across this study's three VAMP-seq genes (G6PD, F9,
+TSC2) -- see `compute_vamp_seq_codon_nt_coverage`. A "Registered clinical
+genetic tests" section reports, for each of this study's genes, how many
+clinical gene-level tests are registered in NCBI's Genetic Testing Registry
+-- see `src/count_registered_genetic_tests.py`'s module docstring for that
+section's `--testing-registry` input.
+
+`--include-ablation-summary` (off by default, since it re-runs the ablation
+arm-building analysis over the full checkpoint file) adds a "Functional-
+evidence-only sufficiency" section: for each predictor, what percentage of
+its combined-evidence Pathogenic/Likely Pathogenic calls were already
+reached by functional/experimental evidence alone -- see
+`src.ablation_variant_reclassification.compute_functional_only_sufficient_
+pathogenic_fraction`.
 """
 
 import re
@@ -298,6 +315,8 @@ import click
 import numpy as np
 import pandas as pd
 from scipy.stats import chi2_contingency
+
+from src.count_registered_genetic_tests import DEFAULT_TESTING_REGISTRY_PATH, count_registered_genetic_tests
 
 DEFAULT_CONDENSED_FILE = Path("data/output/maves/integrated_variant_effect_dataset.condensed.tsv.gz")
 DEFAULT_EXPANDED_FILE = Path("data/output/maves/integrated_variant_effect_dataset.tsv.gz")
@@ -3129,7 +3148,9 @@ def format_consequence_splice_breakdown_table(breakdown, title=CONSEQUENCE_SPLIC
     one column per category, each cell "{low} / {high}" -- distinct DNA
     variants with every SpliceAI score null or below `SPLICEAI_SCORE_
     THRESHOLD`, vs. with at least one at or above it. A trailing "Total" row
-    sums each category's column.
+    sums each category's column. Also reports how many of the `VUS`
+    category's distinct DNA variants are missense (`MISSENSE_CONSEQUENCE_
+    VALUE`), summed across both SpliceAI tiers.
     """
     categories = list(breakdown)
     consequences = sorted(
@@ -3151,17 +3172,140 @@ def format_consequence_splice_breakdown_table(breakdown, title=CONSEQUENCE_SPLIC
         category: f"{breakdown[category]['low'].sum()} / {breakdown[category]['high'].sum()}"
         for category in categories
     }
+    vus_table = breakdown["VUS"]
+    vus_missense = int(vus_table.loc[MISSENSE_CONSEQUENCE_VALUE].sum()) if MISSENSE_CONSEQUENCE_VALUE in vus_table.index else 0
+    vus_total = int(vus_table.sum().sum())
     lines = [_format_title(title, markdown)]
     lines.extend(
         _format_label_block(
             [
                 f"Each cell: distinct DNA variants with every SpliceAI score ({', '.join(SPLICEAI_SCORE_COLS)}) "
-                f"{SPLICEAI_LOW_LABEL} / with at least one SpliceAI score {SPLICEAI_HIGH_LABEL}."
+                f"{SPLICEAI_LOW_LABEL} / with at least one SpliceAI score {SPLICEAI_HIGH_LABEL}.",
+                f"ClinVar VUS missense: {_format_count_and_pct(vus_missense, vus_total)}",
             ],
             markdown,
         )
     )
     _append_table(lines, result, markdown)
+    return "\n".join(lines)
+
+
+# VAMP-seq codon/nucleotide coverage -- replicates notebooks/figures/figure_2/
+# PP_ProcessBigDataFrame.ipynb + PP_ResolutionOverview.ipynb's "Amino Acid
+# Changes"/"Genomic Positions" bar-chart numbers (`assay_comparison_bars`),
+# from the raw `expanded` dataframe rather than that notebook's saved
+# intermediate Excel subset. Of F9's six parallel VAMP-seq screens (heavy
+# chain, light chain, strep, two carboxy-motif screens, and a computational
+# model), only the heavy-chain-antibody one is used -- `Dataset` containing
+# "heavy", case-insensitive. TSC2 is split into its two non-overlapping
+# assayed domains, RapGAP (`aa_pos >= 1512`) and Tuberin (`aa_pos <= 757`);
+# rows with `aa_pos` strictly between (neither domain) are excluded. G6PD has
+# no such restriction.
+VAMP_SEQ_CODON_NT_GENES = ("G6PD", "F9", "TSC2")
+F9_HEAVY_CHAIN_DATASET_SUBSTRING = "heavy"
+TSC2_RAPGAP_MIN_AA_POS = 1512
+TSC2_TUBERIN_MAX_AA_POS = 757
+VAMP_SEQ_CODON_NT_TITLE = "=== VAMP-seq codon/nucleotide coverage (G6PD, F9 heavy-chain, TSC2) ==="
+
+
+def compute_vamp_seq_codon_nt_coverage(expanded):
+    """How many distinct codon (amino-acid) substitutions and nucleotide
+    positions were tested across this study's three VAMP-seq genes -- see
+    `VAMP_SEQ_CODON_NT_GENES`'s module-level comment for the exact gene/
+    dataset/domain restrictions this replicates.
+
+    Each gene/domain bucket is deduped to one row per `mavedb_variant_urn`
+    before counting, then summed across buckets (not unioned -- different
+    genes/domains can't share an `aa_pos`/amino-acid-change identity).
+
+    Returns `(codon_substitutions, nt_positions)`: `codon_substitutions`
+    sums each bucket's distinct `aa_ref`+`aa_pos`+`aa_alt` combination count;
+    `nt_positions` sums each bucket's distinct `aa_pos` count x3 (one
+    nucleotide position per codon base).
+    """
+    vamp = expanded[expanded[GENE_COL].isin(VAMP_SEQ_CODON_NT_GENES)].copy()
+    drop_f9_non_heavy = (vamp[GENE_COL] == "F9") & (
+        ~vamp[DATASET_COL].str.contains(F9_HEAVY_CHAIN_DATASET_SUBSTRING, case=False, na=False)
+    )
+    vamp = vamp[~drop_f9_non_heavy]
+    aa_pos_numeric = pd.to_numeric(vamp["aa_pos"], errors="coerce")
+    vamp = vamp[aa_pos_numeric.notna()]
+
+    def _bucket_counts(sub):
+        sub = sub.drop_duplicates(subset=[MAVEDB_VARIANT_URN_COL])
+        codon = (sub["aa_ref"] + sub["aa_pos"] + sub["aa_alt"]).nunique()
+        nt = pd.to_numeric(sub["aa_pos"], errors="coerce").nunique() * 3
+        return codon, nt
+
+    codon_total = 0
+    nt_total = 0
+    for gene in ("G6PD", "F9"):
+        codon, nt = _bucket_counts(vamp[vamp[GENE_COL] == gene])
+        codon_total += codon
+        nt_total += nt
+
+    tsc2 = vamp[vamp[GENE_COL] == "TSC2"]
+    tsc2_aa_pos = pd.to_numeric(tsc2["aa_pos"], errors="coerce")
+    for domain_mask in (tsc2_aa_pos >= TSC2_RAPGAP_MIN_AA_POS, tsc2_aa_pos <= TSC2_TUBERIN_MAX_AA_POS):
+        codon, nt = _bucket_counts(tsc2[domain_mask])
+        codon_total += codon
+        nt_total += nt
+
+    return codon_total, nt_total
+
+
+def format_vamp_seq_codon_nt_coverage(codon_substitutions, nt_positions, title=VAMP_SEQ_CODON_NT_TITLE, markdown=False):
+    lines = [_format_title(title, markdown)]
+    lines.extend(
+        _format_label_block(
+            [
+                f"Codon substitutions tested: {codon_substitutions}",
+                f"Nucleotide positions tested: {nt_positions}",
+            ],
+            markdown,
+        )
+    )
+    return "\n".join(lines)
+
+
+REGISTERED_GENETIC_TESTS_TITLE = "=== Registered clinical genetic tests (NCBI GTR) ==="
+
+
+def format_registered_genetic_tests_summary(total_count, per_gene_counts, title=REGISTERED_GENETIC_TESTS_TITLE, markdown=False):
+    """Text form of `count_registered_genetic_tests`'s output: a total across
+    this study's genes, plus a per-gene table (Curation-sheet order, combined
+    entries like "CALM1, CALM2, CALM3" as one row).
+    """
+    lines = [_format_title(title, markdown)]
+    lines.extend(
+        _format_label_block(
+            [f"Total registered clinical genetic tests across {len(per_gene_counts)} genes: {total_count}"], markdown
+        )
+    )
+    table = pd.DataFrame({"Registered clinical tests": pd.Series(per_gene_counts)})
+    _append_table(lines, table, markdown)
+    return "\n".join(lines)
+
+
+FUNCTIONAL_ONLY_SUFFICIENT_TITLE = "=== Functional-evidence-only sufficiency (ablation analysis; --include-ablation-summary) ==="
+
+
+def format_functional_only_sufficient_pathogenic_fraction(
+    functional_only_fractions, title=FUNCTIONAL_ONLY_SUFFICIENT_TITLE, markdown=False
+):
+    """Text form of `src.ablation_variant_reclassification.compute_
+    functional_only_sufficient_pathogenic_fraction`'s output
+    (`{predictor: (functional_only_count, combined_resolved_count)}`): for
+    each predictor, what percent of its combined-evidence (the pipeline's
+    actual method) Pathogenic/Likely Pathogenic calls were already reached
+    by functional/experimental evidence alone.
+    """
+    lines = [_format_title(title, markdown)]
+    body = [
+        f"{predictor}: " + _format_count_and_pct(functional_only, combined_total)
+        for predictor, (functional_only, combined_total) in functional_only_fractions.items()
+    ]
+    lines.extend(_format_label_block(body, markdown))
     return "\n".join(lines)
 
 
@@ -3185,6 +3329,8 @@ def build_report_text(
     variant_classification_chi_squared_summary,
     gene_discordance_summary,
     consequence_splice_breakdown_summary,
+    vamp_seq_coverage_summary,
+    registered_genetic_tests_summary,
     allow_clinvar_conflicts=False,
     markdown=False,
 ):
@@ -3221,6 +3367,8 @@ def build_report_text(
         variant_classification_chi_squared_summary,
         gene_discordance_summary,
         consequence_splice_breakdown_summary,
+        vamp_seq_coverage_summary,
+        registered_genetic_tests_summary,
     ]
     return "\n\n".join(parts)
 
@@ -3288,6 +3436,28 @@ def build_report_text(
     help=f"Path to the CHEK2 QC workbook (default {DEFAULT_CHEK2_FILE}), for the filter-funnel section.",
 )
 @click.option(
+    "--testing-registry",
+    "testing_registry_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=DEFAULT_TESTING_REGISTRY_PATH,
+    help=(
+        f"Path to NCBI's Genetic Testing Registry bulk export (default {DEFAULT_TESTING_REGISTRY_PATH}), "
+        "for the registered-clinical-genetic-tests section."
+    ),
+)
+@click.option(
+    "--include-ablation-summary",
+    is_flag=True,
+    default=False,
+    help=(
+        "Also include a 'Functional-evidence-only sufficiency' section: for each predictor, what "
+        "percentage of its combined-evidence Pathogenic/Likely Pathogenic calls were already reached "
+        "by functional/experimental evidence alone. Off by default -- this re-runs the ablation "
+        "analysis's arm-building over the full --checkpoint-file, which costs noticeably more time "
+        "than the rest of this report."
+    ),
+)
+@click.option(
     "--output",
     type=click.Path(dir_okay=False, path_type=Path),
     default=None,
@@ -3332,6 +3502,8 @@ def main(
     universal_controls_file,
     checkpoint_file,
     chek2_file,
+    testing_registry_path,
+    include_ablation_summary,
     output,
     merge_calm_genes,
     allow_clinvar_conflicts,
@@ -3397,6 +3569,16 @@ def main(
     consequence_splice_breakdown = compute_consequence_splice_breakdown(controls_workbook)
     consequence_splice_breakdown_summary = format_consequence_splice_breakdown_table(consequence_splice_breakdown)
 
+    vamp_seq_codon_substitutions, vamp_seq_nt_positions = compute_vamp_seq_codon_nt_coverage(expanded)
+    vamp_seq_coverage_summary = format_vamp_seq_codon_nt_coverage(vamp_seq_codon_substitutions, vamp_seq_nt_positions)
+
+    registered_genetic_tests_total, registered_genetic_tests_by_gene = count_registered_genetic_tests(
+        metadata_file, testing_registry_path
+    )
+    registered_genetic_tests_summary = format_registered_genetic_tests_summary(
+        registered_genetic_tests_total, registered_genetic_tests_by_gene
+    )
+
     # Deliberately not dtype=str: the CHEK2 merge below matches
     # auth_reported_score/score by exact numeric equality, which only lines
     # up if both are parsed as their natural (float) type -- see
@@ -3429,8 +3611,18 @@ def main(
         variant_classification_chi_squared_summary,
         gene_discordance_summary,
         consequence_splice_breakdown_summary,
+        vamp_seq_coverage_summary,
+        registered_genetic_tests_summary,
         allow_clinvar_conflicts=allow_clinvar_conflicts,
     )
+
+    if include_ablation_summary:
+        from src.ablation_variant_reclassification import compute_functional_only_sufficient_pathogenic_fraction
+
+        functional_only_fractions = compute_functional_only_sufficient_pathogenic_fraction(checkpoint, chek2_file)
+        ablation_summary = format_functional_only_sufficient_pathogenic_fraction(functional_only_fractions)
+        report += "\n\n" + ablation_summary
+
     click.echo(report)
 
     if output:
@@ -3483,6 +3675,12 @@ def main(
         markdown_clingen_evidence_repository_summary = format_clingen_evidence_repository_summary(
             clingen_evidence_repository_stats, markdown=True
         )
+        markdown_vamp_seq_coverage_summary = format_vamp_seq_codon_nt_coverage(
+            vamp_seq_codon_substitutions, vamp_seq_nt_positions, markdown=True
+        )
+        markdown_registered_genetic_tests_summary = format_registered_genetic_tests_summary(
+            registered_genetic_tests_total, registered_genetic_tests_by_gene, markdown=True
+        )
 
         markdown_report = build_report_text(
             table,
@@ -3504,9 +3702,15 @@ def main(
             markdown_variant_classification_chi_squared_summary,
             markdown_gene_discordance_summary,
             markdown_consequence_splice_breakdown_summary,
+            markdown_vamp_seq_coverage_summary,
+            markdown_registered_genetic_tests_summary,
             allow_clinvar_conflicts=allow_clinvar_conflicts,
             markdown=True,
         )
+        if include_ablation_summary:
+            markdown_report += "\n\n" + format_functional_only_sufficient_pathogenic_fraction(
+                functional_only_fractions, markdown=True
+            )
         markdown_path = output.with_suffix(".md")
         markdown_path.write_text(markdown_report + "\n")
         click.echo(f"\nWrote Markdown report to {markdown_path}")

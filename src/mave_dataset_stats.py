@@ -934,6 +934,32 @@ def compute_bucket_stats(condensed, dataset_names, measurement_datasets):
     }, genes
 
 
+def compute_genes_with_multiple_datasets(condensed, dataset_names):
+    """Count genes backed by more than one dataset among `dataset_names`.
+
+    Uses the same per-row `Gene` splitting and CALM1/CALM2/CALM3 merging as
+    `genes_in`/`compute_bucket_stats`, so a gene's dataset count matches how
+    that gene is counted everywhere else in the report (e.g. a dataset whose
+    `Gene` value is "CALM1, CALM2, CALM3" contributes one dataset to the
+    merged `CALM_MERGED_LABEL` entry, not one each to three separate genes).
+
+    Returns (n_multi_dataset_genes, n_genes_total).
+    """
+    sub = condensed[condensed[DATASET_COL].isin(dataset_names)]
+    gene_datasets = {}
+    for dataset, gene_value in sub[[DATASET_COL, GENE_COL]].drop_duplicates().itertuples(index=False):
+        for gene in merge_calm_gene_names(set(split_genes(gene_value))):
+            gene_datasets.setdefault(gene, set()).add(dataset)
+    n_multi = sum(1 for datasets in gene_datasets.values() if len(datasets) > 1)
+    return n_multi, len(gene_datasets)
+
+
+def format_genes_with_multiple_datasets(n_multi, n_total, markdown=False):
+    pct = 100 * n_multi / n_total if n_total else float("nan")
+    line = f"Genes with more than one MAVE dataset: {n_multi} of {n_total} ({pct:.1f}%)"
+    return _format_prose_lines([line], markdown)[0]
+
+
 def compute_all_stats_from_frame(condensed, metadata):
     """Compute all bucket stats given an already-loaded condensed frame and metadata."""
     condensed_datasets = set(condensed[DATASET_COL].unique())
@@ -3030,6 +3056,7 @@ def build_report_text(
     table,
     gene_breakdown,
     genomic_variant_summary,
+    genes_with_multiple_datasets_summary,
     igvf_dataset_measurement_counts_summary,
     composite_score_datasets_summary,
     score_sections,
@@ -3057,6 +3084,7 @@ def build_report_text(
         _format_title("=== Dataset summary ===", markdown),
         _format_table_text(table, markdown),
         genomic_variant_summary,
+        genes_with_multiple_datasets_summary,
         format_gene_breakdown(gene_breakdown, markdown=markdown),
         igvf_dataset_measurement_counts_summary,
         composite_score_datasets_summary,
@@ -3204,6 +3232,10 @@ def main(
         raise click.ClickException(str(exc)) from exc
 
     table = stats_to_dataframe(stats)
+    n_multi_dataset_genes, n_genes_total = compute_genes_with_multiple_datasets(
+        condensed, set(condensed[DATASET_COL].unique())
+    )
+    genes_with_multiple_datasets_summary = format_genes_with_multiple_datasets(n_multi_dataset_genes, n_genes_total)
     igvf_dataset_measurement_counts = compute_igvf_dataset_measurement_counts(condensed, metadata)
     igvf_dataset_measurement_counts_summary = format_igvf_dataset_measurement_counts(igvf_dataset_measurement_counts)
     composite_score_datasets = compute_composite_score_datasets(condensed, metadata, merge_calm_genes=merge_calm_genes)
@@ -3268,6 +3300,7 @@ def main(
         table,
         gene_breakdown,
         genomic_variant_summary,
+        genes_with_multiple_datasets_summary,
         igvf_dataset_measurement_counts_summary,
         composite_score_datasets_summary,
         score_sections,
@@ -3302,6 +3335,9 @@ def main(
             composite_score_datasets, markdown=True
         )
         markdown_genomic_variant_summary = format_genomic_variant_count(expanded_file, expanded, markdown=True)
+        markdown_genes_with_multiple_datasets_summary = format_genes_with_multiple_datasets(
+            n_multi_dataset_genes, n_genes_total, markdown=True
+        )
         markdown_score_sections, markdown_clinical_sections_mixed_year = build_variant_level_reports(
             condensed,
             expanded,
@@ -3339,6 +3375,7 @@ def main(
             table,
             gene_breakdown,
             markdown_genomic_variant_summary,
+            markdown_genes_with_multiple_datasets_summary,
             markdown_igvf_dataset_measurement_counts_summary,
             markdown_composite_score_datasets_summary,
             markdown_score_sections,

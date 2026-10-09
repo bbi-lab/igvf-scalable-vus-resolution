@@ -79,6 +79,7 @@ from src.mave_dataset_stats import (
     compute_control_evidence_coverage,
     compute_excalibr_calibration_stats,
     compute_gene_discordance_stats,
+    compute_genes_with_multiple_datasets,
     compute_igvf_dataset_measurement_counts,
     compute_reclassification_agreement,
     compute_reclassification_filter_funnel,
@@ -97,6 +98,7 @@ from src.mave_dataset_stats import (
     format_count_table,
     format_gene_breakdown,
     format_gene_discordance_summary,
+    format_genes_with_multiple_datasets,
     format_genomic_variant_count,
     format_igvf_dataset_measurement_counts,
     format_reclassification_filter_funnel,
@@ -1026,6 +1028,65 @@ def test_dataset_summary_always_merges_calm_paralogs(tmp_path):
     stats, gene_breakdown = compute_all_stats(condensed_path, metadata_path)
     assert stats["Community (non-IGVF)"]["genes_represented"] == 2
     assert gene_breakdown["Community (non-IGVF) only"] == [CALM_MERGED_LABEL, "GENED"]
+
+
+def test_compute_genes_with_multiple_datasets_counts_genes_with_more_than_one_dataset():
+    condensed = pd.DataFrame(
+        {
+            "Dataset": ["DS_A", "DS_B", "DS_C", "DS_D"],
+            "Gene": ["GENEA", "GENEA", "GENEB", "GENEC"],
+        }
+    )
+
+    n_multi, n_total = compute_genes_with_multiple_datasets(condensed, set(condensed["Dataset"]))
+
+    # GENEA has two datasets (DS_A, DS_B); GENEB and GENEC have one each.
+    assert n_multi == 1
+    assert n_total == 3
+
+
+def test_compute_genes_with_multiple_datasets_merges_calm_paralogs():
+    """CALM1/CALM2/CALM3 count as one gene, matching every other
+    genes_represented-style stat -- two datasets each naming a different
+    CALM paralog still count as two datasets for the single merged gene."""
+    condensed = pd.DataFrame(
+        {
+            "Dataset": ["DS_CALM_A", "DS_CALM_B"],
+            "Gene": ["CALM1", "CALM2, CALM3"],
+        }
+    )
+
+    n_multi, n_total = compute_genes_with_multiple_datasets(condensed, set(condensed["Dataset"]))
+
+    assert n_multi == 1
+    assert n_total == 1
+
+
+def test_compute_genes_with_multiple_datasets_restricts_to_given_dataset_names():
+    condensed = pd.DataFrame(
+        {
+            "Dataset": ["DS_A", "DS_B", "DS_C"],
+            "Gene": ["GENEA", "GENEA", "GENEB"],
+        }
+    )
+
+    n_multi, n_total = compute_genes_with_multiple_datasets(condensed, {"DS_A", "DS_C"})
+
+    # DS_B is excluded, so GENEA only has one dataset (DS_A) left.
+    assert n_multi == 0
+    assert n_total == 2
+
+
+def test_format_genes_with_multiple_datasets():
+    text = format_genes_with_multiple_datasets(18, 41)
+
+    assert text == "Genes with more than one MAVE dataset: 18 of 41 (43.9%)"
+
+
+def test_format_genes_with_multiple_datasets_markdown_mode_bulletizes():
+    text = format_genes_with_multiple_datasets(18, 41, markdown=True)
+
+    assert text == "- Genes with more than one MAVE dataset: 18 of 41 (43.9%)"
 
 
 def test_compute_all_stats_raises_on_missing_metadata(dataset_files):
@@ -3907,6 +3968,7 @@ def test_build_report_text_text_mode_is_byte_identical_to_before_markdown_suppor
         table,
         gene_breakdown,
         "genomic summary",
+        "genes with multiple datasets summary",
         "igvf summary",
         "composite summary",
         ["score section"],
@@ -3928,6 +3990,7 @@ def test_build_report_text_text_mode_is_byte_identical_to_before_markdown_suppor
     assert "=== Score coverage (REVEL, AlphaMissense, MutPred2) ===" in text
     assert "=== Reclassification agreement (Figure 4c) ===" in text
     assert "score section" in text
+    assert "genes with multiple datasets summary" in text
     assert "## " not in text
 
 
@@ -3939,6 +4002,7 @@ def test_build_report_text_markdown_mode_produces_real_headings_and_tables():
         table,
         gene_breakdown,
         "genomic summary",
+        "genes with multiple datasets summary",
         "igvf summary",
         "composite summary",
         ["### Score coverage -- test"],

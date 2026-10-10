@@ -3503,7 +3503,10 @@ def format_registered_genetic_tests_summary(total_count, per_gene_counts, title=
     return "\n".join(lines)
 
 
-FUNCTIONAL_ONLY_SUFFICIENT_TITLE = "=== Functional-evidence-only sufficiency (ablation analysis; --include-ablation-summary) ==="
+FUNCTIONAL_ONLY_SUFFICIENT_VUS_TITLE = (
+    "=== Functional-evidence-only sufficiency, ClinVar VUS (ablation analysis; --include-ablation-summary) ==="
+)
+FUNCTIONAL_ONLY_SUFFICIENT_OVERALL_TITLE = "=== Functional-evidence-only sufficiency, all variants ==="
 
 # Mirrors `src.ablation_variant_reclassification`'s `SYNERGY_CATEGORY_ORDER +
 # CONFLICT_ORDER` label strings exactly, duplicated here (rather than
@@ -3516,41 +3519,61 @@ PREDICTOR_ALONE_LABEL = "Predictive alone sufficient"
 BOTH_ALONE_LABEL = "Either alone sufficient"
 SYNERGY_LABEL = "Neither alone sufficient"
 CONFLICT_LABEL = "Lost to combining (evidence conflict)"
-ABLATION_SYNERGY_CATEGORY_ORDER = [
-    FUNCTIONAL_ALONE_LABEL,
-    PREDICTOR_ALONE_LABEL,
-    BOTH_ALONE_LABEL,
-    SYNERGY_LABEL,
-    CONFLICT_LABEL,
-]
+# The four categories where the combined arm (the pipeline's actual method)
+# called a variant Pathogenic/Likely Pathogenic -- i.e. actual "PLP
+# classifications". `CONFLICT_LABEL` is deliberately excluded from this list:
+# it means the combined method did *not* reach Pathogenic/Likely Pathogenic
+# (a single source alone did, before combining undid it), so a conflict
+# variant isn't one of the PLP classifications each category's percentage is
+# of -- only shown as its own row for context.
+ABLATION_RESOLVED_CATEGORY_ORDER = [FUNCTIONAL_ALONE_LABEL, PREDICTOR_ALONE_LABEL, BOTH_ALONE_LABEL, SYNERGY_LABEL]
+ABLATION_SYNERGY_CATEGORY_ORDER = [*ABLATION_RESOLVED_CATEGORY_ORDER, CONFLICT_LABEL]
 
 
-def format_functional_only_sufficient_pathogenic_fraction(
-    functional_only_fractions, title=FUNCTIONAL_ONLY_SUFFICIENT_TITLE, markdown=False
-):
-    """Text form of `src.ablation_variant_reclassification.compute_
-    functional_only_sufficient_pathogenic_fraction`'s output (`{predictor:
-    {category_label: count}}`): for each predictor, the full breakdown of how
-    its combined-evidence (the pipeline's actual method) Pathogenic/Likely
-    Pathogenic calls were reached -- functional evidence alone, predictor
-    evidence alone, either alone, true synergy (neither alone), or lost to
-    combining -- as counts and percent of that predictor's total in-scope
-    variants (every variant where at least one arm resolved Pathogenic/Likely
-    Pathogenic). Highlights REVEL's "functional alone sufficient" figure.
-    """
-    lines = [_format_title(title, markdown)]
+def _format_ablation_synergy_table(breakdown, markdown, highlight_revel):
     table = pd.DataFrame(
         {
             predictor: {
-                category: _format_count_and_pct(counts[category], sum(counts.values()))
+                category: _format_count_and_pct(
+                    counts[category], sum(counts[c] for c in ABLATION_RESOLVED_CATEGORY_ORDER)
+                )
                 for category in ABLATION_SYNERGY_CATEGORY_ORDER
             }
-            for predictor, counts in functional_only_fractions.items()
+            for predictor, counts in breakdown.items()
         }
     )
-    if "REVEL" in table.columns:
+    if highlight_revel and "REVEL" in table.columns:
         table = _highlight_cells(table, markdown, [(table.index == FUNCTIONAL_ALONE_LABEL, "REVEL")])
-    _append_table(lines, table, markdown)
+    return table
+
+
+def format_functional_only_sufficient_pathogenic_fraction(
+    functional_only_fractions,
+    vus_title=FUNCTIONAL_ONLY_SUFFICIENT_VUS_TITLE,
+    overall_title=FUNCTIONAL_ONLY_SUFFICIENT_OVERALL_TITLE,
+    markdown=False,
+):
+    """Text form of `src.ablation_variant_reclassification.compute_
+    functional_only_sufficient_pathogenic_fraction`'s output (`{"vus":
+    {predictor: {category_label: count}}, "overall": {...}}`): for each
+    predictor, the full breakdown of how its combined-evidence (the
+    pipeline's actual method) Pathogenic/Likely Pathogenic calls were reached
+    -- functional evidence alone, predictor evidence alone, either alone,
+    true synergy (neither alone), or lost to combining -- as counts and
+    percent of that predictor's own PLP classifications (the four resolution
+    categories; `"Lost to combining"` isn't one, so it's excluded from the
+    denominator). ClinVar VUS is the headline table (highlighting REVEL's
+    "functional alone sufficient" figure: how many VUS Pathogenic/Likely
+    Pathogenic calls needed only functional/experimental evidence); the
+    all-variants table follows for reference, unhighlighted.
+    """
+    lines = [_format_title(vus_title, markdown)]
+    _append_table(lines, _format_ablation_synergy_table(functional_only_fractions["vus"], markdown, True), markdown)
+    lines.append("")
+    lines.append(_format_title(overall_title, markdown))
+    _append_table(
+        lines, _format_ablation_synergy_table(functional_only_fractions["overall"], markdown, False), markdown
+    )
     return "\n".join(lines)
 
 

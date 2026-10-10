@@ -627,11 +627,14 @@ def test_direction_pathogenic_conflict_bucket_is_pathogenic_before_conflict():
 
 
 def test_compute_functional_only_sufficient_pathogenic_fraction(tmp_path):
-    # Row A: functional alone already crosses the Pathogenic threshold
-    # (fxn=8, REVEL=0) -- functional-alone sufficient. Row B: neither alone
-    # crosses it (fxn=3, REVEL=3) but combined (6) does -- true synergy, not
-    # functional-alone. Both predictor-training-exclusion columns are "No" so
-    # apply_notebook_exclusions's per-predictor training exclusion is a no-op.
+    # Row A: ClinVar VUS, functional alone already crosses the Pathogenic
+    # threshold (fxn=8, REVEL=0) -- functional-alone sufficient. Row B:
+    # ClinVar VUS, neither alone crosses it (fxn=3, REVEL=3) but combined (6)
+    # does -- true synergy, not functional-alone. Row C: *not* a ClinVar VUS
+    # (no clinvar_sig_2025 call), otherwise identical to row A -- counts
+    # toward "overall" but must be excluded from the "vus"-scoped breakdown.
+    # Both predictor-training-exclusion columns are "No" so apply_notebook_
+    # exclusions's per-predictor training exclusion is a no-op.
     df = _checkpoint_frame(
         [
             {
@@ -640,6 +643,7 @@ def test_compute_functional_only_sufficient_pathogenic_fraction(tmp_path):
                 "hg38_start": 1,
                 "Fxn_points": 8,
                 "Points_REVEL_GeneSpecific_GenomeWide": 0,
+                "clinvar_sig_2025": "Uncertain significance",
                 "revel_train_amino": "No",
                 "mp2_train_amino": "No",
             },
@@ -649,6 +653,16 @@ def test_compute_functional_only_sufficient_pathogenic_fraction(tmp_path):
                 "hg38_start": 2,
                 "Fxn_points": 3,
                 "Points_REVEL_GeneSpecific_GenomeWide": 3,
+                "clinvar_sig_2025": "Uncertain significance",
+                "revel_train_amino": "No",
+                "mp2_train_amino": "No",
+            },
+            {
+                "Dataset": "C",
+                "Gene": "G1",
+                "hg38_start": 3,
+                "Fxn_points": 8,
+                "Points_REVEL_GeneSpecific_GenomeWide": 0,
                 "revel_train_amino": "No",
                 "mp2_train_amino": "No",
             },
@@ -660,13 +674,24 @@ def test_compute_functional_only_sufficient_pathogenic_fraction(tmp_path):
     result = compute_functional_only_sufficient_pathogenic_fraction(df, chek2_path, predictors=["REVEL"])
 
     assert result == {
-        "REVEL": {
-            FUNCTIONAL_ALONE_LABEL: 1,
-            PREDICTOR_ALONE_LABEL: 0,
-            BOTH_ALONE_LABEL: 0,
-            SYNERGY_LABEL: 1,
-            CONFLICT_LABEL: 0,
-        }
+        "overall": {
+            "REVEL": {
+                FUNCTIONAL_ALONE_LABEL: 2,
+                PREDICTOR_ALONE_LABEL: 0,
+                BOTH_ALONE_LABEL: 0,
+                SYNERGY_LABEL: 1,
+                CONFLICT_LABEL: 0,
+            }
+        },
+        "vus": {
+            "REVEL": {
+                FUNCTIONAL_ALONE_LABEL: 1,
+                PREDICTOR_ALONE_LABEL: 0,
+                BOTH_ALONE_LABEL: 0,
+                SYNERGY_LABEL: 1,
+                CONFLICT_LABEL: 0,
+            }
+        },
     }
 
 

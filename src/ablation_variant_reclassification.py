@@ -1129,34 +1129,51 @@ def synergy_counts(flags, functional_col, predictor_col, combined_col):
 def compute_functional_only_sufficient_pathogenic_fraction(checkpoint, chek2_file, predictors=PREDICTOR_POINTS_COLUMNS):
     """For each predictor, the full synergy breakdown (see `synergy_counts`)
     of its combined-arm (the pipeline's actual method) Pathogenic/Likely
-    Pathogenic calls, restricted to `DIRECTION_PATHOGENIC`, over every
-    variant where at least one arm (functional, predictor, or combined)
-    resolved Pathogenic/Likely Pathogenic (not just a `--scope`-restricted
-    subset). In particular, `FUNCTIONAL_ALONE_LABEL`'s count is how many of
-    the combined arm's Pathogenic/Likely Pathogenic calls needed only
-    functional/experimental evidence to reach that classification.
+    Pathogenic calls, restricted to `DIRECTION_PATHOGENIC` -- once over every
+    variant ("overall", matching `build_predictor_section`'s "all variants"
+    contingency table) and once restricted to ClinVar VUS only ("vus",
+    matching its scope-restricted "added value of combining evidence" table
+    under `--scope vus`). In particular, `FUNCTIONAL_ALONE_LABEL`'s count is
+    how many of the combined arm's Pathogenic/Likely Pathogenic calls needed
+    only functional/experimental evidence to reach that classification.
 
     `checkpoint`/`chek2_file` are the same inputs `main()` reads
     (`checkpoint_file`/`--chek2-file`); this applies the same `apply_
     notebook_exclusions`/`add_ablation_points_columns` preprocessing `main()`
     does before building arms.
 
-    Returns `{predictor: {category_label: count}}`, one entry per
+    Returns `{"overall": {predictor: {category_label: count}}, "vus":
+    {predictor: {category_label: count}}}`, one category entry per
     `SYNERGY_CATEGORY_ORDER + CONFLICT_ORDER` label.
     """
     df = apply_notebook_exclusions(checkpoint, chek2_file)
     df = add_ablation_points_columns(df)
     functional_arm = build_arm(df, FUNCTIONAL_POINTS_COL)
     functional_flags = resolved_flags(functional_arm, FUNCTIONAL_POINTS_COL, DIRECTION_PATHOGENIC)
+    vus_scope_flags = scope_mask(functional_arm, ("vus",))
 
-    results = {}
+    overall = {}
+    vus = {}
     for predictor in predictors:
         predictor_arm, combined_arm = build_predictor_arms(predictor, df)
-        flags = predictor_flags_for_direction(predictor, predictor_arm, combined_arm, functional_flags, DIRECTION_PATHOGENIC)
         combined_col = f"Functional + {predictor}"
-        counts = synergy_counts(flags, FUNCTIONAL_ARM_LABEL, f"{predictor} only", combined_col)
-        results[predictor] = counts.to_dict()
-    return results
+
+        flags = predictor_flags_for_direction(predictor, predictor_arm, combined_arm, functional_flags, DIRECTION_PATHOGENIC)
+        overall[predictor] = synergy_counts(flags, FUNCTIONAL_ARM_LABEL, f"{predictor} only", combined_col).to_dict()
+
+        vus_flags = restricted_flags_for_scope(
+            df,
+            predictor,
+            predictor_arm,
+            combined_arm,
+            functional_flags,
+            ("vus",),
+            vus_scope_flags,
+            DIRECTION_PATHOGENIC,
+        )
+        vus[predictor] = synergy_counts(vus_flags, FUNCTIONAL_ARM_LABEL, f"{predictor} only", combined_col).to_dict()
+
+    return {"overall": overall, "vus": vus}
 
 
 def class_upgrade_status(functional_points, predictor_points, combined_points, category):

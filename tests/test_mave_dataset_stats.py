@@ -4387,29 +4387,41 @@ def _ablation_breakdown(functional_alone, predictor_alone, both_alone, synergy, 
     }
 
 
-def test_format_functional_only_sufficient_pathogenic_fraction():
-    functional_only_fractions = {
-        "REVEL": _ablation_breakdown(37271, 1000, 2000, 2809, 3000),
-        "MutPred2": _ablation_breakdown(36975, 2000, 3000, 44564, 5000),
+def _functional_only_fractions():
+    return {
+        "vus": {
+            "REVEL": _ablation_breakdown(727, 0, 0, 699, 34),
+            "MutPred2": _ablation_breakdown(745, 0, 0, 892, 16),
+        },
+        "overall": {
+            "REVEL": _ablation_breakdown(37271, 0, 0, 5809, 114),
+            "MutPred2": _ablation_breakdown(36975, 0, 0, 49564, 410),
+        },
     }
 
-    text = format_functional_only_sufficient_pathogenic_fraction(functional_only_fractions)
+
+def test_format_functional_only_sufficient_pathogenic_fraction():
+    text = format_functional_only_sufficient_pathogenic_fraction(_functional_only_fractions())
 
     assert "REVEL" in text and "MutPred2" in text
-    assert "37271 of 46080 (80.9%)" in text
-    assert "36975 of 91539 (40.4%)" in text
+    # VUS-scoped: denominator is combined-resolved PLP calls only (excludes
+    # the "lost to combining" conflict count).
+    assert "727 of 1426 (51.0%)" in text
+    assert "745 of 1637 (45.5%)" in text
+    # All-variants, for reference.
+    assert "37271 of 43080 (86.5%)" in text
+    assert "36975 of 86539 (42.7%)" in text
 
 
-def test_format_functional_only_sufficient_pathogenic_fraction_highlights_revel_functional_alone():
-    functional_only_fractions = {
-        "REVEL": _ablation_breakdown(37271, 1000, 2000, 2809, 3000),
-        "MutPred2": _ablation_breakdown(36975, 2000, 3000, 44564, 5000),
-    }
+def test_format_functional_only_sufficient_pathogenic_fraction_highlights_revel_vus_only():
+    functional_only_fractions = _functional_only_fractions()
 
     markdown_text = format_functional_only_sufficient_pathogenic_fraction(functional_only_fractions, markdown=True)
     text = format_functional_only_sufficient_pathogenic_fraction(functional_only_fractions, markdown=False)
 
-    assert "<mark>37271 of 46080 (80.9%)</mark>" in markdown_text
+    assert "<mark>727 of 1426 (51.0%)</mark>" in markdown_text
+    assert "<mark>37271" not in markdown_text
+    assert "<mark>745" not in markdown_text
     assert "<mark>36975" not in markdown_text
     assert "<mark>" not in text
 

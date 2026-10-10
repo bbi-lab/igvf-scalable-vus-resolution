@@ -1532,10 +1532,18 @@ def test_cli_prints_table_and_writes_output(full_dataset_files, tmp_path):
 
     # The (mixed-year) clinical-attribute report reclassifies p1 (BRCA1) from
     # pathogenic/benign (its 2025 call) to VUS (its 2018 call) -- see
-    # full_dataset_files. The plain ClinVar-2025-for-every-gene section this
-    # used to be compared against was dropped as redundant (see
-    # 62eb698 "drop redundant clinical-attributes section"); only this one
-    # section exists now.
+    # full_dataset_files. The plain ClinVar-2025-for-every-gene section picks
+    # up p1 as pathogenic/benign instead.
+    clinvar_section = result.output.split(
+        "=== Clinical attributes (ClinVar 2025, gnomAD; conflicting/ambiguous ClinVar calls excluded) ==="
+    )[1].split(
+        "=== Clinical attributes (ClinVar 2025, except ClinVar 2018 for BRCA1/PTEN/MSH2/TP53; "
+        "gnomAD; conflicting/ambiguous ClinVar calls excluded) ==="
+    )[0]
+    assayed_distinct = clinvar_section.split("Clinical attributes -- assayed variants, distinct")[1]
+    assert _bucket_count(assayed_distinct, VUS_LABEL) == 1
+    assert _bucket_count(assayed_distinct, PATHOGENIC_OR_BENIGN_LABEL) == 2
+
     clinvar_mixed_section = result.output.split(
         "=== Clinical attributes (ClinVar 2025, except ClinVar 2018 for BRCA1/PTEN/MSH2/TP53; "
         "gnomAD; conflicting/ambiguous ClinVar calls excluded) ==="
@@ -4229,6 +4237,7 @@ def test_build_report_text_text_mode_is_byte_identical_to_before_markdown_suppor
         "composite summary",
         ["score section"],
         ["clinical section"],
+        ["clinical section (mixed year)"],
         "calibration summary",
         "funnel summary",
         "clingen summary",
@@ -4267,6 +4276,7 @@ def test_build_report_text_markdown_mode_produces_real_headings_and_tables():
         "composite summary",
         ["### Score coverage -- test"],
         ["### Clinical attributes -- test"],
+        ["### Clinical attributes -- test (mixed year)"],
         "calibration summary",
         "funnel summary",
         "clingen summary",

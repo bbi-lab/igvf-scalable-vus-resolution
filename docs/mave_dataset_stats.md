@@ -38,8 +38,9 @@ that flag isn't passed.
 
 It also reports score coverage (REVEL, AlphaMissense, MutPred2) and clinical
 attributes (VUS, pathogenic/benign, observed in gnomAD) across the assayed
-and DNA-level variants. The clinical-attribute breakdown uses ClinVar 2025
-for every gene except BRCA1, PTEN, MSH2, and TP53, which use ClinVar 2018
+and DNA-level variants. The clinical-attribute breakdown is reported twice:
+once using ClinVar 2025 for every gene, and once using ClinVar 2025 for
+every gene except BRCA1, PTEN, MSH2, and TP53, which use ClinVar 2018
 instead (see `MIXED_YEAR_GENES` / `mixed_year_clinvar_series` in the
 script).
 

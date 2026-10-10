@@ -1187,7 +1187,7 @@ def test_variant_flags_and_distinct_variant_flags():
 
     row_flags = variant_flags(df, SNV_ACCESSIBLE_LABEL)
     assert list(row_flags["REVEL"]) == [True, False, True]
-    assert list(row_flags["Pathogenic or benign (ClinVar 2025)"]) == [True, False, False]
+    assert list(row_flags["Pathogenic or benign"]) == [True, False, False]
     assert list(row_flags["No ClinVar or gnomAD annotation"]) == [False, True, True]
     # row 2's second DNA-level candidate ("A" -> "G") is a SNV, so it's SNV-accessible.
     assert list(row_flags[SNV_ACCESSIBLE_LABEL]) == [True, True, True]

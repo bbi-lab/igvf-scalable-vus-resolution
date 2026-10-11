@@ -270,6 +270,18 @@ services:
     volumes:
       - .:/usr/src/app
 
+  # Extended Data Figure 16 (gnomAD-ancestry-group classification resolution
+  # rate). All CLI args default to committed repo files, so a bare invocation
+  # is useful.
+  make-extended-data-figure-16:
+    <<: *tools-image
+    profiles:
+      - tools
+    entrypoint: ["python", "-m", "src.make_extended_data_figure_16"]
+    command: []
+    volumes:
+      - .:/usr/src/app
+
   # Extended Data Figure 10 (functional-vs-predictor evidence ablation).
   # --calibrated-figure has no default, and the figure is the whole point of
   # running this, so default to --help like flag-variants/build-figure4-data

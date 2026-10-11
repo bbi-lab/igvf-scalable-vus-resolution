@@ -270,9 +270,10 @@ Directories: `notebooks/figures/extended_data_figure_4/`,
 standalone scripts, documented in their own subsections below;
 `Extended_data_figures.Rmd` covers Figs 6, 6alt, 6alt missense, 8, 8alt,
 9alt, 11, and 12, and is documented further down.
-Ext. Data Fig 9 and Ext. Data Fig 10 are standalone Python scripts under
-`src/` instead (`src/make_extended_data_figure_9.py`,
-`src/ablation_variant_reclassification.py`), also documented in their own
+Ext. Data Fig 9, Ext. Data Fig 10, and Ext. Data Fig 16 are standalone Python
+scripts under `src/` instead (`src/make_extended_data_figure_9.py`,
+`src/ablation_variant_reclassification.py`,
+`src/make_extended_data_figure_16.py`), also documented in their own
 subsections below.
 
 ### Extended Data Figure 4
@@ -644,3 +645,39 @@ by rendering all 25 panels' worth of charts, not the dedup pass) -- expected,
 not a hang; the "Wrote N chart files" line at the end confirms completion.
 Pass `--predictor`/`--document-chart` to narrow it down if only a subset of
 panels is needed.
+
+### Extended Data Figure 16 (`src/make_extended_data_figure_16.py`)
+
+Classification ("resolution") rate by gnomAD v4 ancestry group, for both the
+VUS and gnomAD variant sets: the % of variants classified Benign/Likely
+Benign/Likely Pathogenic/Pathogenic (not "Uncertain") in each of gnomAD's 9
+named ancestry groups (African/African American, Admixed American,
+Ashkenazi Jewish, East Asian, Finnish, Middle Eastern, Non-Finnish European,
+Remaining individuals, South Asian), with two framings per variant set --
+"present" (exome AF > 0 in that group; groups may overlap) and "unique"
+(exome AF > 0 in that group and no other) -- each as a two-panel bar chart
+with 95% bootstrap CIs, a Non-Finnish European reference line, and
+Bonferroni-corrected significance stars vs. that reference.
+
+Unlike every other Extended Data Figure, this one is a standalone Python
+script (matplotlib) with no R dependency, via the
+`make-extended-data-figure-16` Compose service -- same pattern as Extended
+Data Figure 9/10 above. It reads
+`data/input/gnomAD/vus_with_ancestry_af.csv` and
+`data/input/gnomAD/gnomad_with_ancestry_af.csv` directly (gnomAD
+ancestry-group allele frequencies joined onto this project's REVEL
+classification, one row per variant) rather than `Supplementary_Data_5.xlsx`
+-- these two files are produced upstream by `map_gnomad_ancestry_af_v2.py`
+(not part of this repo) and checked into `data/input/gnomAD/` directly, not
+rebuilt by anything in this pipeline.
+
+```bash
+src/scripts/run_make_extended_data_figure_16.sh
+```
+
+Writes `ancestry_resolution_results.csv` (every number, one row per
+variant-set/framing/group) and `ancestry_resolution_VUS.png`/
+`ancestry_resolution_gnomAD.png` to
+`data/output/figures/assets/extended_data_figure_16/` by default; see
+`--vus-input`/`--gnomad-input`/`--outdir`/`--help` to override. `--no-stars`
+omits the significance markers; `--no-figures` writes only the results CSV.

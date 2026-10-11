@@ -449,6 +449,12 @@ src/scripts/run_ablation_variant_reclassification.sh \
   --calibrated-figure data/output/figures/assets/extended_data_figure_10/ablation_missense.pdf
 ```
 
+#### Extended Data Figure 16 (classification resolution rate by gnomAD ancestry group)
+
+```bash
+src/scripts/run_make_extended_data_figure_16.sh
+```
+
 Every `nbconvert --execute` call above leaves a side-effect `executed_<name>.ipynb`
 copy next to the source, and `Figure5_6.Rmd`'s `rmarkdown::render()` call
 does the same with `executed_Figure5_6.html` — both gitignored, so no need

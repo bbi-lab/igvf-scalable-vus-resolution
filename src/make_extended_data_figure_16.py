@@ -216,6 +216,41 @@ EDGE, SPINE, TEXT = "#4a4a4a", "#E0E4E0", "#24302A"
 
 COLORS = {g: tuple(c * (1 - BLEND) + BLEND for c in mcolors.to_rgb(h)) for g, h in zip(GROUPS, BASE_COLORS)}
 
+# Two `panel()` presets: DIAGNOSTIC_STYLE for `make_figures`'s large exploratory
+# PNGs (sized for on-screen inspection, DejaVu Sans), CALIBRATED_STYLE for
+# `build_calibrated_figures`'s exact-print-size PDFs (6.5in wide -- this
+# project's standard full-text-width, matching `save_calibrated_ablation_
+# figure` in ablation_variant_reclassification.py -- Arial, pdf.fonttype=42,
+# same reasoning as that figure and make_extended_data_figure_9.py).
+DIAGNOSTIC_STYLE = {
+    "tick_fontsize": 22,
+    "ref_tick_fontsize": 23,
+    "ylabel_fontsize": 23,
+    "title_fontsize": 28,
+    "title_pad": 20,
+    "star_fontsize": 28,
+    "bar_linewidth": 1.2,
+    "capsize": 5,
+    "error_linewidth": 1.5,
+    "error_capthick": 1.5,
+    "legend_fontsize": 21,
+    "legend_handlelength": 1.8,
+    "legend_handleheight": 1.6,
+    "legend_labelspacing": 0.7,
+}
+CALIBRATED_STYLE = {
+    "tick_fontsize": 6,
+    "ref_tick_fontsize": 6.5,
+    "ylabel_fontsize": 6.5,
+    "title_fontsize": 7,
+    "title_pad": 4,
+    "star_fontsize": 8,
+    "bar_linewidth": 0.6,
+    "capsize": 2,
+    "error_linewidth": 0.7,
+    "error_capthick": 0.7,
+}
+
 
 def panel_title(vset, framing):
     noun = NOUN.get(vset, "variants")
@@ -224,7 +259,7 @@ def panel_title(vset, framing):
     return f"{noun} unique to population"
 
 
-def panel(ax, sub, title, ylabel, stars, colors):
+def panel(ax, sub, title, ylabel, stars, colors, style, bar_width=0.6, show_legend=True):
     sub = sub.set_index("group").reindex(GROUPS)
     x = np.arange(len(GROUPS))
     rate = sub["pct_resolved"].to_numpy()
@@ -233,12 +268,12 @@ def panel(ax, sub, title, ylabel, stars, colors):
         x,
         rate,
         yerr=yerr,
-        capsize=5,
+        capsize=style["capsize"],
         color=[colors[g] for g in GROUPS],
         edgecolor=EDGE,
-        linewidth=1.2,
-        width=0.6,
-        error_kw={"elinewidth": 1.5, "ecolor": EDGE, "capthick": 1.5},
+        linewidth=style["bar_linewidth"],
+        width=bar_width,
+        error_kw={"elinewidth": style["error_linewidth"], "ecolor": EDGE, "capthick": style["error_capthick"]},
     )
     if pd.notna(sub.loc[REF_GROUP, "pct_resolved"]):
         ax.axhline(sub.loc[REF_GROUP, "pct_resolved"], color=EDGE, linestyle="--", linewidth=1.5, alpha=0.7, zorder=0)
@@ -252,27 +287,30 @@ def panel(ax, sub, title, ylabel, stars, colors):
                     "*",
                     ha="center",
                     va="bottom",
-                    fontsize=28,
+                    fontsize=style["star_fontsize"],
                     fontweight="bold",
                     color=TEXT,
                 )
 
     ax.set_xticks(x)
-    ax.set_xticklabels(GROUPS, fontsize=22, color=TEXT)
+    ax.set_xticklabels(GROUPS, fontsize=style["tick_fontsize"], color=TEXT)
     for t in ax.get_xticklabels():
         if t.get_text() == REF_GROUP:
             t.set_fontweight("bold")
-            t.set_fontsize(23)
-    ax.tick_params(axis="y", colors=TEXT, labelsize=21)
+            t.set_fontsize(style["ref_tick_fontsize"])
+    ax.tick_params(axis="y", colors=TEXT, labelsize=style["tick_fontsize"] - 1)
     ax.set_ylim(0, 100)
     ax.set_yticks(range(0, 101, 20))
-    ax.set_ylabel(ylabel, fontsize=23, color=TEXT)
-    ax.set_title(title, fontsize=28, fontweight="bold", color=TEXT, pad=20)
+    ax.set_ylabel(ylabel, fontsize=style["ylabel_fontsize"], color=TEXT)
+    ax.set_title(title, fontsize=style["title_fontsize"], fontweight="bold", color=TEXT, pad=style["title_pad"])
     for side in ("top", "right"):
         ax.spines[side].set_visible(False)
     for side in ("left", "bottom"):
         ax.spines[side].set_color(SPINE)
     ax.grid(False)
+
+    if not show_legend:
+        return
 
     handles = [
         Patch(
@@ -287,12 +325,12 @@ def panel(ax, sub, title, ylabel, stars, colors):
         loc="upper center",
         bbox_to_anchor=(0.5, -0.12),
         ncol=1,
-        fontsize=21,
+        fontsize=style["legend_fontsize"],
         frameon=False,
         labelcolor=TEXT,
-        handlelength=1.8,
-        handleheight=1.6,
-        labelspacing=0.7,
+        handlelength=style["legend_handlelength"],
+        handleheight=style["legend_handleheight"],
+        labelspacing=style["legend_labelspacing"],
     )
 
 
@@ -305,13 +343,63 @@ def make_figures(results, outdir, width, height, no_stars, ci_label):
         ylab = YLABEL.get(vset, DEFAULT_YLABEL) + (f"\n{ci_label}" if ci_label else "")
         fig, axes = plt.subplots(1, 2, figsize=(width, height), facecolor="white")
         for ax, framing in zip(axes, ["present", "unique"]):
-            panel(ax, d[d["framing"] == framing], panel_title(vset, framing), ylab, not no_stars, colors)
+            panel(
+                ax, d[d["framing"] == framing], panel_title(vset, framing), ylab, not no_stars, colors, DIAGNOSTIC_STYLE
+            )
         plt.tight_layout()
         stem = "ancestry_resolution_" + re.sub(r"[^A-Za-z0-9]+", "_", vset).strip("_")
         path = outdir / f"{stem}.png"
         plt.savefig(path, dpi=300, bbox_inches="tight")
         plt.close(fig)
         print(f"Wrote {path}")
+
+
+# Standard full-text-width for this project's calibrated (exact-print-size)
+# figures -- same width as save_calibrated_ablation_figure's Extended Data
+# Figure 10.
+CALIBRATED_WIDTH_IN = 6.5
+CALIBRATED_HEIGHT_IN = 3.0
+
+
+def build_calibrated_figures(results, outdir, no_stars, ci_label):
+    """Write one 6.5in-wide, exact-print-size two-panel PDF per variant set
+    (ancestry_resolution_<set>_calibrated.pdf) -- the same present/unique
+    panels as `make_figures`'s diagnostic PNGs, at print font sizes (Arial,
+    pdf.fonttype=42, same reasoning as `save_calibrated_ablation_figure` in
+    ablation_variant_reclassification.py and make_extended_data_figure_9.py).
+
+    Unlike the diagnostic panels, these omit the per-bar-color legend: at
+    this width the x-axis group-code ticks already identify each bar, so a
+    nine-entry "<full name> (n=...)" legend would cost more vertical space
+    than it adds -- the exact n per group/framing is already in
+    ancestry_resolution_results.csv.
+    """
+    outdir.mkdir(parents=True, exist_ok=True)
+    with plt.rc_context({"font.family": "Arial", "font.size": 7, "pdf.fonttype": 42}):
+        for vset in results["variant_set"].unique():
+            d = results[results["variant_set"] == vset]
+            ylab = YLABEL.get(vset, DEFAULT_YLABEL) + (f"\n{ci_label}" if ci_label else "")
+            fig, axes = plt.subplots(
+                1, 2, figsize=(CALIBRATED_WIDTH_IN, CALIBRATED_HEIGHT_IN), facecolor="white", dpi=300
+            )
+            for ax, framing in zip(axes, ["present", "unique"]):
+                panel(
+                    ax,
+                    d[d["framing"] == framing],
+                    panel_title(vset, framing),
+                    ylab,
+                    not no_stars,
+                    COLORS,
+                    CALIBRATED_STYLE,
+                    bar_width=0.7,
+                    show_legend=False,
+                )
+            fig.tight_layout(w_pad=1.5)
+            stem = "ancestry_resolution_" + re.sub(r"[^A-Za-z0-9]+", "_", vset).strip("_")
+            path = outdir / f"{stem}_calibrated.pdf"
+            fig.savefig(path, bbox_inches="tight")
+            plt.close(fig)
+            print(f"Wrote {path}")
 
 
 # ======================================================================
@@ -362,6 +450,7 @@ def main(vus_input, gnomad_input, outdir, output, n_bootstrap, no_stars, ci_labe
     click.echo(f"\nWrote {csv_path}")
     if not no_figures:
         make_figures(res, outdir, width, height, no_stars, ci_label)
+        build_calibrated_figures(res, outdir, no_stars, ci_label)
 
 
 if __name__ == "__main__":

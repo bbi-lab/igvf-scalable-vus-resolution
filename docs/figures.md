@@ -676,8 +676,22 @@ src/scripts/run_make_extended_data_figure_16.sh
 ```
 
 Writes `ancestry_resolution_results.csv` (every number, one row per
-variant-set/framing/group) and `ancestry_resolution_VUS.png`/
-`ancestry_resolution_gnomAD.png` to
+variant-set/framing/group), the large diagnostic
+`ancestry_resolution_VUS.png`/`ancestry_resolution_gnomAD.png` pair (sized
+for on-screen inspection, `DejaVu Sans`), and the final, calibrated
+(exact-print-size) `ancestry_resolution_VUS_calibrated.pdf`/
+`ancestry_resolution_gnomAD_calibrated.pdf` pair to
 `data/output/figures/assets/extended_data_figure_16/` by default; see
 `--vus-input`/`--gnomad-input`/`--outdir`/`--help` to override. `--no-stars`
-omits the significance markers; `--no-figures` writes only the results CSV.
+omits the significance markers; `--no-figures` skips all four images and
+writes only the results CSV.
+
+The calibrated PDFs are 6.5in wide -- this project's standard full-text
+print width, same as `save_calibrated_ablation_figure`'s Extended Data
+Figure 10 -- with Arial and `pdf.fonttype=42` (editable outline text, not
+rasterized), same reasoning as that figure and
+`make_extended_data_figure_9.py`. They drop the diagnostic PNGs' per-bar
+legend: at this width the x-axis group-code ticks already identify each
+bar, and the exact n per group/framing is already in
+`ancestry_resolution_results.csv`, so a nine-entry "<full name> (n=...)"
+legend would cost more vertical space than it adds.

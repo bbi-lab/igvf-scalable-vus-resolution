@@ -3,7 +3,16 @@ import math
 import pandas as pd
 import pytest
 
-from src.make_extended_data_figure_16 import GROUPS, analyze, bootstrap_ci, load, make_figures, ztest
+from src.make_extended_data_figure_16 import (
+    CALIBRATED_WIDTH_IN,
+    GROUPS,
+    analyze,
+    bootstrap_ci,
+    build_calibrated_figures,
+    load,
+    make_figures,
+    ztest,
+)
 
 
 def _write_csv(path, rows):
@@ -134,3 +143,50 @@ def test_make_figures_writes_a_png_per_variant_set(tmp_path):
 
     assert (outdir / "ancestry_resolution_VUS.png").exists()
     assert (outdir / "ancestry_resolution_gnomAD.png").exists()
+
+
+def test_build_calibrated_figures_writes_a_6_5_inch_wide_pdf_per_variant_set(tmp_path):
+    vus_path = tmp_path / "vus.csv"
+    gnomad_path = tmp_path / "gnomad.csv"
+    _write_csv(
+        vus_path,
+        [
+            {"Class_REVEL": "Benign", "AF_nfe": 0.01},
+            {"Class_REVEL": "Uncertain", "AF_afr": 0.01},
+        ],
+    )
+    _write_csv(
+        gnomad_path,
+        [
+            {"Class_REVEL": "Pathogenic", "AF_nfe": 0.01},
+            {"Class_REVEL": "Uncertain", "AF_sas": 0.01},
+        ],
+    )
+
+    results = []
+    analyze(load(vus_path), "VUS", n_bootstrap=50, results=results)
+    analyze(load(gnomad_path), "gnomAD", n_bootstrap=50, results=results)
+    results_df = pd.DataFrame(results)
+
+    outdir = tmp_path / "out"
+    build_calibrated_figures(results_df, outdir, no_stars=False, ci_label="")
+
+    vus_pdf = outdir / "ancestry_resolution_VUS_calibrated.pdf"
+    gnomad_pdf = outdir / "ancestry_resolution_gnomAD_calibrated.pdf"
+    assert vus_pdf.read_bytes().startswith(b"%PDF")
+    assert gnomad_pdf.read_bytes().startswith(b"%PDF")
+
+    # PDF points are 1/72in -- MediaBox width should match CALIBRATED_WIDTH_IN
+    # (bbox_inches="tight" can still shrink this if content is narrower than
+    # the figure, so only assert it never exceeds the nominal width).
+    media_box_width_pt = _pdf_mediabox_width_pt(vus_pdf)
+    assert media_box_width_pt <= CALIBRATED_WIDTH_IN * 72 + 1
+
+
+def _pdf_mediabox_width_pt(path):
+    import re as _re
+
+    match = _re.search(rb"/MediaBox\s*\[\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\]", path.read_bytes())
+    assert match, f"no /MediaBox found in {path}"
+    x0, _y0, x1, _y1 = (float(v) for v in match.groups())
+    return x1 - x0

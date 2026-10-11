@@ -673,24 +673,42 @@ def test_compute_functional_only_sufficient_pathogenic_fraction(tmp_path):
 
     result = compute_functional_only_sufficient_pathogenic_fraction(df, chek2_path, predictors=["REVEL"])
 
+    # No row has negative points, so the "blb" (Benign/Likely Benign)
+    # direction resolves nothing here -- every row's functional-only,
+    # predictor-only, and combined flags are all False, which
+    # `categorize_synergy` maps to `pandas.NA` (dropped), leaving every "blb"
+    # category at its `synergy_counts` reindex fill value, 0.
+    zero_breakdown = {
+        FUNCTIONAL_ALONE_LABEL: 0,
+        PREDICTOR_ALONE_LABEL: 0,
+        BOTH_ALONE_LABEL: 0,
+        SYNERGY_LABEL: 0,
+        CONFLICT_LABEL: 0,
+    }
     assert result == {
         "overall": {
-            "REVEL": {
-                FUNCTIONAL_ALONE_LABEL: 2,
-                PREDICTOR_ALONE_LABEL: 0,
-                BOTH_ALONE_LABEL: 0,
-                SYNERGY_LABEL: 1,
-                CONFLICT_LABEL: 0,
-            }
+            "plp": {
+                "REVEL": {
+                    FUNCTIONAL_ALONE_LABEL: 2,
+                    PREDICTOR_ALONE_LABEL: 0,
+                    BOTH_ALONE_LABEL: 0,
+                    SYNERGY_LABEL: 1,
+                    CONFLICT_LABEL: 0,
+                }
+            },
+            "blb": {"REVEL": zero_breakdown},
         },
         "vus": {
-            "REVEL": {
-                FUNCTIONAL_ALONE_LABEL: 1,
-                PREDICTOR_ALONE_LABEL: 0,
-                BOTH_ALONE_LABEL: 0,
-                SYNERGY_LABEL: 1,
-                CONFLICT_LABEL: 0,
-            }
+            "plp": {
+                "REVEL": {
+                    FUNCTIONAL_ALONE_LABEL: 1,
+                    PREDICTOR_ALONE_LABEL: 0,
+                    BOTH_ALONE_LABEL: 0,
+                    SYNERGY_LABEL: 1,
+                    CONFLICT_LABEL: 0,
+                }
+            },
+            "blb": {"REVEL": zero_breakdown},
         },
     }
 

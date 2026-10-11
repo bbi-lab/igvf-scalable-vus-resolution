@@ -4400,12 +4400,24 @@ def _ablation_breakdown(functional_alone, predictor_alone, both_alone, synergy, 
 def _functional_only_fractions():
     return {
         "vus": {
-            "REVEL": _ablation_breakdown(727, 0, 0, 699, 34),
-            "MutPred2": _ablation_breakdown(745, 0, 0, 892, 16),
+            "plp": {
+                "REVEL": _ablation_breakdown(727, 0, 0, 699, 34),
+                "MutPred2": _ablation_breakdown(745, 0, 0, 892, 16),
+            },
+            "blb": {
+                "REVEL": _ablation_breakdown(103, 0, 0, 55, 4),
+                "MutPred2": _ablation_breakdown(98, 0, 0, 61, 2),
+            },
         },
         "overall": {
-            "REVEL": _ablation_breakdown(37271, 0, 0, 5809, 114),
-            "MutPred2": _ablation_breakdown(36975, 0, 0, 49564, 410),
+            "plp": {
+                "REVEL": _ablation_breakdown(37271, 0, 0, 5809, 114),
+                "MutPred2": _ablation_breakdown(36975, 0, 0, 49564, 410),
+            },
+            "blb": {
+                "REVEL": _ablation_breakdown(12345, 0, 0, 2345, 56),
+                "MutPred2": _ablation_breakdown(11111, 0, 0, 22222, 78),
+            },
         },
     }
 
@@ -4414,22 +4426,28 @@ def test_format_functional_only_sufficient_pathogenic_fraction():
     text = format_functional_only_sufficient_pathogenic_fraction(_functional_only_fractions())
 
     assert "REVEL" in text and "MutPred2" in text
-    # VUS-scoped: denominator is combined-resolved PLP calls only (excludes
-    # the "lost to combining" conflict count).
+    # VUS-scoped PLP: denominator is combined-resolved PLP calls only
+    # (excludes the "lost to combining" conflict count).
     assert "727 of 1426 (51.0%)" in text
     assert "745 of 1637 (45.5%)" in text
+    # VUS-scoped BLB, same shape as PLP but for Benign/Likely Benign calls.
+    assert "103 of 158 (65.2%)" in text
+    assert "98 of 159 (61.6%)" in text
     # All-variants, for reference.
     assert "37271 of 43080 (86.5%)" in text
     assert "36975 of 86539 (42.7%)" in text
+    assert "12345 of 14690 (84.0%)" in text
+    assert "11111 of 33333 (33.3%)" in text
 
 
-def test_format_functional_only_sufficient_pathogenic_fraction_highlights_revel_vus_only():
+def test_format_functional_only_sufficient_pathogenic_fraction_highlights_revel_vus_plp_only():
     functional_only_fractions = _functional_only_fractions()
 
     markdown_text = format_functional_only_sufficient_pathogenic_fraction(functional_only_fractions, markdown=True)
     text = format_functional_only_sufficient_pathogenic_fraction(functional_only_fractions, markdown=False)
 
     assert "<mark>727 of 1426 (51.0%)</mark>" in markdown_text
+    assert "<mark>103" not in markdown_text
     assert "<mark>37271" not in markdown_text
     assert "<mark>745" not in markdown_text
     assert "<mark>36975" not in markdown_text

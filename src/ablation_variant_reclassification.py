@@ -1126,52 +1126,69 @@ def synergy_counts(flags, functional_col, predictor_col, combined_col):
     return category.value_counts().reindex(SYNERGY_CATEGORY_ORDER + CONFLICT_ORDER, fill_value=0)
 
 
+FUNCTIONAL_ONLY_SUFFICIENT_PLP_KEY = "plp"
+FUNCTIONAL_ONLY_SUFFICIENT_BLB_KEY = "blb"
+FUNCTIONAL_ONLY_SUFFICIENT_DIRECTIONS = {
+    FUNCTIONAL_ONLY_SUFFICIENT_PLP_KEY: DIRECTION_PATHOGENIC,
+    FUNCTIONAL_ONLY_SUFFICIENT_BLB_KEY: DIRECTION_BENIGN,
+}
+
+
 def compute_functional_only_sufficient_pathogenic_fraction(checkpoint, chek2_file, predictors=PREDICTOR_POINTS_COLUMNS):
     """For each predictor, the full synergy breakdown (see `synergy_counts`)
-    of its combined-arm (the pipeline's actual method) Pathogenic/Likely
-    Pathogenic calls, restricted to `DIRECTION_PATHOGENIC` -- once over every
-    variant ("overall", matching `build_predictor_section`'s "all variants"
-    contingency table) and once restricted to ClinVar VUS only ("vus",
-    matching its scope-restricted "added value of combining evidence" table
-    under `--scope vus`). In particular, `FUNCTIONAL_ALONE_LABEL`'s count is
-    how many of the combined arm's Pathogenic/Likely Pathogenic calls needed
-    only functional/experimental evidence to reach that classification.
+    of its combined-arm (the pipeline's actual method) classifications, once
+    restricted to `DIRECTION_PATHOGENIC` (Pathogenic/Likely Pathogenic, "plp")
+    and once to `DIRECTION_BENIGN` (Benign/Likely Benign, "blb") -- each
+    computed once over every variant ("overall", matching `build_predictor_
+    section`'s "all variants" contingency table) and once restricted to
+    ClinVar VUS only ("vus", matching its scope-restricted "added value of
+    combining evidence" table under `--scope vus`). In particular, under the
+    "plp" direction, `FUNCTIONAL_ALONE_LABEL`'s count is how many of the
+    combined arm's Pathogenic/Likely Pathogenic calls needed only functional/
+    experimental evidence to reach that classification; under "blb", the same
+    count is for Benign/Likely Benign calls instead.
 
     `checkpoint`/`chek2_file` are the same inputs `main()` reads
     (`checkpoint_file`/`--chek2-file`); this applies the same `apply_
     notebook_exclusions`/`add_ablation_points_columns` preprocessing `main()`
     does before building arms.
 
-    Returns `{"overall": {predictor: {category_label: count}}, "vus":
-    {predictor: {category_label: count}}}`, one category entry per
-    `SYNERGY_CATEGORY_ORDER + CONFLICT_ORDER` label.
+    Returns `{"overall": {"plp": {predictor: {category_label: count}}, "blb":
+    {predictor: {category_label: count}}}, "vus": {same shape}}`, one category
+    entry per `SYNERGY_CATEGORY_ORDER + CONFLICT_ORDER` label.
     """
     df = apply_notebook_exclusions(checkpoint, chek2_file)
     df = add_ablation_points_columns(df)
     functional_arm = build_arm(df, FUNCTIONAL_POINTS_COL)
-    functional_flags = resolved_flags(functional_arm, FUNCTIONAL_POINTS_COL, DIRECTION_PATHOGENIC)
     vus_scope_flags = scope_mask(functional_arm, ("vus",))
+    predictor_arms = {predictor: build_predictor_arms(predictor, df) for predictor in predictors}
 
-    overall = {}
-    vus = {}
-    for predictor in predictors:
-        predictor_arm, combined_arm = build_predictor_arms(predictor, df)
-        combined_col = f"Functional + {predictor}"
+    overall = {FUNCTIONAL_ONLY_SUFFICIENT_PLP_KEY: {}, FUNCTIONAL_ONLY_SUFFICIENT_BLB_KEY: {}}
+    vus = {FUNCTIONAL_ONLY_SUFFICIENT_PLP_KEY: {}, FUNCTIONAL_ONLY_SUFFICIENT_BLB_KEY: {}}
+    for key, direction in FUNCTIONAL_ONLY_SUFFICIENT_DIRECTIONS.items():
+        functional_flags = resolved_flags(functional_arm, FUNCTIONAL_POINTS_COL, direction)
+        for predictor in predictors:
+            predictor_arm, combined_arm = predictor_arms[predictor]
+            combined_col = f"Functional + {predictor}"
 
-        flags = predictor_flags_for_direction(predictor, predictor_arm, combined_arm, functional_flags, DIRECTION_PATHOGENIC)
-        overall[predictor] = synergy_counts(flags, FUNCTIONAL_ARM_LABEL, f"{predictor} only", combined_col).to_dict()
+            flags = predictor_flags_for_direction(predictor, predictor_arm, combined_arm, functional_flags, direction)
+            overall[key][predictor] = synergy_counts(
+                flags, FUNCTIONAL_ARM_LABEL, f"{predictor} only", combined_col
+            ).to_dict()
 
-        vus_flags = restricted_flags_for_scope(
-            df,
-            predictor,
-            predictor_arm,
-            combined_arm,
-            functional_flags,
-            ("vus",),
-            vus_scope_flags,
-            DIRECTION_PATHOGENIC,
-        )
-        vus[predictor] = synergy_counts(vus_flags, FUNCTIONAL_ARM_LABEL, f"{predictor} only", combined_col).to_dict()
+            vus_flags = restricted_flags_for_scope(
+                df,
+                predictor,
+                predictor_arm,
+                combined_arm,
+                functional_flags,
+                ("vus",),
+                vus_scope_flags,
+                direction,
+            )
+            vus[key][predictor] = synergy_counts(
+                vus_flags, FUNCTIONAL_ARM_LABEL, f"{predictor} only", combined_col
+            ).to_dict()
 
     return {"overall": overall, "vus": vus}
 

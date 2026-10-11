@@ -302,8 +302,9 @@ section's `--testing-registry` input.
 `--include-ablation-summary` (off by default, since it re-runs the ablation
 arm-building analysis over the full checkpoint file) adds a "Functional-
 evidence-only sufficiency" section: for each predictor, what percentage of
-its combined-evidence Pathogenic/Likely Pathogenic calls were already
-reached by functional/experimental evidence alone -- see
+its combined-evidence Pathogenic/Likely Pathogenic (PLP) calls, and
+separately what percentage of its Benign/Likely Benign (BLB) calls, were
+already reached by functional/experimental evidence alone -- see
 `src.ablation_variant_reclassification.compute_functional_only_sufficient_
 pathogenic_fraction`.
 """
@@ -3522,25 +3523,31 @@ FUNCTIONAL_ONLY_SUFFICIENT_VUS_TITLE = (
     "=== Functional-evidence-only sufficiency, ClinVar VUS (ablation analysis; --include-ablation-summary) ==="
 )
 FUNCTIONAL_ONLY_SUFFICIENT_OVERALL_TITLE = "=== Functional-evidence-only sufficiency, all variants ==="
+# Sub-headings splitting each of the two titles above into its PLP and BLB
+# tables -- see `format_functional_only_sufficient_pathogenic_fraction`.
+FUNCTIONAL_ONLY_SUFFICIENT_PLP_HEADING = "Pathogenic/Likely Pathogenic (PLP) calls:"
+FUNCTIONAL_ONLY_SUFFICIENT_BLB_HEADING = "Benign/Likely Benign (BLB) calls:"
 
 # Mirrors `src.ablation_variant_reclassification`'s `SYNERGY_CATEGORY_ORDER +
 # CONFLICT_ORDER` label strings exactly, duplicated here (rather than
 # imported) since that module imports from this one at module level --
 # importing back would be circular. `FUNCTIONAL_ALONE_LABEL` is the row
-# highlighted for REVEL: how many Pathogenic/Likely Pathogenic calls needed
-# only functional/experimental evidence.
+# highlighted for REVEL: how many Pathogenic/Likely Pathogenic (or, on the
+# BLB table, Benign/Likely Benign) calls needed only functional/experimental
+# evidence.
 FUNCTIONAL_ALONE_LABEL = "Functional alone sufficient"
 PREDICTOR_ALONE_LABEL = "Predictive alone sufficient"
 BOTH_ALONE_LABEL = "Either alone sufficient"
 SYNERGY_LABEL = "Neither alone sufficient"
 CONFLICT_LABEL = "Lost to combining (evidence conflict)"
 # The four categories where the combined arm (the pipeline's actual method)
-# called a variant Pathogenic/Likely Pathogenic -- i.e. actual "PLP
-# classifications". `CONFLICT_LABEL` is deliberately excluded from this list:
-# it means the combined method did *not* reach Pathogenic/Likely Pathogenic
-# (a single source alone did, before combining undid it), so a conflict
-# variant isn't one of the PLP classifications each category's percentage is
-# of -- only shown as its own row for context.
+# called a variant Pathogenic/Likely Pathogenic (PLP) or, on the BLB table,
+# Benign/Likely Benign (BLB) -- i.e. actual "PLP"/"BLB classifications".
+# `CONFLICT_LABEL` is deliberately excluded from this list: it means the
+# combined method did *not* reach that classification (a single source alone
+# did, before combining undid it), so a conflict variant isn't one of the
+# PLP/BLB classifications each category's percentage is of -- only shown as
+# its own row for context.
 ABLATION_RESOLVED_CATEGORY_ORDER = [FUNCTIONAL_ALONE_LABEL, PREDICTOR_ALONE_LABEL, BOTH_ALONE_LABEL, SYNERGY_LABEL]
 ABLATION_SYNERGY_CATEGORY_ORDER = [*ABLATION_RESOLVED_CATEGORY_ORDER, CONFLICT_LABEL]
 
@@ -3562,6 +3569,21 @@ def _format_ablation_synergy_table(breakdown, markdown, highlight_revel):
     return table
 
 
+def _append_ablation_direction_table(lines, breakdown, heading, markdown, highlight_revel):
+    """Append one PLP- or BLB-direction synergy table under `heading` to
+    `lines` -- text mode as a plain label line above the table, Markdown mode
+    as a level-3 heading (see `format_functional_only_sufficient_pathogenic_
+    fraction`).
+    """
+    if markdown:
+        if lines and lines[-1] != "":
+            lines.append("")
+        lines.append(_format_title(heading, markdown, level=3))
+    else:
+        lines.append(heading)
+    _append_table(lines, _format_ablation_synergy_table(breakdown, markdown, highlight_revel), markdown)
+
+
 def format_functional_only_sufficient_pathogenic_fraction(
     functional_only_fractions,
     vus_title=FUNCTIONAL_ONLY_SUFFICIENT_VUS_TITLE,
@@ -3569,25 +3591,37 @@ def format_functional_only_sufficient_pathogenic_fraction(
     markdown=False,
 ):
     """Text form of `src.ablation_variant_reclassification.compute_
-    functional_only_sufficient_pathogenic_fraction`'s output (`{"vus":
-    {predictor: {category_label: count}}, "overall": {...}}`): for each
-    predictor, the full breakdown of how its combined-evidence (the
-    pipeline's actual method) Pathogenic/Likely Pathogenic calls were reached
-    -- functional evidence alone, predictor evidence alone, either alone,
-    true synergy (neither alone), or lost to combining -- as counts and
-    percent of that predictor's own PLP classifications (the four resolution
-    categories; `"Lost to combining"` isn't one, so it's excluded from the
-    denominator). ClinVar VUS is the headline table (highlighting REVEL's
-    "functional alone sufficient" figure: how many VUS Pathogenic/Likely
-    Pathogenic calls needed only functional/experimental evidence); the
-    all-variants table follows for reference, unhighlighted.
+    functional_only_sufficient_pathogenic_fraction`'s output (`{"vus": {"plp":
+    {predictor: {category_label: count}}, "blb": {...}}, "overall": {same
+    shape}}`): for each predictor and each of its combined-evidence (the
+    pipeline's actual method) Pathogenic/Likely Pathogenic (PLP) and Benign/
+    Likely Benign (BLB) calls, the full breakdown of how those calls were
+    reached -- functional evidence alone, predictor evidence alone, either
+    alone, true synergy (neither alone), or lost to combining -- as counts and
+    percent of that predictor's own PLP (or BLB) classifications (the four
+    resolution categories; `"Lost to combining"` isn't one, so it's excluded
+    from the denominator). ClinVar VUS is the headline section (highlighting
+    REVEL's PLP "functional alone sufficient" figure: how many VUS Pathogenic/
+    Likely Pathogenic calls needed only functional/experimental evidence); the
+    all-variants section follows for reference, unhighlighted. Each section
+    shows its PLP table first, then its BLB table.
     """
     lines = [_format_title(vus_title, markdown)]
-    _append_table(lines, _format_ablation_synergy_table(functional_only_fractions["vus"], markdown, True), markdown)
+    _append_ablation_direction_table(
+        lines, functional_only_fractions["vus"]["plp"], FUNCTIONAL_ONLY_SUFFICIENT_PLP_HEADING, markdown, True
+    )
+    lines.append("")
+    _append_ablation_direction_table(
+        lines, functional_only_fractions["vus"]["blb"], FUNCTIONAL_ONLY_SUFFICIENT_BLB_HEADING, markdown, False
+    )
     lines.append("")
     lines.append(_format_title(overall_title, markdown))
-    _append_table(
-        lines, _format_ablation_synergy_table(functional_only_fractions["overall"], markdown, False), markdown
+    _append_ablation_direction_table(
+        lines, functional_only_fractions["overall"]["plp"], FUNCTIONAL_ONLY_SUFFICIENT_PLP_HEADING, markdown, False
+    )
+    lines.append("")
+    _append_ablation_direction_table(
+        lines, functional_only_fractions["overall"]["blb"], FUNCTIONAL_ONLY_SUFFICIENT_BLB_HEADING, markdown, False
     )
     return "\n".join(lines)
 

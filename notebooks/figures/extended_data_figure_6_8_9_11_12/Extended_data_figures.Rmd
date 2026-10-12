@@ -1173,7 +1173,7 @@ for (predictor_name in names(PREDICTORS_6ALT_MISSENSE)) {
 
 ```{r}
 
-#Extended Data Figure 8
+#Extended Data Figure 11
 
 # Alternate version of Extended Data Figure 8alt (REVEL/AlphaMissense/MutPred2
 # x ClinVar controls/ClinGen Evidence Repository, all via OddsPath/
@@ -1825,15 +1825,22 @@ ggsave(
 
 VUS_REVEL_YP = read_excel(file.path(DATA_DIR, "supplementary_data/Supplementary_Data_5.xlsx"), sheet = "VUS_REVEL", col_types = 'text')
 
-x <- as.character(VUS_REVEL_YP$Conflicting_REVEL)
+# Node value is the raw Total_Points_REVEL (functional + predictor points
+# summed), not the split_zero()-derived Conflicting_REVEL -- a variant whose
+# functional and predictor evidence disagree in sign is no longer routed to
+# its own "Conflicting evidence" node, it's accepted at its actual net
+# point total like every other variant. Conflicting_REVEL itself is left
+# untouched on this data frame (still used by the donut-plot chunk below to
+# flag conflict_status).
+x <- as.character(VUS_REVEL_YP$Total_Points_REVEL)
 
-VUS_REVEL_YP$Conflicting_REVEL <- ifelse(
+VUS_REVEL_YP$Total_Points_REVEL <- ifelse(
   grepl("^-?\\d+(\\.0+)?$", x),
   as.character(as.integer(as.numeric(x))),
   x
 )
 
-sankey_VUS_REVEL_YP_points <- make_sankey_VUS(VUS_REVEL_YP, Conflicting_REVEL, colors_custom)
+sankey_VUS_REVEL_YP_points <- make_sankey_VUS(VUS_REVEL_YP, Total_Points_REVEL, colors_custom)
 
 ggsave('../../../data/output/figures/assets/extended_data_figure_11/sankey_VUS_ExOP_REVEL_GeneSpecific_points.png',sankey_VUS_REVEL_YP_points, dpi = 300, device = 'png', bg = 'transparent', create.dir = TRUE)
 
@@ -1861,9 +1868,9 @@ make_sankey_gnomad <- function(df, points_col, colors_custom) {
   
   # Factor levels
   levels_order <- c(
-    -12:-1, "Gnomad","No evidence", "Benign", "Likely benign", "Likely Benign", 
+    -12:-1, "Gnomad","No evidence", "Benign", "Likely benign", "Likely Benign",
     "Uncertain", "Likely pathogenic", "Likely Pathogenic", "Pathogenic",
-    0, "No Classification", "Conflicting evidence", 1:12 
+    0, "No Classification", 1:12
   )
   
   sankey_data$node <- factor(sankey_data$node, levels = levels_order)
@@ -1897,15 +1904,15 @@ make_sankey_gnomad <- function(df, points_col, colors_custom) {
   return(gc)
 }
 
-g <- as.character(gnomad_REVEL_YP$Conflicting_REVEL)
+g <- as.character(gnomad_REVEL_YP$Total_Points_REVEL)
 
-gnomad_REVEL_YP$Conflicting_REVEL <- ifelse(
+gnomad_REVEL_YP$Total_Points_REVEL <- ifelse(
   grepl("^-?\\d+(\\.0+)?$", g),
   as.character(as.integer(as.numeric(g))),
   g
 )
 
-sankey_gnomad_REVEL_YP_points = make_sankey_gnomad(gnomad_REVEL_YP, Conflicting_REVEL, colors_custom)
+sankey_gnomad_REVEL_YP_points = make_sankey_gnomad(gnomad_REVEL_YP, Total_Points_REVEL, colors_custom)
 
 ggsave('../../../data/output/figures/assets/extended_data_figure_11/sankey_gnomAD_ExOP_REVEL_GeneSpecific_points.png',sankey_gnomad_REVEL_YP_points, dpi = 300, device = 'png', bg = 'transparent', create.dir = TRUE)
 
@@ -1932,9 +1939,9 @@ make_sankey_unseen <- function(df, points_col, colors_custom) {
   
   # Factor levels
   levels_order <- c(
-    -12:-1, "Preclass","No evidence", "Benign", "Likely benign", "Likely Benign", 
+    -12:-1, "Preclass","No evidence", "Benign", "Likely benign", "Likely Benign",
     "Uncertain", "Likely pathogenic", "Likely Pathogenic", "Pathogenic",
-    0, "No Classification", "Conflicting evidence", 1:12 
+    0, "No Classification", 1:12
   )
   
   sankey_data$node <- factor(sankey_data$node, levels = levels_order)
@@ -1968,15 +1975,15 @@ make_sankey_unseen <- function(df, points_col, colors_custom) {
   return(gc)
 }
 
-u <- as.character(unseen_REVEL_YP$Conflicting_REVEL)
+u <- as.character(unseen_REVEL_YP$Total_Points_REVEL)
 
-unseen_REVEL_YP$Conflicting_REVEL <- ifelse(
+unseen_REVEL_YP$Total_Points_REVEL <- ifelse(
   grepl("^-?\\d+(\\.0+)?$", u),
   as.character(as.integer(as.numeric(u))),
   u
 )
 
-sankey_unseen_REVEL_YP_points = make_sankey_unseen(unseen_REVEL_YP, Conflicting_REVEL, colors_custom)
+sankey_unseen_REVEL_YP_points = make_sankey_unseen(unseen_REVEL_YP, Total_Points_REVEL, colors_custom)
 
 ggsave('../../../data/output/figures/assets/extended_data_figure_11/sankey_unseen_ExOP_REVEL_GeneSpecific_points.png',sankey_unseen_REVEL_YP_points, dpi = 300, device = 'png', bg = 'transparent', create.dir = TRUE)
 
@@ -1986,21 +1993,25 @@ ggsave('../../../data/output/figures/assets/extended_data_figure_11/sankey_unsee
 # labels here (show_count = FALSE) -- just node names, which for these
 # three charts are mostly the raw REVEL point values themselves (an
 # integer, e.g. "-6"/"6") rather than a Pathogenic/Benign-style category,
-# aside from "Conflicting evidence" and "No evidence". Shares one
-# levels_order across all three since they differ only in which single
-# literal source value each one actually uses (gnomad_REVEL_YP$gnomad and
-# unseen_REVEL_YP$unseen are set again here, same as their make_sankey_*()
-# functions do internally on their own local copy of the data).
+# aside from "No evidence". Points_col is the raw Total_Points_REVEL (see
+# above), not the split_zero()-derived Conflicting_REVEL, so a variant whose
+# functional and predictor evidence disagree in sign now lands at its
+# actual net point total alongside every other variant, rather than in its
+# own "Conflicting evidence" node. Shares one levels_order across all three
+# since they differ only in which single literal source value each one
+# actually uses (gnomad_REVEL_YP$gnomad and unseen_REVEL_YP$unseen are set
+# again here, same as their make_sankey_*() functions do internally on
+# their own local copy of the data).
 levels_order_extdata_11_points <- c(
   -12:-1, "Uncertain significance", "Gnomad", "No Classification", "No evidence",
-  0, "Conflicting evidence", 1:12
+  0, 1:12
 )
 
 gnomad_REVEL_YP$gnomad <- 'Gnomad'
 unseen_REVEL_YP$unseen <- 'No Classification'
 
 sankey_VUS_REVEL_YP_points_calibrated <- make_sankey_calibrated(
-  VUS_REVEL_YP, source_col = clinvar_sig_2025, points_col = Conflicting_REVEL,
+  VUS_REVEL_YP, source_col = clinvar_sig_2025, points_col = Total_Points_REVEL,
   colors_custom = colors_custom, levels_order = levels_order_extdata_11_points,
   width_mm = 47, height_mm = 86, label_pt = 5.5, show_count = FALSE,
   source_label = "Uncertain significance", wrap_destination_labels = FALSE,
@@ -2010,7 +2021,7 @@ sankey_VUS_REVEL_YP_points_calibrated <- make_sankey_calibrated(
   clamp_label_right_edge = TRUE, show_target_percent = TRUE
 )
 sankey_gnomad_REVEL_YP_points_calibrated <- make_sankey_calibrated(
-  gnomad_REVEL_YP, source_col = gnomad, points_col = Conflicting_REVEL,
+  gnomad_REVEL_YP, source_col = gnomad, points_col = Total_Points_REVEL,
   colors_custom = colors_custom, levels_order = levels_order_extdata_11_points,
   width_mm = 47, height_mm = 86, label_pt = 5.5, show_count = FALSE,
   source_label = "gnomAD variant", wrap_destination_labels = FALSE,
@@ -2020,7 +2031,7 @@ sankey_gnomad_REVEL_YP_points_calibrated <- make_sankey_calibrated(
   clamp_label_right_edge = TRUE, show_target_percent = TRUE
 )
 sankey_unseen_REVEL_YP_points_calibrated <- make_sankey_calibrated(
-  unseen_REVEL_YP, source_col = unseen, points_col = Conflicting_REVEL,
+  unseen_REVEL_YP, source_col = unseen, points_col = Total_Points_REVEL,
   colors_custom = colors_custom, levels_order = levels_order_extdata_11_points,
   width_mm = 47, height_mm = 86, label_pt = 5.5, show_count = FALSE,
   source_label = "Unobserved variant", wrap_destination_labels = FALSE,

@@ -123,7 +123,7 @@ added on top of each single already-sufficient source (see
 `--document-split-dir` writes `--document`'s per-section chart blocks out as
 separate files (one per chart-type/scope pair, each already carrying its own
 legend) instead of one combined multi-section image -- see
-`save_document_charts_as_files` and Extended Data Figure 10 in
+`save_document_charts_as_files` and Extended Data Figure 7 in
 `docs/figures.md`.
 """
 
@@ -549,7 +549,7 @@ def is_missense_only(df):
     `is_missense_or_start_loss`, this excludes start-loss variants entirely
     rather than grouping them in with missense. Used by `--consequence
     missense_only`, for a run that wants a strictly missense-only candidate
-    universe (e.g. Extended Data Figure 10's missense-only panel set) rather
+    universe (e.g. Extended Data Figure 7's missense-only panel set) rather
     than the broader missense-or-start-loss population `--consequence
     missense` restricts to.
     """
@@ -2884,7 +2884,7 @@ def save_ablation_document_grid(
     plt.close(fig)
 
 
-# --- Calibrated ablation figure (Extended Data Figure 10's final layout) -------------------------
+# --- Calibrated ablation figure (Extended Data Figure 7's final layout) -------------------------
 #
 # A hand-calibrated alternative to `save_ablation_document`/`save_ablation_
 # document_grid` above: a single flat GridSpec figure (not nested subfigures
@@ -3701,7 +3701,7 @@ def _calibrated_add_group_title(fig, axes, label, pad=0.012, fontsize=7.5, panel
 
 
 def save_calibrated_ablation_figure(df, predictors, output_path):
-    """Render Extended Data Figure 10's final, hand-calibrated layout to
+    """Render Extended Data Figure 7's final, hand-calibrated layout to
     `output_path` (format inferred from the extension, e.g. .png/.svg/.pdf):
     four chart slots in row 1, plus a legend block and one concordance panel
     sharing row 2 (six slots total = 2 scopes x 2 [P/LP, B/LB] + 1 legend
@@ -3845,7 +3845,7 @@ def save_document_charts_as_files(
     block (e.g. `ablation_vus.pdf`, `concordance_clinvar_control.pdf`) --
     an alternative to `save_ablation_document`'s single combined
     multi-section image, for a figure assembled by hand from individual
-    panels (see Extended Data Figure 10, `docs/figures.md`).
+    panels (see Extended Data Figure 7, `docs/figures.md`).
 
     Each file is produced by that chart type's own standalone `save_*`
     function (`save_synergy_chart`/`save_synergy_chart_comparison`/
@@ -4109,7 +4109,7 @@ def save_document_charts_as_files(
         "scope to pick which categories get files (default: all seven SCOPE_ORDER categories, same as "
         "--document); --scope has no effect here. A 'concordance' file is skipped for the "
         "vus/gnomad/unobserved scopes, which carry no known truth to check concordance against. See "
-        "docs/figures.md's Extended Data Figure 10 section."
+        "docs/figures.md's Extended Data Figure 7 section."
     ),
 )
 @click.option(
@@ -4160,7 +4160,7 @@ def save_document_charts_as_files(
     type=click.Path(dir_okay=False, path_type=Path),
     default=None,
     help=(
-        "Render Extended Data Figure 10's final, hand-calibrated layout (save_calibrated_ablation_figure) "
+        "Render Extended Data Figure 7's final, hand-calibrated layout (save_calibrated_ablation_figure) "
         "to this path (format inferred from the extension, e.g. .png/.svg/.pdf): a fixed three-row, "
         "vus/gnomad/unobserved/clinvar_control/clingen_control layout, independent of --scope/--document-"
         "scope. Combine with --consequence missense_only for the missense-only version of the same figure."

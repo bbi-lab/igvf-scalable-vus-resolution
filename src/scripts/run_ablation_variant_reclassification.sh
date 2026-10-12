@@ -5,12 +5,14 @@ cat <<'EOF' >&2
 Usage: src/scripts/run_ablation_variant_reclassification.sh --calibrated-figure path [flags]
 
 Examples:
-  src/scripts/run_ablation_variant_reclassification.sh \
-    --calibrated-figure data/output/figures/assets/extended_data_figure_10/ablation.pdf
-
+  # ablation_missense.pdf is the version actually used in the manuscript figure.
   src/scripts/run_ablation_variant_reclassification.sh \
     --consequence missense_only \
-    --calibrated-figure data/output/figures/assets/extended_data_figure_10/ablation_missense.pdf
+    --calibrated-figure data/output/figures/assets/extended_data_figure_7/ablation_missense.pdf
+
+  # All-variants version -- generated but not used in the manuscript.
+  src/scripts/run_ablation_variant_reclassification.sh \
+    --calibrated-figure data/output/figures/assets/extended_data_figure_7/ablation.pdf
 
 Notes:
   - --calibrated-figure has no default; the figure is the whole point of

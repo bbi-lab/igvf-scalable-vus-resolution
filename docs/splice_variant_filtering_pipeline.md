@@ -155,7 +155,7 @@ Output: `Supplementary_Data_6.xlsx` (`controls` / `ClinGen_Repo` / etc. &times;
 |---|---|---|
 | **Figure 4** (`src/build_figure4_data.py` &rarr; `figure_4/data_utils.py: Scoreset.splicing_filter`) | `integrated_variant_effect_dataset.tsv.gz` directly | `if splice_measure == 'Yes': keep splice variants; else: drop as usual`. The original assay-aware filter this fix generalized to the rest of the pipeline. |
 | **Figures 5 & 6** (`Figure5_6.Rmd`) | `Supplementary_Data_5.xlsx` sheets only (`controls`/`ClinGen_Repo`/`VUS`/`gnomAD`/`Unobserved` &times; REVEL/AM/MP2) | Inherits Data 5's fixed filter as-is -- no changes needed in this file itself. |
-| **Extended Data figures 4, 6, 7, 8, 9** (`Extended_data_figures.Rmd`) | Both `Supplementary_Data_5.xlsx` and `Supplementary_Data_6.xlsx` sheets | Inherits both fixed filters -- no changes needed in this file itself. |
+| **Extended Data figures 2, 3, 4, 5, 6** (`Extended_data_figures.Rmd`) | Both `Supplementary_Data_5.xlsx` and `Supplementary_Data_6.xlsx` sheets | Inherits both fixed filters -- no changes needed in this file itself. |
 
 ## 7. What was fixed
 

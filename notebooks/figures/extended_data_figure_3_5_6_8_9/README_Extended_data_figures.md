@@ -136,15 +136,15 @@ Figures are saved to subdirectories within `OUT_DIR`:
 
 | Figure | Description | Key Visualizations |
 |--------|-------------|-------------------|
-| **ED Fig 6alt** | Controls/Clingen performance (AM, MP2) | Sankey diagrams, confusion matrices |
-| **ED Fig 8alt** | Controls/Clingen performance OddsPath | Sankey diagrams, confusion matrices |
-| **ED Fig 9alt** | VUS reclassification (AM, MP2) | Sankey diagrams, reclassification bars |
-| **ED Fig 12** | Per-gene VUS analysis | Rank plot, heatmap |
-| **ED Fig 11** | Evidence source breakdown | Three-ring donut plots for gnomAD, VUS, unobserved |
+| **ED Fig 3alt** | Controls/Clingen performance (AM, MP2) | Sankey diagrams, confusion matrices |
+| **ED Fig 5alt** | Controls/Clingen performance OddsPath | Sankey diagrams, confusion matrices |
+| **ED Fig 6alt** | VUS reclassification (AM, MP2) | Sankey diagrams, reclassification bars |
+| **ED Fig 9** | Per-gene VUS analysis | Rank plot, heatmap |
+| **ED Fig 8** | Evidence source breakdown | Three-ring donut plots for gnomAD, VUS, unobserved |
 
-## Reviewer-only gene-specific variant (ED Fig 8alt/8)
+## Reviewer-only gene-specific variant (ED Fig 5alt/5)
 
-`Extended_data_figures_gene_specific.Rmd` rebuilds ED Fig 8alt and ED Fig 8
+`Extended_data_figures_gene_specific.Rmd` rebuilds ED Fig 5alt and ED Fig 5
 -- the only two figures here derived from `Supplementary_Data_6.xlsx` --
 from `Supplementary_Data_6_gene_specific.xlsx` instead (the variant
 `OddsPath_classifications.ipynb` produces with
@@ -158,10 +158,10 @@ main `.Rmd`:
 rmarkdown::render("Extended_data_figures_gene_specific.Rmd")
 ```
 
-Writes to `extended_data_figure_8alt_gene_specific/` and
-`extended_data_figure_8_gene_specific/` under `OUT_DIR` -- distinct
+Writes to `extended_data_figure_5alt_gene_specific/` and
+`extended_data_figure_5_gene_specific/` under `OUT_DIR` -- distinct
 folders so nothing here can collide with or overwrite the standard ED
-Fig 8alt/8 outputs. See [`docs/figures.md`](../../../docs/figures.md#extended-data-figure-8alt8-gene-specific-reviewer-only)
+Fig 5alt/5 outputs. See [`docs/figures.md`](../../../docs/figures.md#extended-data-figure-5alt5-gene-specific-reviewer-only)
 for the full write-up, including exact output filenames.
 
 ## Figure Dimensions

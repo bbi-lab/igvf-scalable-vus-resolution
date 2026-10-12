@@ -1,4 +1,4 @@
-# Extended Data Figure 4
+# Extended Data Figure 2
 
 # This script requires IGVFFI3804AVJR.csv.gz which is available from
 # https://data.igvf.org/tabular-files/IGVFFI3804AVJR/ and expected at
@@ -769,7 +769,7 @@ print(fig_exd4)
 
 # Save figure
 ggsave(
-  '../../../data/output/figures/assets/extended_data_figure_4/extended_data_figure_4.pdf',
+  '../../../data/output/figures/assets/extended_data_figure_2/extended_data_figure_2.pdf',
   fig_exd4,
   width = 160, # Max 183
   height = 247,

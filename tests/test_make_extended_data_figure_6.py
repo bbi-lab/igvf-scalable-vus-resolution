@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from src.make_extended_data_figure_9 import GROUPS, PREDICTORS, build_figure, load_counts
+from src.make_extended_data_figure_6 import GROUPS, PREDICTORS, build_figure, load_counts
 
 
 def _write_workbook(path, category_counts_by_sheet, consequences_by_sheet=None):
@@ -118,7 +118,7 @@ def test_build_figure_writes_a_pdf(tmp_path):
     _write_workbook(workbook, _default_counts())
     counts_df = load_counts(workbook)
 
-    output_path = tmp_path / "nested" / "extended_data_figure_9.pdf"
+    output_path = tmp_path / "nested" / "extended_data_figure_6.pdf"
     build_figure(counts_df, output_path)
 
     assert output_path.exists()

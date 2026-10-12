@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build Extended Data Figure 16: classification ("resolution") rate by gnomAD
+"""Build Extended Data Figure 10: classification ("resolution") rate by gnomAD
 ancestry group, for both the VUS and gnomAD variant sets.
 
 Reads `data/input/gnomAD/vus_with_ancestry_af.csv` and
@@ -25,7 +25,7 @@ In the "present" framing a variant shared by several groups counts in each,
 so groups are not independent and the z-test is approximate; "unique" groups
 are fully independent.
 
-Outputs (in --outdir, default data/output/figures/assets/extended_data_figure_16/):
+Outputs (in --outdir, default data/output/figures/assets/extended_data_figure_10/):
   ancestry_resolution_results.csv   all numbers, one row per set/framing/group
   ancestry_resolution_<set>.png     one two-panel figure per variant set
 """
@@ -46,7 +46,7 @@ from scipy.stats import norm
 
 DEFAULT_VUS_INPUT = Path("data/input/gnomAD/vus_with_ancestry_af.csv")
 DEFAULT_GNOMAD_INPUT = Path("data/input/gnomAD/gnomad_with_ancestry_af.csv")
-DEFAULT_OUTDIR = Path("data/output/figures/assets/extended_data_figure_16")
+DEFAULT_OUTDIR = Path("data/output/figures/assets/extended_data_figure_10")
 
 GROUPS = ["afr", "amr", "asj", "eas", "fin", "mid", "nfe", "remaining", "sas"]
 REF_GROUP = "nfe"
@@ -221,7 +221,7 @@ COLORS = {g: tuple(c * (1 - BLEND) + BLEND for c in mcolors.to_rgb(h)) for g, h 
 # `build_calibrated_figures`'s exact-print-size PDFs (6.5in wide -- this
 # project's standard full-text-width, matching `save_calibrated_ablation_
 # figure` in ablation_variant_reclassification.py -- Arial, pdf.fonttype=42,
-# same reasoning as that figure and make_extended_data_figure_9.py).
+# same reasoning as that figure and make_extended_data_figure_6.py).
 DIAGNOSTIC_STYLE = {
     "tick_fontsize": 22,
     "ref_tick_fontsize": 23,
@@ -366,7 +366,7 @@ def build_calibrated_figures(results, outdir, no_stars, ci_label):
     (ancestry_resolution_<set>_calibrated.pdf) -- the same present/unique
     panels as `make_figures`'s diagnostic PNGs, at print font sizes (Arial,
     pdf.fonttype=42, same reasoning as `save_calibrated_ablation_figure` in
-    ablation_variant_reclassification.py and make_extended_data_figure_9.py).
+    ablation_variant_reclassification.py and make_extended_data_figure_6.py).
 
     Unlike the diagnostic panels, these omit the per-bar-color legend: at
     this width the x-axis group-code ticks already identify each bar, so a

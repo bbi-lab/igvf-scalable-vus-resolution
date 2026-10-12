@@ -2,20 +2,21 @@
 set -euo pipefail
 
 cat <<'EOF' >&2
-Usage: src/scripts/run_make_extended_data_figure_9_op.sh [flags]
-
-OddsPath-calibrated variant of run_make_extended_data_figure_9.sh -- see
-docs/figures.md.
+Usage: src/scripts/run_make_extended_data_figure_6.sh [flags]
 
 Examples:
-  src/scripts/run_make_extended_data_figure_9_op.sh
-  src/scripts/run_make_extended_data_figure_9_op.sh --consequence-filter missense
+  src/scripts/run_make_extended_data_figure_6.sh
+  src/scripts/run_make_extended_data_figure_6.sh --consequence-filter missense
 
 Notes:
   - All CLI args default to committed/generated repo files (bind-mounted at
     /usr/src/app since this service only reads/writes this repo's own
     tree, unlike flag-variants).
   - Paths are interpreted relative to /usr/src/app in the container.
+  - --consequence-filter missense writes
+    new_classification_heatmap_missense.pdf into the same
+    extended_data_figure_6/ output dir, so it doesn't overwrite the
+    all-consequences run's new_classification_heatmap.pdf.
   - Add --rebuild-image to force rebuilding the image.
   - Add --no-build-cache with --rebuild-image for a clean rebuild.
 EOF
@@ -41,7 +42,7 @@ done
 cmd=(docker compose --profile tools run)
 [[ -n "$compose_build_flag" ]] && cmd+=("$compose_build_flag")
 [[ -n "$compose_no_cache_flag" ]] && cmd+=("$compose_no_cache_flag")
-cmd+=(--rm make-extended-data-figure-9-op)
+cmd+=(--rm make-extended-data-figure-6)
 if [[ ${#args[@]} -gt 0 ]]; then
   cmd+=("${args[@]}")
 fi

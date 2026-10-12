@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from src.make_extended_data_figure_9_op import GROUPS, PREDICTORS, build_figure, load_counts, sheet_name
+from src.make_extended_data_figure_6_op import GROUPS, PREDICTORS, build_figure, load_counts, sheet_name
 
 
 def _write_workbook(path, category_counts_by_sheet, consequences_by_sheet=None):
@@ -55,7 +55,7 @@ def test_load_counts_computes_totals_and_percentages(tmp_path):
 def test_load_counts_fills_missing_category_with_zero(tmp_path):
     # Every OddsPath-based VUS/gnomAD/Unobserved sheet in the real
     # Supplementary_Data_6.xlsx lacks "Pathogenic" entirely (see module
-    # docstring) -- unlike make_extended_data_figure_9.py's stricter
+    # docstring) -- unlike make_extended_data_figure_6.py's stricter
     # ExCALIBR-based counterpart, that must not raise here.
     workbook = tmp_path / "data.xlsx"
     _write_workbook(workbook, _default_counts())
@@ -117,7 +117,7 @@ def test_build_figure_writes_a_pdf(tmp_path):
     _write_workbook(workbook, _default_counts())
     counts_df = load_counts(workbook)
 
-    output_path = tmp_path / "nested" / "extended_data_figure_9_op.pdf"
+    output_path = tmp_path / "nested" / "extended_data_figure_6_op.pdf"
     build_figure(counts_df, output_path)
 
     assert output_path.exists()

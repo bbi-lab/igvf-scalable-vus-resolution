@@ -3,7 +3,7 @@ import math
 import pandas as pd
 import pytest
 
-from src.make_extended_data_figure_16 import (
+from src.make_extended_data_figure_10 import (
     CALIBRATED_WIDTH_IN,
     GROUPS,
     analyze,

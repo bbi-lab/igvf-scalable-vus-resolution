@@ -105,7 +105,7 @@ agreement, sourced from `--excalibr-calibrations-file` (default
 Supplementary_Data_4.xlsx) and `--controls-file` (default
 Supplementary_Data_5.xlsx) respectively:
 
-- **ExCALIBR calibration coverage** (Extended Data Figure 4): how many genes
+- **ExCALIBR calibration coverage** (Extended Data Figure 2): how many genes
   have a row in Supplementary_Data_4's `ExCALIBR_calibrations` sheet, and how
   many of those genes have at least one dataset where ExCALIBR assigned at
   least one point of evidence in either direction (i.e. at least one of that
@@ -1756,7 +1756,7 @@ def format_calibration_summary(stats, markdown=False):
     with_evidence_excl = stats["genes_with_evidence_assigned_excl"]
     pct_excl = 100 * with_evidence_excl / total_excl if total_excl else float("nan")
     excl_suffix = "excluding F9/TP53/SFPQ"
-    lines = [_format_title("=== ExCALIBR calibration coverage (Extended Data Figure 4) ===", markdown)]
+    lines = [_format_title("=== ExCALIBR calibration coverage (Extended Data Figure 2) ===", markdown)]
     lines.extend(
         _format_prose_lines(
             [

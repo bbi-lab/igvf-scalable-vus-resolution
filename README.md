@@ -275,7 +275,7 @@ the repo depends on a particular kernel name.
 
 Outputs land under `data/output/supplementary_data/` (`Supplementary_Data_4.xlsx`,
 `Supplementary_Data_5.xlsx`), `data/output/predictor_calibration/` (the
-per-gene control files also used by Extended Data Figure 7), and
+per-gene control files also used by Extended Data Figure 4), and
 `data/output/reclassification/` (the per-predictor deduplicated
 reclassification datasets from step 5, and
 `integrated_variant_effect_biobank_input_data.tsv.gz`, the biobank-analysis
@@ -390,69 +390,69 @@ docker compose run --rm -w /usr/src/app/notebooks/figures/figure_5_6 \
   r-figures -e 'rmarkdown::render("Figure5_6.Rmd", output_file = "executed_Figure5_6_missense.html", params = list(consequence_filter = "missense"))'
 ```
 
-#### Extended Data Figure 4
+#### Extended Data Figure 2
 
 ```bash
-# Extended_Data_Figure_4.R -- reads data/input/biobank/IGVFFI3804AVJR.csv.gz (see above)
-docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_4 \
-  r-figures Extended_Data_Figure_4.R
+# Extended_Data_Figure_2.R -- reads data/input/biobank/IGVFFI3804AVJR.csv.gz (see above)
+docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_2 \
+  r-figures Extended_Data_Figure_2.R
 ```
 
-#### Extended Data Figure 7
+#### Extended Data Figure 4
 
 ```bash
 src/scripts/run_notebook.sh --to notebook --execute \
   --ExecutePreprocessor.kernel_name=python3 \
   --ExecutePreprocessor.timeout=600 \
-  --output executed_extended_data_figure_7.ipynb \
-  notebooks/figures/extended_data_figure_7/Extended_Data_Figure_7.ipynb
+  --output executed_extended_data_figure_4.ipynb \
+  notebooks/figures/extended_data_figure_4/Extended_Data_Figure_4.ipynb
 ```
 
-#### Extended Data Figures 6, 6alt, 6alt missense, 8, 8alt, 9alt, 11, 12 (`Extended_data_figures.Rmd`)
+#### Extended Data Figures 3, 3alt, 3alt missense, 5, 5alt, 6alt, 8, 9 (`Extended_data_figures.Rmd`)
 
 ```bash
-docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_6_8_9_11_12 \
+docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_3_5_6_8_9 \
   r-figures -e 'rmarkdown::render("Extended_data_figures.Rmd")'
 ```
 
-#### Extended Data Figure 9 (candidate replacement for Fig. 9alt)
+#### Extended Data Figure 6
 
 ```bash
-src/scripts/run_make_extended_data_figure_9.sh
+src/scripts/run_make_extended_data_figure_6.sh
 
 # Optional: same chart, restricted to missense_variant rows only. Writes
 # new_classification_heatmap_missense.pdf into the same
-# extended_data_figure_9/ dir, so it doesn't overwrite the all-consequences
+# extended_data_figure_6/ dir, so it doesn't overwrite the all-consequences
 # run above.
-src/scripts/run_make_extended_data_figure_9.sh --consequence-filter missense
+src/scripts/run_make_extended_data_figure_6.sh --consequence-filter missense
 ```
 
 OddsPath-calibrated variant, visualizing `Supplementary_Data_6.xlsx`'s
 VUS/gnomAD/Unobserved sheets instead (see
-[`docs/figures.md`](docs/figures.md#extended-data-figure-9-oddspath-variant-srcmake_extended_data_figure_9_oppy)):
+[`docs/figures.md`](docs/figures.md#extended-data-figure-6-oddspath-variant-srcmake_extended_data_figure_6_oppy)):
 
 ```bash
-src/scripts/run_make_extended_data_figure_9_op.sh
+src/scripts/run_make_extended_data_figure_6_op.sh
 ```
 
-#### Extended Data Figure 10 (functional-vs-predictor evidence ablation)
+#### Extended Data Figure 7 (functional-vs-predictor evidence ablation)
 
 ```bash
-src/scripts/run_ablation_variant_reclassification.sh \
-  --calibrated-figure data/output/figures/assets/extended_data_figure_10/ablation.pdf
-
-# Optional: same figure, restricted to missense-only variants. Writes to
-# ablation_missense.pdf instead, so it doesn't overwrite the all-variants
-# run above.
+# ablation_missense.pdf is the version actually used in the manuscript figure.
 src/scripts/run_ablation_variant_reclassification.sh \
   --consequence missense_only \
-  --calibrated-figure data/output/figures/assets/extended_data_figure_10/ablation_missense.pdf
+  --calibrated-figure data/output/figures/assets/extended_data_figure_7/ablation_missense.pdf
+
+# All-variants version -- generated but not used in the manuscript. Writes to
+# ablation.pdf instead, so it doesn't overwrite the missense-only run above.
+src/scripts/run_ablation_variant_reclassification.sh \
+  --calibrated-figure data/output/figures/assets/extended_data_figure_7/ablation.pdf
 ```
 
-#### Extended Data Figure 16 (classification resolution rate by gnomAD ancestry group)
+#### Extended Data Figure 10 (classification resolution rate by gnomAD ancestry group)
 
 ```bash
-src/scripts/run_make_extended_data_figure_16.sh
+src/scripts/run_make_extended_data_figure_10.sh
 ```
 
 Every `nbconvert --execute` call above leaves a side-effect `executed_<name>.ipynb`

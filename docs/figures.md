@@ -264,21 +264,21 @@ matches how a given panel was assembled by hand.
 
 ## Extended Data Figures
 
-Directories: `notebooks/figures/extended_data_figure_4/`,
-`notebooks/figures/extended_data_figure_7/`, and
-`notebooks/figures/extended_data_figure_6_8_9_11_12/`. Ext. Data Figs 4 and 7 are
+Directories: `notebooks/figures/extended_data_figure_2/`,
+`notebooks/figures/extended_data_figure_4/`, and
+`notebooks/figures/extended_data_figure_3_5_6_8_9/`. Ext. Data Figs 2 and 4 are
 standalone scripts, documented in their own subsections below;
-`Extended_data_figures.Rmd` covers Figs 6, 6alt, 6alt missense, 8, 8alt,
-9alt, 11, and 12, and is documented further down.
-Ext. Data Fig 9, Ext. Data Fig 10, and Ext. Data Fig 16 are standalone Python
-scripts under `src/` instead (`src/make_extended_data_figure_9.py`,
+`Extended_data_figures.Rmd` covers Figs 3, 3alt, 3alt missense, 5, 5alt,
+6alt, 8, and 9, and is documented further down.
+Ext. Data Fig 6, Ext. Data Fig 7, and Ext. Data Fig 10 are standalone Python
+scripts under `src/` instead (`src/make_extended_data_figure_6.py`,
 `src/ablation_variant_reclassification.py`,
-`src/make_extended_data_figure_16.py`), also documented in their own
+`src/make_extended_data_figure_10.py`), also documented in their own
 subsections below.
 
-### Extended Data Figure 4
+### Extended Data Figure 2
 
-`Extended_Data_Figure_4.R` -- odds-ratio forest plots for gene-specific vs.
+`Extended_Data_Figure_2.R` -- odds-ratio forest plots for gene-specific vs.
 genome-wide predictor calibration (top) and per-assay ExCALIBR classification
 (bottom), faceted by gene/disease group. Plain `Rscript`, not an `.Rmd` --
 same `tidyverse`/`patchwork`/`ggh4x`/`extrafont` dependencies and `r-figures`
@@ -289,15 +289,15 @@ produces it).
 
 ```bash
 # Reads data/input/biobank/IGVFFI3804AVJR.csv.gz (see link above).
-docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_4 \
-  r-figures Extended_Data_Figure_4.R
+docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_2 \
+  r-figures Extended_Data_Figure_2.R
 ```
 
-Saves `data/output/figures/assets/extended_data_figure_4/extended_data_figure_4.pdf`.
+Saves `data/output/figures/assets/extended_data_figure_2/extended_data_figure_2.pdf`.
 
-### Extended Data Figure 7
+### Extended Data Figure 4
 
-`Extended_Data_Figure_7.ipynb` -- a Python notebook (unlike everything else
+`Extended_Data_Figure_4.ipynb` -- a Python notebook (unlike everything else
 in this directory), not R. Flags genes with excess ClinVar pathogenic/benign
 discordance against each predictor's gene-specific calls (REVEL, AlphaMissense,
 MutPred2): computes each gene's leave-one-out background discordance rate,
@@ -319,30 +319,30 @@ service, same as Figure 2/4 above (`pandas`, `numpy`, `scipy`, `statsmodels`,
 ```bash
 # The savefig() target directory isn't created for you -- make it first if
 # it doesn't already exist.
-mkdir -p data/output/figures/assets/extended_data_figure_7
+mkdir -p data/output/figures/assets/extended_data_figure_4
 
 src/scripts/run_notebook.sh --to notebook --execute \
   --ExecutePreprocessor.kernel_name=python3 \
   --ExecutePreprocessor.timeout=600 \
-  --output executed_extended_data_figure_7.ipynb \
-  notebooks/figures/extended_data_figure_7/Extended_Data_Figure_7.ipynb
+  --output executed_extended_data_figure_4.ipynb \
+  notebooks/figures/extended_data_figure_4/Extended_Data_Figure_4.ipynb
 ```
 
 The notebook resolves its own `PROJECT_ROOT` as `../../..` relative to the
 kernel's working directory; `nbconvert` sets that to the notebook's own
-directory (`notebooks/figures/extended_data_figure_7/`) automatically, so
+directory (`notebooks/figures/extended_data_figure_4/`) automatically, so
 `PROJECT_ROOT` lands on the repo root without needing to set the env var it
 also supports. Writes `clinvar_discordance_per_gene_REVEL.png`,
 `clinvar_discordance_per_gene_AM.png`, and `clinvar_discordance_per_gene_MP2.png`
-to `data/output/figures/assets/extended_data_figure_7/`, plus a side-effect
-`executed_extended_data_figure_7.ipynb` (nbconvert's copy of the notebook
-with outputs attached) in `notebooks/figures/extended_data_figure_7/` --
+to `data/output/figures/assets/extended_data_figure_4/`, plus a side-effect
+`executed_extended_data_figure_4.ipynb` (nbconvert's copy of the notebook
+with outputs attached) in `notebooks/figures/extended_data_figure_4/` --
 gitignored, so no need to delete it.
 
-### Extended Data Figures 6, 6alt, 6alt missense, 8, 8alt, 9alt, 11, 12 (`Extended_data_figures.Rmd`)
+### Extended Data Figures 3, 3alt, 3alt missense, 5, 5alt, 6alt, 8, 9 (`Extended_data_figures.Rmd`)
 
-`Extended_data_figures.Rmd` builds Ext. Data Figs 6, 6alt, 6alt missense, 8,
-8alt, 9alt, 11, and 12 (Sankey diagrams,
+`Extended_data_figures.Rmd` builds Ext. Data Figs 3, 3alt, 3alt missense, 5,
+5alt, 6alt, 8, and 9 (Sankey diagrams,
 confusion matrices, VUS reclassification plots, and multi-ring donut plots)
 from `Supplementary_Data_5.xlsx` / `Supplementary_Data_6.xlsx` under
 `data/output/supplementary_data/` (its `DATA_DIR = "../../../data/output"`
@@ -362,7 +362,7 @@ docker compose build r-figures
 
 # Render the whole .Rmd -- knits every chunk in order and writes each
 # figure's PNGs via ggsave()/save_my_plot()
-docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_6_8_9_11_12 \
+docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_3_5_6_8_9 \
   r-figures -e 'rmarkdown::render("Extended_data_figures.Rmd", output_file = "executed_Extended_data_figures.html")'
 ```
 
@@ -378,49 +378,49 @@ to the `.Rmd`'s own basename (`Extended_data_figures.html`), which isn't
 covered by that ignore pattern and is left behind as untracked clutter.
 
 Every chunk writes under `data/output/figures/assets/`, but not to the same
-subfolder -- the fig6alt/8alt controls and ClinGen chunks save through
+subfolder -- the fig3alt/5alt controls and ClinGen chunks save through
 `save_my_plot()` to `OUT_DIR = "../../../data/output/figures/assets/extended_data_figures"`
 (i.e. `data/output/figures/assets/extended_data_figures/Ext_Figure3_5/`), while the
 later VUS/gnomAD/donut chunks call `ggsave()` directly with hardcoded
-`../../../data/output/figures/assets/extended_data_figure_8alt/` and
+`../../../data/output/figures/assets/extended_data_figure_5alt/` and
 `../../../data/output/figures/assets/extended_data_figures/` paths. Check both
-`extended_data_figures/` and `extended_data_figure_8alt/` under
+`extended_data_figures/` and `extended_data_figure_5alt/` under
 `data/output/figures/assets/` if a figure you expect isn't where you thought.
 
-### Extended Data Figure 6alt missense
+### Extended Data Figure 3alt missense
 
-A missense-only companion to Extended Data Figure 6alt (AlphaMissense/MutPred2 x
+A missense-only companion to Extended Data Figure 3alt (AlphaMissense/MutPred2 x
 ClinVar controls/ClinGen Evidence Repository, via ExCALIBR/GeneSpecific
-calibration), built the same way as Extended Data Figure 8 below: a new,
-isolated chunk right after the existing Ext. Data Fig 6alt/8alt block in
+calibration), built the same way as Extended Data Figure 5 below: a new,
+isolated chunk right after the existing Ext. Data Fig 3alt/5alt block in
 `Extended_data_figures.Rmd` -- doesn't touch or reuse any of that block's own
 objects. Adds a missense-only variant of every panel (`simplified_consequence
 == "missense_variant"`, same column/idea as `Figure5_6.Rmd`'s own
-`consequence_filter` param and Ext. Data Figure 8), doubling the current 8
+`consequence_filter` param and Ext. Data Figure 5), doubling the current 8
 sankeys+confusion-matrices to 16 -- meant to sit as an All-variants block and
 a Missense-only block side by side. Every chart is shrunk 50% linearly from
-Ext. Data Fig 6alt's own calibrated core dimensions (sankey 37x64mm ->
+Ext. Data Fig 3alt's own calibrated core dimensions (sankey 37x64mm ->
 18.5x32mm, confusion matrix 31x27mm -> 15.5x13.5mm) with unchanged font
-sizes, same reasoning as Ext. Data Figure 8. Sankey node labels are
+sizes, same reasoning as Ext. Data Figure 5. Sankey node labels are
 abbreviated to P/LP/VUS/LB/B (`label_overrides`), including ClinGen's own
 "No Classification" bucket, mapped to "VUS" like "Uncertain".
 
-Writes 16 PDFs to `data/output/figures/assets/extended_data_figure_6alt_missense/`,
+Writes 16 PDFs to `data/output/figures/assets/extended_data_figure_3alt_missense/`,
 named like `sankey_clinvar_ExOP_AM_GeneSpecific_missense_calibrated.pdf` /
 `cm_clingen_ExOP_MP2_GeneSpecific_all_calibrated.pdf`.
 
-### Extended Data Figure 8
+### Extended Data Figure 5
 
-An alternate version of Extended Data Figure 8alt (REVEL/AlphaMissense/MutPred2
+An alternate version of Extended Data Figure 5alt (REVEL/AlphaMissense/MutPred2
 x ClinVar controls/ClinGen Evidence Repository, all via OddsPath/"Universal"
 calibration), built as a new, isolated chunk right after the existing Ext.
-Data Fig 8alt block in `Extended_data_figures.Rmd` -- doesn't touch or reuse any
+Data Fig 5alt block in `Extended_data_figures.Rmd` -- doesn't touch or reuse any
 of that block's own objects. Adds a missense-only variant of every panel
 (`simplified_consequence == "missense_variant"`, same column/idea as
 `Figure5_6.Rmd`'s own `consequence_filter` param), doubling the current 12
 sankeys+confusion-matrices to 24 -- meant to sit as an All-variants block and
 a Missense-only block side by side. Every chart is shrunk 50% linearly from
-Ext. Data Fig 8alt's own calibrated core dimensions (sankey 37x64mm ->
+Ext. Data Fig 5alt's own calibrated core dimensions (sankey 37x64mm ->
 18.5x32mm, confusion matrix 26x23mm -> 13x11.5mm) with unchanged font sizes,
 so each chart's own *returned* width/height (label/title overflow included,
 same as every other calibrated chart here) ends up noticeably larger than
@@ -428,7 +428,7 @@ that core size -- the same-size text no longer shrinks with the box. Sankey
 node labels are abbreviated to P/LP/VUS/LB/B (`label_overrides`), including
 ClinGen's own "No Classification" bucket, mapped to "VUS" like "Uncertain".
 
-Writes 24 PDFs to `data/output/figures/assets/extended_data_figure_8/`, named
+Writes 24 PDFs to `data/output/figures/assets/extended_data_figure_5/`, named
 like `sankey_clinvar_OP_REVEL_Universal_missense_calibrated.pdf` /
 `cm_clingen_OP_MP2_Universal_all_calibrated.pdf`. This also fixed a real bug
 in `confusion_matrix_calibrated.R`: its canvas width previously assumed the
@@ -439,46 +439,46 @@ page edge. Fixed by widening `x_range` to also cover the title's/x-label's
 own text width when it exceeds the matrix's; a no-op for every existing
 (larger) calibrated confusion matrix in this project.
 
-### Extended Data Figure 8alt/8, gene-specific (reviewer-only)
+### Extended Data Figure 5alt/5, gene-specific (reviewer-only)
 
 A companion `.Rmd`, `Extended_data_figures_gene_specific.Rmd`, rebuilds
-Extended Data Figure 8alt and Extended Data Figure 8 -- the only two
+Extended Data Figure 5alt and Extended Data Figure 5 -- the only two
 figures in `Extended_data_figures.Rmd` derived from
 `Supplementary_Data_6.xlsx` -- from `Supplementary_Data_6_gene_specific.xlsx`
 instead: the variant `OddsPath_classifications.ipynb` produces with
 `ONLY_ODDSPATH_CALIBRATED_DATASETS = True` and
 `USE_GENE_SPECIFIC_PREDICTOR_CALIBRATIONS = True` (see
 `notebooks/analysis/README_OddsPath_classifications.md`'s "Reviewer-only
-variant" section). Every other figure (6alt, 6alt missense, 6, 9, 12, 11)
+variant" section). Every other figure (3alt, 3alt missense, 3, 6, 9, 8)
 reads only `Supplementary_Data_5.xlsx`, unaffected by that variant, so
 this companion doesn't reproduce them.
 
 All helper functions, calibrated dimensions, and plotting logic are copied
-verbatim from `Extended_data_figures.Rmd`'s own Fig 8alt/8 chunks (with the
-ExCALIBR/GeneSpecific Fig 6alt portions removed), so the only functional
+verbatim from `Extended_data_figures.Rmd`'s own Fig 5alt/5 chunks (with the
+ExCALIBR/GeneSpecific Fig 3alt portions removed), so the only functional
 difference is the input workbook. Run it the same way as the main `.Rmd`:
 
 ```bash
-docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_6_8_9_11_12 \
+docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_3_5_6_8_9 \
   r-figures -e 'rmarkdown::render("Extended_data_figures_gene_specific.Rmd", output_file = "executed_Extended_data_figures_gene_specific.html")'
 ```
 
-Writes to `data/output/figures/assets/extended_data_figure_8alt_gene_specific/` (PNGs
-+ calibrated PDFs, mirroring Extended Data Figure 8alt's own file names) and
-`data/output/figures/assets/extended_data_figure_8_gene_specific/` (24
-calibrated PDFs, mirroring Extended Data Figure 8's own file names) --
+Writes to `data/output/figures/assets/extended_data_figure_5alt_gene_specific/` (PNGs
++ calibrated PDFs, mirroring Extended Data Figure 5alt's own file names) and
+`data/output/figures/assets/extended_data_figure_5_gene_specific/` (24
+calibrated PDFs, mirroring Extended Data Figure 5's own file names) --
 distinct folders so nothing here can collide with or overwrite the
-standard Extended Data Figure 8alt/8 outputs.
+standard Extended Data Figure 5alt/5 outputs.
 
-### Extended Data Figure 6
+### Extended Data Figure 3
 
-An alternate version of Extended Data Figure 6alt (AlphaMissense/MutPred2 x
+An alternate version of Extended Data Figure 3alt (AlphaMissense/MutPred2 x
 ClinVar controls/ClinGen Evidence Repository, via ExCALIBR/GeneSpecific
 calibration), built as a new, isolated chunk right after the Extended Data
-Figure 6alt missense chunk in `Extended_data_figures.Rmd` -- doesn't touch or
-reuse any object from that block or the original Ext. Data Fig 6alt block.
-Adds REVEL/GeneSpecific as a third predictor (Ext. Data Fig 6alt itself, and
-the Fig 6alt missense chunk above, only ever loaded AM/MP2 GeneSpecific
+Figure 3alt missense chunk in `Extended_data_figures.Rmd` -- doesn't touch or
+reuse any object from that block or the original Ext. Data Fig 3alt block.
+Adds REVEL/GeneSpecific as a third predictor (Ext. Data Fig 3alt itself, and
+the Fig 3alt missense chunk above, only ever loaded AM/MP2 GeneSpecific
 sheets, even though `Supplementary_Data_5.xlsx`'s
 `controls_REVEL_GeneSpecific`/`ClinGen_Repo_REVEL_GeneSpecific` sheets have
 the identical column shape -- `Class_REVEL`/
@@ -486,66 +486,69 @@ the identical column shape -- `Class_REVEL`/
 never read anywhere else in this document), and adds a missense-only
 variant of every panel (`simplified_consequence == "missense_variant"`,
 same column/idea as `Figure5_6.Rmd`'s own `consequence_filter` param and
-Ext. Data Figure 8), exactly mirroring Ext. Data Figure 8's own
+Ext. Data Figure 5), exactly mirroring Ext. Data Figure 5's own
 REVEL/AM/MP2 x All/Missense structure but for ExCALIBR/GeneSpecific instead
 of OddsPath/Universal calibration: 3 predictors x 2 consequence scopes x 2
 truth sources (ClinVar controls / ClinGen Evidence Repository) x {sankey,
 confusion matrix} = 24 PDFs. Every chart is shrunk 50% linearly from Ext.
-Data Fig 6alt's own calibrated core dimensions (sankey 37x64mm -> 18.5x32mm,
+Data Fig 3alt's own calibrated core dimensions (sankey 37x64mm -> 18.5x32mm,
 confusion matrix 31x27mm -> 15.5x13.5mm) with unchanged font sizes, same
-reasoning as Ext. Data Figure 8/Fig 6alt missense. Sankey node labels are
+reasoning as Ext. Data Figure 5/Fig 3alt missense. Sankey node labels are
 abbreviated to P/LP/VUS/LB/B (`label_overrides`), including ClinGen's own
 "No Classification" bucket, mapped to "VUS" like "Uncertain".
 
-Writes 24 PDFs to `data/output/figures/assets/extended_data_figure_6/`, named
+Writes 24 PDFs to `data/output/figures/assets/extended_data_figure_3/`, named
 like `sankey_clinvar_ExOP_REVEL_GeneSpecific_missense_calibrated.pdf` /
 `cm_clingen_ExOP_MP2_GeneSpecific_all_calibrated.pdf`.
 
-### Extended Data Figure 9 (`src/make_extended_data_figure_9.py`)
+### Extended Data Figure 6 (`src/make_extended_data_figure_6.py`)
 
-A candidate replacement for Extended Data Figure 9alt: a single calibrated
+The actual figure used in the manuscript: a single calibrated
 (exact-print-size) heatmap superseding the classification info spread across
-Figure 6 (VUS/gnomAD/unobserved x REVEL only) and Extended Data Figure 9alt (VUS
-x REVEL/AM/MP2 only). Nine rows -- REVEL/AM/MP2 for each of the VUS, gnomAD,
-and unobserved variant sets, with a gap between the three groups -- x five
+Figure 6 (VUS/gnomAD/unobserved x REVEL only) and Extended Data Figure 6alt (VUS
+x REVEL/AM/MP2 only). Extended Data Figure 6alt is still generated by
+`Extended_data_figures.Rmd` (like the other `alt` figures -- 3alt and 5alt --
+it isn't used in the manuscript). Nine rows -- REVEL/AM/MP2 for each of the
+VUS, gnomAD, and unobserved variant sets, with a gap between the three
+groups -- x five
 classification columns (P/LP/VUS/LB/B, reading each sheet's own
 `Class_{REVEL,AM,MP2}` column), plus a Total column. Each cell shows its count
 and row-wise percentage, colored on a single monochromatic 0-100% scale
 (with a legend) shared across every cell.
 
-Unlike the rest of Extended Data Figs 6, 6alt, 6alt missense, 8, 8alt, 9alt,
-11, 12, this one is a standalone Python
+Unlike the rest of Extended Data Figs 3, 3alt, 3alt missense, 5, 5alt, 6alt,
+8, 9, this one is a standalone Python
 script (matplotlib) rather than an `Extended_data_figures.Rmd` chunk, and
 reads `Supplementary_Data_5.xlsx` directly -- no R required, via the
-`make-extended-data-figure-9` Compose service:
+`make-extended-data-figure-6` Compose service:
 
 ```bash
-src/scripts/run_make_extended_data_figure_9.sh
+src/scripts/run_make_extended_data_figure_6.sh
 ```
 
-Writes `data/output/figures/assets/extended_data_figure_9/new_classification_heatmap.pdf`
+Writes `data/output/figures/assets/extended_data_figure_6/new_classification_heatmap.pdf`
 by default; see `--input`/`--output` (`--help`) to override either path.
 
 `--consequence-filter missense` restricts every sheet to `simplified_consequence
 == "missense_variant"` rows (the same column/idea as `Figure5_6.Rmd`'s own
 `consequence_filter` param) and writes to
-`extended_data_figure_9/new_classification_heatmap_missense.pdf` -- the
+`extended_data_figure_6/new_classification_heatmap_missense.pdf` -- the
 same directory as the all-consequences run, distinguished only by the
 filename's own `_missense` suffix.
 
-### Extended Data Figure 9, OddsPath variant (`src/make_extended_data_figure_9_op.py`)
+### Extended Data Figure 6, OddsPath variant (`src/make_extended_data_figure_6_op.py`)
 
 No figure anywhere in this repo previously visualized
 `Supplementary_Data_6.xlsx`'s own OddsPath-based VUS/gnomAD/Unobserved
 sheets (`{VUS,gnomAD,Unobserved}_{REVEL,AM,MP2}_OP`, classified via
-`Class_OP_{REVEL,AM,MP2}`) -- Extended Data Figure 9 above and Figure 6
+`Class_OP_{REVEL,AM,MP2}`) -- Extended Data Figure 6 above and Figure 6
 both read only `Supplementary_Data_5.xlsx`'s ExCALIBR/GeneSpecific
 classification. This script is the same 9-row x 5-column (+ Total)
-calibrated heatmap as Extended Data Figure 9, applied to those OP sheets
+calibrated heatmap as Extended Data Figure 6, applied to those OP sheets
 instead: "functional evidence from OddsPath likelihood ratios, plus
 predictive evidence calibrated genome-wide only" (see
 `notebooks/analysis/README_OddsPath_classifications.md`), matching the
-OddsPath/Universal calibration used by Extended Data Figure 8alt/8.
+OddsPath/Universal calibration used by Extended Data Figure 5alt/5.
 
 Two data quirks handled here (see the script's own module docstring for
 detail): the Unobserved group's MutPred2 sheet is spelled
@@ -554,26 +557,26 @@ detail): the Unobserved group's MutPred2 sheet is spelled
 Supplementary Data 5's classification, no row in these OP sheets ever
 reaches "Pathogenic" (genome-wide REVEL/AM/MP2 top out at PP3_Strong = +4),
 so a category absent from a sheet is plotted as a genuine zero rather than
-raising, unlike `make_extended_data_figure_9.py`'s stricter check.
+raising, unlike `make_extended_data_figure_6.py`'s stricter check.
 
 ```bash
-src/scripts/run_make_extended_data_figure_9_op.sh
+src/scripts/run_make_extended_data_figure_6_op.sh
 ```
 
-Writes `data/output/figures/assets/extended_data_figure_9_op/new_classification_heatmap_op.pdf`
+Writes `data/output/figures/assets/extended_data_figure_6_op/new_classification_heatmap_op.pdf`
 by default; same `--input`/`--output`/`--consequence-filter` options as
-`make_extended_data_figure_9.py` (`--help` for details). To build the
+`make_extended_data_figure_6.py` (`--help` for details). To build the
 gene-specific variant (Supplementary Data 6, gene-specific -- see
 `notebooks/analysis/README_OddsPath_classifications.md`'s "Reviewer-only
 variant" section) instead of the standard one:
 
 ```bash
-src/scripts/run_make_extended_data_figure_9_op.sh \
+src/scripts/run_make_extended_data_figure_6_op.sh \
   --input data/output/supplementary_data/Supplementary_Data_6_gene_specific.xlsx \
-  --output data/output/figures/assets/extended_data_figure_9_op_gene_specific/new_classification_heatmap_op_gene_specific.pdf
+  --output data/output/figures/assets/extended_data_figure_6_op_gene_specific/new_classification_heatmap_op_gene_specific.pdf
 ```
 
-### Extended Data Figure 10 (`src/ablation_variant_reclassification.py`)
+### Extended Data Figure 7 (`src/ablation_variant_reclassification.py`)
 
 The functional-vs-predictor evidence ablation analysis (how much of the
 reclassification pipeline's effect comes from functional evidence alone,
@@ -590,31 +593,33 @@ The figure itself is `save_calibrated_ablation_figure`'s hand-calibrated
 layout: a fixed two-row grid -- row 1 has comparison charts for `vus` and
 `clinvar_control`; row 2 has the ablation legend (stacked vertically, with a
 full-sentence label for each "upgraded" swatch) alongside `clinvar_control`'s
-own concordance panel -- independent of `--scope`. Two versions
-are generated -- all variants, and missense-only (`--consequence missense_
-only`, strictly `condensed_consequence == "missense_variant"` excluding
-start-loss, see `is_missense_only`) -- as separate files rather than
-overwriting one another:
+own concordance panel -- independent of `--scope`. The manuscript uses the
+missense-only version (`--consequence missense_only`, strictly
+`condensed_consequence == "missense_variant"` excluding start-loss, see
+`is_missense_only`); the all-variants version is also generated, as a
+separate file, but isn't used:
 
 ```bash
-src/scripts/run_ablation_variant_reclassification.sh \
-  --calibrated-figure data/output/figures/assets/extended_data_figure_10/ablation.pdf
-
+# ablation_missense.pdf is the version actually used in the manuscript figure.
 src/scripts/run_ablation_variant_reclassification.sh \
   --consequence missense_only \
-  --calibrated-figure data/output/figures/assets/extended_data_figure_10/ablation_missense.pdf
+  --calibrated-figure data/output/figures/assets/extended_data_figure_7/ablation_missense.pdf
+
+# All-variants version -- generated but not used in the manuscript.
+src/scripts/run_ablation_variant_reclassification.sh \
+  --calibrated-figure data/output/figures/assets/extended_data_figure_7/ablation.pdf
 ```
 
 All three predictors (REVEL, AlphaMissense, MutPred2 -- the default when
 `--predictor` is omitted). `--calibrated-figure` creates
-`data/output/figures/assets/extended_data_figure_10/` if it doesn't already exist; the file format is
+`data/output/figures/assets/extended_data_figure_7/` if it doesn't already exist; the file format is
 inferred from the extension (e.g. `.png`/`.svg`/`.pdf`).
 
 **Individual per-panel files**: unlike every other Extended Data Figure
 here, this figure can *also* be generated as many small single-panel PDFs
 (one per chart type x variant-category scope, following the same
 "individual panels assembled by hand" pattern as Extended Data Figure
-8's 24 PDFs above) instead of `--calibrated-figure`'s one combined
+5's 24 PDFs above) instead of `--calibrated-figure`'s one combined
 image -- useful for inspecting or hand-assembling a subset of panels rather
 than the finished figure. `--document-split-dir` renders exactly the
 per-section chart data `--document`'s combined multi-section image would,
@@ -625,11 +630,11 @@ the document into individual chart files" section for the full mechanics.
 
 ```bash
 src/scripts/run_ablation_variant_reclassification.sh \
-  --document-split-dir data/output/figures/assets/extended_data_figure_10
+  --document-split-dir data/output/figures/assets/extended_data_figure_7
 ```
 
 Writes 25 PDFs (`--document-split-dir` creates
-`data/output/figures/assets/extended_data_figure_10/` if it doesn't already exist):
+`data/output/figures/assets/extended_data_figure_7/` if it doesn't already exist):
 one `ablation_<scope>.pdf`, `comparison_<scope>.pdf`, and `gain_<scope>.pdf`
 per `--scope` category (`vus`, `gnomad`, `unobserved`, `clinvar_control`,
 `clinvar_control_missense_only`, `clingen_control`,
@@ -646,7 +651,7 @@ not a hang; the "Wrote N chart files" line at the end confirms completion.
 Pass `--predictor`/`--document-chart` to narrow it down if only a subset of
 panels is needed.
 
-### Extended Data Figure 16 (`src/make_extended_data_figure_16.py`)
+### Extended Data Figure 10 (`src/make_extended_data_figure_10.py`)
 
 Classification ("resolution") rate by gnomAD v4 ancestry group, for both the
 VUS and gnomAD variant sets: the % of variants classified Benign/Likely
@@ -661,8 +666,8 @@ Bonferroni-corrected significance stars vs. that reference.
 
 Unlike every other Extended Data Figure, this one is a standalone Python
 script (matplotlib) with no R dependency, via the
-`make-extended-data-figure-16` Compose service -- same pattern as Extended
-Data Figure 9/10 above. It reads
+`make-extended-data-figure-10` Compose service -- same pattern as Extended
+Data Figure 6/7 above. It reads
 `data/input/gnomAD/vus_with_ancestry_af.csv` and
 `data/input/gnomAD/gnomad_with_ancestry_af.csv` directly (gnomAD
 ancestry-group allele frequencies joined onto this project's REVEL
@@ -672,7 +677,7 @@ classification, one row per variant) rather than `Supplementary_Data_5.xlsx`
 rebuilt by anything in this pipeline.
 
 ```bash
-src/scripts/run_make_extended_data_figure_16.sh
+src/scripts/run_make_extended_data_figure_10.sh
 ```
 
 Writes `ancestry_resolution_results.csv` (every number, one row per
@@ -681,16 +686,16 @@ variant-set/framing/group), the large diagnostic
 for on-screen inspection, `DejaVu Sans`), and the final, calibrated
 (exact-print-size) `ancestry_resolution_VUS_calibrated.pdf`/
 `ancestry_resolution_gnomAD_calibrated.pdf` pair to
-`data/output/figures/assets/extended_data_figure_16/` by default; see
+`data/output/figures/assets/extended_data_figure_10/` by default; see
 `--vus-input`/`--gnomad-input`/`--outdir`/`--help` to override. `--no-stars`
 omits the significance markers; `--no-figures` skips all four images and
 writes only the results CSV.
 
 The calibrated PDFs are 6.5in wide -- this project's standard full-text
 print width, same as `save_calibrated_ablation_figure`'s Extended Data
-Figure 10 -- with Arial and `pdf.fonttype=42` (editable outline text, not
+Figure 7 -- with Arial and `pdf.fonttype=42` (editable outline text, not
 rasterized), same reasoning as that figure and
-`make_extended_data_figure_9.py`. They drop the diagnostic PNGs' per-bar
+`make_extended_data_figure_6.py`. They drop the diagnostic PNGs' per-bar
 legend: at this width the x-axis group-code ticks already identify each
 bar, and the exact n per group/framing is already in
 `ancestry_resolution_results.csv`, so a nine-entry "<full name> (n=...)"

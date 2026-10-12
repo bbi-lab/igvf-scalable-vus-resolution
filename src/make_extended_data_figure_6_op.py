@@ -1,27 +1,45 @@
 #!/usr/bin/env python3
-"""Build Extended Data Figure 9: a calibrated (exact-print-size) heatmap of
-final variant classifications across VUS, gnomAD, and unobserved variants.
+"""Build the OddsPath/Universal-calibration counterpart of Extended Data Figure
+6: a calibrated (exact-print-size) heatmap of final variant classifications
+across VUS, gnomAD, and unobserved variants.
 
-Supersedes the information in Figure 6 (VUS/gnomAD/unobserved x REVEL only)
-and Extended Data Figure 9alt (VUS x REVEL/AM/MP2) with all nine combinations of
-variant set x predictor in one chart: 9 rows (three REVEL/AM/MP2 rows per
-variant-set group, with a gap between groups) x 5 classification columns
-(P/LP/VUS/LB/B, reading `Class_{REVEL,AM,MP2}` from
-`Supplementary_Data_5.xlsx`'s `{VUS,gnomAD,Unobserved}_{REVEL,AM,MP2}`
-sheets -- the same "functional data calibrated using ExCALIBR, with OddsPath
-for selected genes, plus predictive data calibrated gene-specifically with a
-universal-calibration fallback" classification already used throughout Figure
-6/Extended Data Figure 9alt), plus a Total column. Each cell shows its count and
-(in parentheses) its row-wise percentage, colored on a single monochromatic
-0-100% scale (with a legend) shared across every cell.
+Identical layout to `make_extended_data_figure_6.py` (9 rows: three
+REVEL/AM/MP2 rows per variant-set group, with a gap between groups, x 5
+classification columns P/LP/VUS/LB/B, plus a Total column; each cell shows
+its count and row-wise percentage on a shared monochromatic 0-100% scale),
+but reading `Supplementary_Data_6.xlsx`'s OddsPath-based
+`{VUS,gnomAD,Unobserved}_{REVEL,AM,MP2}_OP` sheets and their
+`Class_OP_{REVEL,AM,MP2}` classification column instead -- "functional
+evidence from OddsPath likelihood ratios, plus predictive evidence
+calibrated genome-wide only" (see
+`notebooks/analysis/README_OddsPath_classifications.md`), rather than
+Supplementary Data 5's ExCALIBR/gene-specific-with-fallback classification.
+No figure in this repository currently visualizes these OP sheets, so this
+script (and the missing-category handling below) is new rather than a port
+of an existing chart.
+
+The Unobserved group's MutPred2 sheet is spelled `Unobserved_mut_OP` (not
+`Unobserved_MP2_OP`) in Supplementary_Data_6.xlsx -- a naming quirk already
+present in `OddsPath_classifications.ipynb`'s own sheet dict, reproduced
+here via SHEET_NAME_OVERRIDES rather than "fixed", so this script keeps
+reading whatever that notebook actually writes. The classification column
+itself is `Class_OP_MP2` regardless -- only the sheet name differs.
+
+Unlike Supplementary Data 5's ExCALIBR/GeneSpecific classification, no
+VUS/gnomAD/Unobserved row in Supplementary_Data_6.xlsx ever reaches the
+"Pathogenic" bucket (genome-wide REVEL/AM/MP2 top out at PP3_Strong = +4,
+and few if any variants in these already-uncertain categories also draw
+the full +8 PS3_very_strong from OddsPath) -- so, unlike
+`make_extended_data_figure_6.py`, a category absent from a sheet is
+plotted as a genuine zero rather than treated as a schema error; only a
+category outside the five expected labels raises.
 
 --consequence-filter missense restricts every sheet to simplified_consequence
-== "missense_variant" rows (same idea and column as Figure5_6.Rmd's own
-consequence_filter param) and defaults the output path to
-extended_data_figure_9/new_classification_heatmap_missense.pdf -- the
-filename's own _missense suffix keeps it from overwriting the
-all-consequences run's new_classification_heatmap.pdf in that same
-directory.
+== "missense_variant" rows (same idea and column as
+`make_extended_data_figure_6.py`'s own option) and defaults the output
+path to extended_data_figure_6_op_missense/new_classification_heatmap_op_missense.pdf
+instead of extended_data_figure_6_op/new_classification_heatmap_op.pdf, so it
+doesn't overwrite the all-consequences run.
 """
 
 from pathlib import Path
@@ -37,7 +55,7 @@ from matplotlib import colormaps
 from matplotlib import colors as mcolors
 from matplotlib.patches import Rectangle
 
-DEFAULT_INPUT = Path("data/output/supplementary_data/Supplementary_Data_5.xlsx")
+DEFAULT_INPUT = Path("data/output/supplementary_data/Supplementary_Data_6.xlsx")
 
 # "all" keeps every consequence type; any other key filters each sheet to
 # simplified_consequence values in the given list before counting.
@@ -49,8 +67,9 @@ CONSEQUENCE_FILTERS = {
 
 def default_output_path(consequence_filter):
     suffix = "" if consequence_filter == "all" else f"_{consequence_filter}"
-    filename = f"new_classification_heatmap{suffix}"
-    return Path("data/output/figures/assets/extended_data_figure_9") / f"{filename}.pdf"
+    dirname = f"extended_data_figure_6_op{suffix}"
+    filename = f"new_classification_heatmap_op{suffix}"
+    return Path("data/output/figures/assets") / dirname / f"{filename}.pdf"
 
 
 GROUPS = ["VUS", "gnomAD", "Unobserved"]
@@ -63,6 +82,12 @@ CATEGORY_DISPLAY = {
     "Likely Benign": "LB",
     "Benign": "B",
 }
+
+# Supplementary_Data_6.xlsx sheet-naming quirk: every group_predictor sheet
+# is named f"{group}_{predictor}_OP" except Unobserved's MutPred2 sheet,
+# which is "Unobserved_mut_OP". The classification column is Class_OP_MP2
+# in both cases -- only the sheet name is affected.
+SHEET_NAME_OVERRIDES = {("Unobserved", "MP2"): "Unobserved_mut_OP"}
 
 FONT_FAMILY = "Arial"
 FONT_PT = 6
@@ -91,6 +116,10 @@ LEGEND_TICK_GAP_MM = 0.8
 LEGEND_TITLE_GAP_MM = 0.8
 
 
+def sheet_name(group, predictor):
+    return SHEET_NAME_OVERRIDES.get((group, predictor), f"{group}_{predictor}_OP")
+
+
 def load_counts(input_path, allowed_consequences=None):
     """Return one row per (group, predictor) with each category's count, `total`
     (= the sheet's own row count after filtering), and `pct_<category>` columns.
@@ -98,28 +127,28 @@ def load_counts(input_path, allowed_consequences=None):
     allowed_consequences, if given, restricts each sheet to rows whose
     simplified_consequence is in that list before counting.
 
-    Raises ValueError if a sheet's Class_<predictor> column doesn't contain
-    exactly the five expected categories.
+    A category from CATEGORY_ORDER absent from a sheet is counted as 0
+    (see module docstring: unlike Supplementary Data 5, "Pathogenic" is
+    never observed in these OddsPath-based sheets). Raises ValueError only
+    if a sheet's Class_OP_<predictor> column contains a category outside
+    the five expected ones.
     """
     rows = []
     for group in GROUPS:
         for predictor in PREDICTORS:
-            sheet = f"{group}_{predictor}"
+            sheet = sheet_name(group, predictor)
             df = pd.read_excel(input_path, sheet_name=sheet)
             if allowed_consequences is not None:
                 df = df[df["simplified_consequence"].isin(allowed_consequences)]
-            class_col = f"Class_{predictor}"
+            class_col = f"Class_OP_{predictor}"
             counts = df[class_col].value_counts()
 
-            missing = set(CATEGORY_ORDER) - set(counts.index)
-            if missing:
-                raise ValueError(f"{sheet}!{class_col} is missing expected categories: {sorted(missing)}")
             unexpected = set(counts.index) - set(CATEGORY_ORDER)
             if unexpected:
                 raise ValueError(f"{sheet}!{class_col} has unexpected categories: {sorted(unexpected)}")
 
             row = {"group": group, "predictor": predictor, "total": len(df)}
-            row.update({category: int(counts[category]) for category in CATEGORY_ORDER})
+            row.update({category: int(counts.get(category, 0)) for category in CATEGORY_ORDER})
             rows.append(row)
 
     counts_df = pd.DataFrame(rows)

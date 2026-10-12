@@ -2,11 +2,11 @@
 set -euo pipefail
 
 cat <<'EOF' >&2
-Usage: src/scripts/run_make_extended_data_figure_16.sh [flags]
+Usage: src/scripts/run_make_extended_data_figure_10.sh [flags]
 
 Examples:
-  src/scripts/run_make_extended_data_figure_16.sh
-  src/scripts/run_make_extended_data_figure_16.sh --no-stars
+  src/scripts/run_make_extended_data_figure_10.sh
+  src/scripts/run_make_extended_data_figure_10.sh --no-stars
 
 Notes:
   - All CLI args default to committed repo files (bind-mounted at
@@ -38,7 +38,7 @@ done
 cmd=(docker compose --profile tools run)
 [[ -n "$compose_build_flag" ]] && cmd+=("$compose_build_flag")
 [[ -n "$compose_no_cache_flag" ]] && cmd+=("$compose_no_cache_flag")
-cmd+=(--rm make-extended-data-figure-16)
+cmd+=(--rm make-extended-data-figure-10)
 if [[ ${#args[@]} -gt 0 ]]; then
   cmd+=("${args[@]}")
 fi

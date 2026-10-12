@@ -294,24 +294,25 @@ venn = read.csv(file.path(INTERMEDIATE_DIR, "Figure3d.csv.gz"))
 library(eulerr)
 
 # Collapse counts
+# Figure3d.csv.gz's control rows are Benign/Likely benign/Pathogenic/Likely
+# pathogenic only -- build_figure3_data.py's summarize_clinvar_significance
+# folds ClinVar's literal "Benign/Likely benign"/"Pathogenic/Likely
+# pathogenic" combined calls into "Likely benign"/"Likely pathogenic", so
+# there's no separate combined-label row to add in here.
 B <- venn$Count[venn$Group == "Benign"] +
-     venn$Count[venn$Group == "Likely benign"] +
-     venn$Count[venn$Group == "Benign/Likely benign"]
+     venn$Count[venn$Group == "Likely benign"]
 
 P <- venn$Count[venn$Group == "Pathogenic"] +
-     venn$Count[venn$Group == "Likely pathogenic"] +
-     venn$Count[venn$Group == "Pathogenic/Likely pathogenic"]
+     venn$Count[venn$Group == "Likely pathogenic"]
 
 G <- venn$Count[venn$Group == "gnomAD"]
 D <- venn$Count[venn$Group == "Unreported_SNVs"]
 
 BG = venn$Count.in.gnomAD[venn$Group == "Benign"] +
-          venn$Count.in.gnomAD[venn$Group == "Likely benign"] +
-          venn$Count.in.gnomAD[venn$Group == "Benign/Likely benign"]
+          venn$Count.in.gnomAD[venn$Group == "Likely benign"]
 
 PG = venn$Count.in.gnomAD[venn$Group == "Pathogenic"] +
-          venn$Count.in.gnomAD[venn$Group == "Likely pathogenic"] +
-          venn$Count.in.gnomAD[venn$Group == "Pathogenic/Likely pathogenic"]
+          venn$Count.in.gnomAD[venn$Group == "Likely pathogenic"]
 
 V = venn$Count[venn$Group == "VUS total"]
 

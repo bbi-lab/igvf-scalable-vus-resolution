@@ -106,14 +106,15 @@ def test_collapse_to_unique_variants_dedupes_repeated_genomic_rows():
 
     # The two identical TP53_A rows (same Gene/hg38_start/ref/alt) collapse to one.
     assert len(pp_unique) == 4
-    # The nucleotide branch copies clinvar_18_25 through as-is (no
-    # "Unseen"/"VUS" normalization -- that only happens for aa-level rows),
-    # so a missing 2025 classification stays NaN.
-    assert pp_unique["clnsig_group_18_25"].isna().sum() == 1
-    assert set(pp_unique["clnsig_group_18_25"].dropna()) == {
+    # The nucleotide branch now groups and summarizes just like the aa
+    # branch, so a missing classification normalizes to "Unseen" rather than
+    # staying NaN.
+    assert pp_unique["clnsig_group_18_25"].isna().sum() == 0
+    assert set(pp_unique["clnsig_group_18_25"]) == {
         "Pathogenic",
         "Benign",
         "Uncertain significance",
+        "Unseen",
     }
 
 
@@ -151,15 +152,51 @@ def test_collapse_to_unique_variants_dataset_scoped_counts_once_per_dataset():
 
 def test_build_figure3d_counts_includes_controls_gnomad_and_vus():
     pp = add_clinvar_snapshot_column(_sample_integrated_dataset())
-    pp_unique = collapse_to_unique_variants(pp)
 
-    figure3d = build_figure3d_counts(pp, pp_unique)
+    figure3d = build_figure3d_counts(pp)
     counts = figure3d.set_index("Group")["Count"].to_dict()
 
     assert counts["Pathogenic"] == 1
     assert counts["Benign"] == 1
     assert counts["VUS total"] == 1
     assert counts["gnomAD"] == 1
+
+
+def test_build_figure3d_counts_controls_use_2025_not_mixed_year_for_priority_genes():
+    # BRCA1 is a priority gene: clinvar_18_25 (used by Figure3a/Figure3c)
+    # would classify this row as Benign (its 2018 call), but Figure3d's
+    # controls must use plain clinvar_sig_2025 (Pathogenic) instead.
+    pp = add_clinvar_snapshot_column(
+        pd.DataFrame(
+            {
+                "Gene": ["BRCA1"],
+                "Dataset": ["BRCA1_A"],
+                "clinvar_sig_2018": ["Benign"],
+                "clinvar_sig_2025": ["Pathogenic"],
+                "nucleotide_or_aa": ["nt"],
+                "hg38_start": [500],
+                "ref_allele": ["A"],
+                "alt_allele": ["G"],
+                "gnomad_MAF": [np.nan],
+                "aa_pos": [np.nan],
+                "aa_ref": [np.nan],
+                "aa_alt": [np.nan],
+                "RefSeq Transcript ID": [np.nan],
+            }
+        )
+    )
+    pp_unique = collapse_to_unique_variants(pp)
+
+    figure3d = build_figure3d_counts(pp)
+    counts = figure3d.set_index("Group")["Count"].to_dict()
+
+    assert counts["Pathogenic"] == 1
+    assert "Benign" not in counts
+
+    # Figure3a/Figure3c's shared pp_unique column still reflects the 2018
+    # call for this priority gene -- only Figure3d's own computation changed.
+    assert pp_unique["clnsig_group_18_25"].iloc[0] == "Benign"
+    assert pp_unique["clnsig_group_2025"].iloc[0] == "Pathogenic"
 
 
 def test_simplify_significance_groups_and_passes_through_vus():

@@ -309,6 +309,7 @@ already reached by functional/experimental evidence alone -- see
 pathogenic_fraction`.
 """
 
+import functools
 import re
 import unicodedata
 from pathlib import Path
@@ -333,6 +334,22 @@ GENE_COL = "Gene"
 GENOMIC_VARIANT_COL = "hgvs_c"
 PROTEIN_VARIANT_COL = "hgvs_p"
 VARIANT_KEY_COLS = [GENOMIC_VARIANT_COL, PROTEIN_VARIANT_COL]
+# Genomic-coordinate identity, matching `src.build_figure3_data.NUCLEOTIDE_KEY`
+# exactly -- used instead of `VARIANT_KEY_COLS` for the "DNA variants,
+# distinct" level only, so that table counts one row per distinct genomic
+# variant (the same granularity Figure3d/the Euler diagram uses) rather than
+# one row per distinct (hgvs_c, hgvs_p) pair, which can split one genomic
+# variant into several rows across equivalent transcript representations.
+GENOMIC_COORD_VARIANT_KEY_COLS = [GENE_COL, "hg38_start", "ref_allele", "alt_allele"]
+# The genomic (as opposed to transcript-level) ref/alt allele columns -- used
+# instead of (TRANSCRIPT_REF_COL, TRANSCRIPT_ALT_COL) for the DNA-level
+# ("DNA variants, distinct"/"DNA variant measurements") SNV flag. At that
+# level each row already is one concrete genomic variant, and
+# transcript_ref/transcript_alt can be a degenerate single-base placeholder
+# for some indels (observed for ~90 genomic deletions near splice sites,
+# where transcript_ref == transcript_alt even though ref_allele/alt_allele
+# show a multi-base deletion) -- see `non_clinvar_row_flags`.
+GENOMIC_REF_ALT_COLS = ("ref_allele", "alt_allele")
 MAVEDB_VARIANT_URN_COL = "mavedb_variant_urn"
 
 NUCLEOTIDE_OR_AA_COL = "nucleotide_or_aa"
@@ -1352,24 +1369,30 @@ def mixed_year_clinvar_series(df):
     return df[CLINVAR_COL_2018].where(use_2018, df[CLINVAR_COL])
 
 
-def non_clinvar_row_flags(df, snv_label):
+def non_clinvar_row_flags(df, snv_label, snv_ref_alt_cols=None):
     """Per-row boolean flags that don't depend on ClinVar significance: score
     coverage, gnomAD observation, and the SNV(-accessible) flag.
+
+    `snv_ref_alt_cols` overrides which (ref, alt) column pair the SNV flag is
+    computed from -- defaults to `(TRANSCRIPT_REF_COL, TRANSCRIPT_ALT_COL)`.
+    Pass `GENOMIC_REF_ALT_COLS` for the DNA-level tables; see that constant.
     """
+    ref_col, alt_col = snv_ref_alt_cols or (TRANSCRIPT_REF_COL, TRANSCRIPT_ALT_COL)
     flags = pd.DataFrame(index=df.index)
     for label, col in SCORE_COLUMNS.items():
         flags[label] = has_any_value(df[col])
     flags[GNOMAD_LABEL] = has_any_value(df[GNOMAD_COL])
-    flags[snv_label] = is_snv_accessible(df[TRANSCRIPT_REF_COL], df[TRANSCRIPT_ALT_COL])
+    flags[snv_label] = is_snv_accessible(df[ref_col], df[alt_col])
     return flags
 
 
-def variant_flags(df, snv_label, clinvar_series=None, allow_clinvar_conflicts=False):
+def variant_flags(df, snv_label, clinvar_series=None, allow_clinvar_conflicts=False, snv_ref_alt_cols=None):
     """Per-row boolean flags for score coverage and clinical attributes.
 
     `snv_label` is the column name to store the SNV(-accessible) flag under
     -- `SNV_LABEL` for the DNA-level file, `SNV_ACCESSIBLE_LABEL` for the
-    assayed (protein-level) file. See `is_snv_accessible`.
+    assayed (protein-level) file. See `is_snv_accessible` and
+    `non_clinvar_row_flags` for `snv_ref_alt_cols`.
 
     `clinvar_series` overrides which ClinVar significance values are used for
     the VUS/pathogenic-or-benign/no-annotation flags -- defaults to
@@ -1386,7 +1409,7 @@ def variant_flags(df, snv_label, clinvar_series=None, allow_clinvar_conflicts=Fa
     """
     if clinvar_series is None:
         clinvar_series = df[CLINVAR_COL]
-    flags = non_clinvar_row_flags(df, snv_label)
+    flags = non_clinvar_row_flags(df, snv_label, snv_ref_alt_cols=snv_ref_alt_cols)
     if allow_clinvar_conflicts:
         flags[VUS_LABEL] = matches_any_value(clinvar_series, VUS_VALUES)
         flags[PATHOGENIC_OR_BENIGN_LABEL] = matches_any_value(clinvar_series, PATHOGENIC_OR_BENIGN_VALUES)
@@ -1401,8 +1424,19 @@ def variant_flags(df, snv_label, clinvar_series=None, allow_clinvar_conflicts=Fa
     return flags
 
 
-def distinct_variant_flags(df, snv_label, clinvar_series=None, allow_clinvar_conflicts=False):
-    """Collapse per-row flags to one row per distinct (hgvs_c, hgvs_p) variant.
+def distinct_variant_flags(
+    df, snv_label, clinvar_series=None, allow_clinvar_conflicts=False, variant_key_cols=None, snv_ref_alt_cols=None
+):
+    """Collapse per-row flags to one row per distinct variant.
+
+    `variant_key_cols` is the identity key defining "one distinct variant" --
+    defaults to `VARIANT_KEY_COLS` (the `(hgvs_c, hgvs_p)` pair). Pass
+    `GENOMIC_COORD_VARIANT_KEY_COLS` for the "DNA variants, distinct" level,
+    so it dedupes by genomic coordinate instead, the same granularity
+    `src.build_figure3_data`'s Figure3d/Euler-diagram counts use -- otherwise
+    one genomic variant can split across several `(hgvs_c, hgvs_p)` rows via
+    equivalent transcript representations. See `non_clinvar_row_flags` for
+    `snv_ref_alt_cols`.
 
     Score coverage, gnomAD observation, and no-annotation flags count as
     True for a distinct variant if any of its (possibly several, across
@@ -1415,19 +1449,20 @@ def distinct_variant_flags(df, snv_label, clinvar_series=None, allow_clinvar_con
     measurement and Benign by another is flagged a conflict rather than
     both/either.
     """
+    variant_key_cols = variant_key_cols or VARIANT_KEY_COLS
     if clinvar_series is None:
         clinvar_series = df[CLINVAR_COL]
 
-    non_clinvar = non_clinvar_row_flags(df, snv_label)
-    keyed = pd.concat([df[VARIANT_KEY_COLS].reset_index(drop=True), non_clinvar.reset_index(drop=True)], axis=1)
-    distinct = keyed.groupby(VARIANT_KEY_COLS, as_index=False).any()
+    non_clinvar = non_clinvar_row_flags(df, snv_label, snv_ref_alt_cols=snv_ref_alt_cols)
+    keyed = pd.concat([df[variant_key_cols].reset_index(drop=True), non_clinvar.reset_index(drop=True)], axis=1)
+    distinct = keyed.groupby(variant_key_cols, as_index=False).any()
 
     has_clinvar_value = has_any_value(clinvar_series).reset_index(drop=True)
     hcv_keyed = pd.concat(
-        [df[VARIANT_KEY_COLS].reset_index(drop=True), has_clinvar_value.rename("_has_clinvar_value")], axis=1
+        [df[variant_key_cols].reset_index(drop=True), has_clinvar_value.rename("_has_clinvar_value")], axis=1
     )
-    hcv_distinct = hcv_keyed.groupby(VARIANT_KEY_COLS, as_index=False)["_has_clinvar_value"].any()
-    distinct = distinct.merge(hcv_distinct, on=VARIANT_KEY_COLS)
+    hcv_distinct = hcv_keyed.groupby(variant_key_cols, as_index=False)["_has_clinvar_value"].any()
+    distinct = distinct.merge(hcv_distinct, on=variant_key_cols)
 
     if allow_clinvar_conflicts:
         clinvar_flags = pd.DataFrame(
@@ -1436,9 +1471,9 @@ def distinct_variant_flags(df, snv_label, clinvar_series=None, allow_clinvar_con
                 PATHOGENIC_OR_BENIGN_LABEL: matches_any_value(clinvar_series, PATHOGENIC_OR_BENIGN_VALUES),
             }
         ).reset_index(drop=True)
-        clinvar_keyed = pd.concat([df[VARIANT_KEY_COLS].reset_index(drop=True), clinvar_flags], axis=1)
-        clinvar_distinct = clinvar_keyed.groupby(VARIANT_KEY_COLS, as_index=False).any()
-        distinct = distinct.merge(clinvar_distinct, on=VARIANT_KEY_COLS)
+        clinvar_keyed = pd.concat([df[variant_key_cols].reset_index(drop=True), clinvar_flags], axis=1)
+        clinvar_distinct = clinvar_keyed.groupby(variant_key_cols, as_index=False).any()
+        distinct = distinct.merge(clinvar_distinct, on=variant_key_cols)
     else:
         has_pathogenic, has_benign, has_vus, has_literal_conflict = clinvar_significance_flags(clinvar_series)
         significance_flags = pd.DataFrame(
@@ -1449,9 +1484,9 @@ def distinct_variant_flags(df, snv_label, clinvar_series=None, allow_clinvar_con
                 "_has_literal_conflict": has_literal_conflict,
             }
         ).reset_index(drop=True)
-        significance_keyed = pd.concat([df[VARIANT_KEY_COLS].reset_index(drop=True), significance_flags], axis=1)
-        significance_distinct = significance_keyed.groupby(VARIANT_KEY_COLS, as_index=False).any()
-        distinct = distinct.merge(significance_distinct, on=VARIANT_KEY_COLS)
+        significance_keyed = pd.concat([df[variant_key_cols].reset_index(drop=True), significance_flags], axis=1)
+        significance_distinct = significance_keyed.groupby(variant_key_cols, as_index=False).any()
+        distinct = distinct.merge(significance_distinct, on=variant_key_cols)
 
         vus, pathogenic_or_benign, conflict = clinvar_classification_from_flags(
             distinct["_has_pathogenic"],
@@ -1465,7 +1500,7 @@ def distinct_variant_flags(df, snv_label, clinvar_series=None, allow_clinvar_con
         distinct = distinct.drop(columns=["_has_pathogenic", "_has_benign", "_has_vus", "_has_literal_conflict"])
 
     distinct[NO_ANNOTATION_LABEL] = ~distinct["_has_clinvar_value"] & ~distinct[GNOMAD_LABEL]
-    return distinct.drop(columns=VARIANT_KEY_COLS + ["_has_clinvar_value"])
+    return distinct.drop(columns=variant_key_cols + ["_has_clinvar_value"])
 
 
 def summarize_flags(flags):
@@ -1551,19 +1586,32 @@ def build_variant_level_reports(
     2025 throughout, and once substituting ClinVar 2018 for BRCA1, PTEN,
     MSH2, and TP53 (see `mixed_year_clinvar_series`). See `variant_flags` for
     `allow_clinvar_conflicts`.
+
+    "DNA variants, distinct" (score coverage and both clinical-attribute
+    tables) dedupes by genomic coordinate (`GENOMIC_COORD_VARIANT_KEY_COLS`)
+    rather than the `(hgvs_c, hgvs_p)` pair every other level uses, matching
+    `src.build_figure3_data`'s Figure3d/Euler-diagram granularity -- see
+    `distinct_variant_flags`. Both DNA-level sub-levels ("DNA variants,
+    distinct" and "DNA variant measurements") also determine their SNV flag
+    from the genomic `GENOMIC_REF_ALT_COLS` rather than transcript_ref/
+    transcript_alt -- see `non_clinvar_row_flags`.
     """
+    distinct_by_genomic_coord = functools.partial(
+        distinct_variant_flags, variant_key_cols=GENOMIC_COORD_VARIANT_KEY_COLS, snv_ref_alt_cols=GENOMIC_REF_ALT_COLS
+    )
+    dna_variant_flags = functools.partial(variant_flags, snv_ref_alt_cols=GENOMIC_REF_ALT_COLS)
     levels = [
         ("assayed variants, distinct", condensed, condensed_path, SNV_ACCESSIBLE_LABEL, distinct_variant_flags),
         ("assayed variant measurements", condensed, condensed_path, SNV_ACCESSIBLE_LABEL, variant_flags),
-        ("DNA variants, distinct", expanded, expanded_path, SNV_LABEL, distinct_variant_flags),
-        ("DNA variant measurements", expanded, expanded_path, SNV_LABEL, variant_flags),
+        ("DNA variants, distinct", expanded, expanded_path, SNV_LABEL, distinct_by_genomic_coord),
+        ("DNA variant measurements", expanded, expanded_path, SNV_LABEL, dna_variant_flags),
     ]
 
     # Manuscript-citation highlighting (see `_highlight_cells`): only the
-    # "assayed variants, distinct" level's score-coverage and clinical-
-    # attribute tables, plus the "DNA variants, distinct" level's clinical
-    # table (its own SNV column only) -- the specific figures the manuscript
-    # cites, not every level.
+    # "assayed variants, distinct" level's score-coverage table, plus the
+    # "DNA variants, distinct" level's clinical-attribute table (VUS/
+    # pathogenic-or-benign/gnomAD counts and the no-annotation SNV count) --
+    # the specific figures the manuscript cites, not every level.
     score_sections = []
     clinical_sections = []
     clinical_sections_mixed_year = []
@@ -1590,14 +1638,13 @@ def build_variant_level_reports(
         )
 
         clinical_total, clinical_snv_total, clinical_table = summarize_clinical_flags(flags, snv_label)
-        if label == "assayed variants, distinct":
+        if label == "DNA variants, distinct":
             clinical_highlight_cells = [
                 (clinical_table.index == VUS_LABEL, "count"),
                 (clinical_table.index == PATHOGENIC_OR_BENIGN_LABEL, "count"),
                 (clinical_table.index == GNOMAD_LABEL, "count"),
+                (clinical_table.index == NO_ANNOTATION_LABEL, snv_label),
             ]
-        elif label == "DNA variants, distinct":
-            clinical_highlight_cells = [(clinical_table.index == NO_ANNOTATION_LABEL, snv_label)]
         else:
             clinical_highlight_cells = []
         clinical_sections.append(

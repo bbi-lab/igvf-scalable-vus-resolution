@@ -97,9 +97,9 @@ Figure3d (Euler/venn panel): ClinVar control (Benign/Likely benign/
 Pathogenic/Likely pathogenic and their combined labels), gnomAD,
 unreported-SNV, and VUS counts, collapsed to one row per genomic variant (or
 per protein-level variant when only amino-acid coordinates are available).
-Priority genes BRCA1/PTEN/MSH2/TP53 use the dataset's 2018 ClinVar snapshot
-(`clinvar_sig_2018`) rather than the current one, matching the original
-notebook; every other gene uses `clinvar_sig_2025`.
+Uses plain `clinvar_sig_2025` for every gene (no 2018 override for BRCA1/
+PTEN/MSH2/TP53), matching `mave_dataset_stats.py`'s citation numbers -- unlike
+Figure3a/Figure3c, which still use the mixed-year snapshot.
 
 Usage:
     python -m src.build_figure3_data [--integrated-dataset PATH] \\
@@ -243,11 +243,18 @@ def add_clinvar_snapshot_column(pp: pd.DataFrame) -> pd.DataFrame:
 def collapse_to_unique_variants(pp: pd.DataFrame, dataset_scoped: bool = False) -> pd.DataFrame:
     """Collapse repeated per-transcript/per-submission rows to one row per variant.
 
-    Genomic (nucleotide-level) variants are deduped directly on their hg38
-    coordinates. Protein-level (amino-acid) variants are grouped by gene/
-    position/transcript first (since the same protein change can appear under
-    several equivalent genomic representations) and summarized down to a
-    single ClinVar/gnomAD status before being deduped.
+    Both genomic (nucleotide-level) and protein-level (amino-acid) variants
+    are grouped by their respective identity key first (since the same
+    variant can appear on several rows -- several equivalent genomic
+    representations for a protein change, or several submissions/datasets for
+    a genomic variant) and summarized down to a single ClinVar/gnomAD status
+    (via `summarize_clinvar_significance`/`seen_in_gnomad`, which correctly
+    flag disagreeing calls across the group as a conflict and fold in a
+    gnomAD observation from any row) before being deduped to one row per
+    group. `clnsig_group_18_25` uses the mixed-year snapshot
+    (`clinvar_18_25`); `clnsig_group_2025` is the same grouping over the
+    plain `clinvar_sig_2025` column, for consumers that don't use the
+    2018-for-priority-genes override.
 
     By default (`dataset_scoped=False`), a variant tested by more than one
     dataset for the same gene collapses to a single row regardless of which
@@ -269,15 +276,23 @@ def collapse_to_unique_variants(pp: pd.DataFrame, dataset_scoped: bool = False) 
     )
     aa["aa_pos"] = pd.to_numeric(aa["aa_pos"], errors="coerce")
 
-    aa["clnsig_group_18_25"] = aa.groupby(protein_group_columns, dropna=False)["clinvar_18_25"].transform(
-        summarize_clinvar_significance
+    for frame, group_cols in ((aa, protein_group_columns), (nucleotide, nucleotide_key)):
+        frame["clnsig_group_18_25"] = frame.groupby(group_cols, dropna=False)["clinvar_18_25"].transform(
+            summarize_clinvar_significance
+        )
+        frame["clnsig_group_2025"] = frame.groupby(group_cols, dropna=False)["clinvar_sig_2025"].transform(
+            summarize_clinvar_significance
+        )
+        frame["gnomad_seen"] = frame.groupby(group_cols, dropna=False)["gnomad_MAF"].transform(seen_in_gnomad)
+
+    # Sorting by gnomad_MAF before dropping duplicates means the kept row
+    # carries a real gnomAD value when any row in the group has one (the
+    # grouped columns above are already broadcast to every row in the group
+    # via `.transform`, so this only matters for raw columns like gnomad_MAF
+    # itself that downstream code reads directly off the deduped frame).
+    nucleotide_unique = (
+        nucleotide.sort_values("gnomad_MAF", na_position="last").drop_duplicates(nucleotide_key, keep="first").copy()
     )
-    aa["gnomad_seen"] = aa.groupby(protein_group_columns, dropna=False)["gnomad_MAF"].transform(seen_in_gnomad)
-
-    nucleotide["clnsig_group_18_25"] = nucleotide["clinvar_18_25"]
-    nucleotide["gnomad_seen"] = np.where(nucleotide["gnomad_MAF"].notna(), "Seen", "Unseen")
-
-    nucleotide_unique = nucleotide.drop_duplicates(nucleotide_key).copy()
     aa_unique = (
         aa.sort_values("gnomad_MAF", na_position="last").drop_duplicates(protein_group_columns, keep="first").copy()
     )
@@ -289,28 +304,52 @@ def collapse_to_unique_variants(pp: pd.DataFrame, dataset_scoped: bool = False) 
     return pp_unique.drop_duplicates(nucleotide_key).copy()
 
 
-def build_figure3d_counts(pp: pd.DataFrame, pp_unique: pd.DataFrame) -> pd.DataFrame:
-    controls_df = pp_unique.loc[pp_unique["clnsig_group_18_25"].isin(CONTROL_GROUPS)].copy()
+def build_figure3d_counts(pp: pd.DataFrame) -> pd.DataFrame:
+    """Controls, gnomAD, Unreported_SNVs, and VUS total are all computed over
+    one consistently deduped genomic-variant-level table: every row (amino-
+    acid-level included) is grouped purely by genomic coordinate
+    (`NUCLEOTIDE_KEY`) and summarized down to a single ClinVar/gnomAD status
+    via `summarize_clinvar_significance`/`seen_in_gnomad`, using plain
+    `clinvar_sig_2025` for every gene -- matching `mave_dataset_stats.py`'s
+    DNA-level citation numbers. This deliberately does NOT use `pp_unique`
+    (which collapses amino-acid-level rows to a coarser protein-level group
+    first, for Figure3a/Figure3c's purposes): computing controls from that
+    coarser universe while VUS/gnomAD/Unreported_SNVs stayed on the finer
+    genomic-coordinate universe was itself a bug -- it made Figure3d
+    internally inconsistent about what counts as "one distinct variant" (see
+    docs/build_figure3_data.md).
+    """
+    pp = pp.copy()
+    pp["clnsig_group_2025"] = pp.groupby(NUCLEOTIDE_KEY, dropna=False)["clinvar_sig_2025"].transform(
+        summarize_clinvar_significance
+    )
+    pp["gnomad_seen"] = pp.groupby(NUCLEOTIDE_KEY, dropna=False)["gnomad_MAF"].transform(seen_in_gnomad)
+    pp_genomic_unique = (
+        pp.sort_values("gnomad_MAF", na_position="last").drop_duplicates(NUCLEOTIDE_KEY, keep="first").copy()
+    )
+
+    controls_df = pp_genomic_unique.loc[pp_genomic_unique["clnsig_group_2025"].isin(CONTROL_GROUPS)].copy()
 
     final_counts = (
-        controls_df.groupby("clnsig_group_18_25")
+        controls_df.groupby("clnsig_group_2025")
         .agg(
-            Count=("clnsig_group_18_25", "size"),
+            Count=("clnsig_group_2025", "size"),
             **{"Count in gnomAD": ("gnomad_MAF", lambda values: values.notna().sum())},
         )
         .reset_index()
-        .rename(columns={"clnsig_group_18_25": "Group"})
+        .rename(columns={"clnsig_group_2025": "Group"})
     )
 
-    pp_genomic_unique = pp.drop_duplicates(NUCLEOTIDE_KEY).copy()
-    gnomad_unique_count = pp_genomic_unique["gnomad_MAF"].notna().sum()
+    gnomad_unique_count = int((pp_genomic_unique["gnomad_seen"] == "Seen").sum())
 
     is_snv = pp_genomic_unique["ref_allele"].str.len().eq(1) & pp_genomic_unique["alt_allele"].str.len().eq(1)
 
     unreported_snvs = pp_genomic_unique.loc[
-        is_snv & pp_genomic_unique["clinvar_sig_2025"].isna() & pp_genomic_unique["gnomad_MAF"].isna()
+        is_snv
+        & pp_genomic_unique["clnsig_group_2025"].eq("Unseen")
+        & (pp_genomic_unique["gnomad_seen"] == "Unseen")
     ]
-    vus = pp_genomic_unique.loc[pp_genomic_unique["clinvar_sig_2025"].eq("Uncertain significance")]
+    vus = pp_genomic_unique.loc[pp_genomic_unique["clnsig_group_2025"].eq("Uncertain significance")]
 
     additional_rows = pd.DataFrame(
         [
@@ -707,7 +746,7 @@ def main(
         figure3c_assay_combos["variant_projection"] = (
             "aa_projected_onto_nt" if project_aa_onto_nt else "none"
         )
-        figure3d = build_figure3d_counts(pp, pp_unique)
+        figure3d = build_figure3d_counts(pp)
     except (ValueError, KeyError) as exc:
         raise click.ClickException(str(exc)) from exc
 

@@ -18,7 +18,7 @@ regenerated on demand rather than committed as stale snapshots.
 | `Figure3a.csv.gz` | per-gene ClinVar classification counts, GenCC gene-disease validity, UniProt protein length → possible SNVs, clinical test counts, IGVF flag | `data/output/maves/integrated_variant_effect_dataset.tsv.gz` joined against the three files under `data/input/genes/` (see [`docs/data.md`](data.md)) and `Supplementary_Data_3.xlsx`'s `Curation` sheet (`IGVF Produced?`) |
 | `Figure3c.csv.gz` | unique-variant counts (a variant tested by several sibling datasets for the same gene counts once, globally), tagged SGE/Vamp-seq/IGVF | `data/output/maves/integrated_variant_effect_dataset.tsv.gz` joined against `data/input/maves/Supplementary_Data_3.xlsx`'s `Curation` sheet (`Assay Name`, `IGVF Produced?`, `Primary Score Set or Meta-analysis?`) |
 | `Figure3c_measurements.csv.gz` | the same, but per-dataset: a variant tested by N sibling datasets counts N times | same as `Figure3c.csv.gz` |
-| `Figure3d.csv.gz` | ClinVar control (Benign/Likely benign/Pathogenic/Likely pathogenic and combined labels), gnomAD, unreported-SNV, and VUS counts | `data/output/maves/integrated_variant_effect_dataset.tsv.gz` alone |
+| `Figure3d.csv.gz` | ClinVar control (Benign/Likely benign/Pathogenic/Likely pathogenic), gnomAD, unreported-SNV, and VUS counts | `data/output/maves/integrated_variant_effect_dataset.tsv.gz` alone |
 
 ### `Figure3c` vs `Figure3c_measurements`
 
@@ -49,10 +49,29 @@ already curated when those sets were written, so nothing changes for old
 data; new datasets/genes are now classified automatically instead of
 silently defaulting to "Other"/"No".
 
-`Figure3d`'s priority genes (`BRCA1`, `PTEN`, `MSH2`, `TP53`) use each
-variant's 2018 ClinVar snapshot (`clinvar_sig_2018`) rather than the current
-one; every other gene uses `clinvar_sig_2025`. This matches the original
-notebook and isn't something this script tries to change.
+`Figure3d`'s controls, gnomAD, Unreported_SNVs, and VUS total are all computed
+over one consistently deduped genomic-variant-level table, built fresh inside
+`build_figure3d_counts` from `pp` alone (it no longer takes `pp_unique`):
+every row, amino-acid-level included, is grouped purely by genomic coordinate
+and summarized down to a single ClinVar/gnomAD status (via
+`summarize_clinvar_significance`/`seen_in_gnomad`) before deduping, using
+plain `clinvar_sig_2025` for every gene — matching `mave_dataset_stats.py`'s
+DNA-level citation numbers (see
+[`docs/mave_dataset_stats.md`](mave_dataset_stats.md)). `Figure3a` and
+`Figure3c` are unaffected: they still use the mixed-year snapshot (2018 for
+`BRCA1`/`PTEN`/`MSH2`/`TP53`, 2025 otherwise) via the shared `pp_unique`'s
+`clnsig_group_18_25` column, which collapses amino-acid-level rows to a
+coarser protein-level group first, matching the original notebook.
+Previously, `Figure3d`'s controls were computed from that coarser
+`pp_unique` while gnomAD/Unreported_SNVs/VUS used the finer genomic-
+coordinate universe — an internal inconsistency about what counts as "one
+distinct variant" that accounted for most of a ~800-variant gap against
+`mave_dataset_stats.py`'s control count.
+
+ClinVar's own literal "Benign/Likely benign"/"Pathogenic/Likely pathogenic"
+combined calls fold into "Likely benign"/"Likely pathogenic" respectively
+(via `summarize_clinvar_significance`), so `Figure3d.csv.gz` never has a
+separate combined-label row to add in.
 
 ### Projecting amino-acid variants onto their nucleotide counterparts
 

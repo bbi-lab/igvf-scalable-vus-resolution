@@ -45,6 +45,8 @@ from src.mave_dataset_stats import (
     FUNCTIONAL_ALONE_LABEL,
     FUNCTIONAL_POINTS_COL,
     GENE_DISCORDANCE_TITLE,
+    GENOMIC_COORD_VARIANT_KEY_COLS,
+    GENOMIC_REF_ALT_COLS,
     GNOMAD_LABEL,
     IGVF_DATASET_MEASUREMENT_COUNTS_TITLE,
     MISSENSE_CONSEQUENCE_VALUE,
@@ -133,6 +135,7 @@ from src.mave_dataset_stats import (
     main,
     matches_any_value,
     mixed_year_clinvar_series,
+    non_clinvar_row_flags,
     reclassification_flags,
     split_genes,
     stats_to_dataframe,
@@ -1199,6 +1202,71 @@ def test_variant_flags_and_distinct_variant_flags():
     assert distinct["REVEL"].sum() == 2
 
 
+def test_distinct_variant_flags_genomic_coord_key_merges_across_hgvs_c():
+    # Two rows share the same genomic coordinate but differ in hgvs_c (e.g.
+    # two transcript annotations of the same DNA change) -- the default
+    # (hgvs_c, hgvs_p) key keeps them as two distinct variants, but the
+    # genomic-coordinate key ("DNA variants, distinct") must merge them into
+    # one, matching Figure3d's Euler-diagram granularity.
+    df = pd.DataFrame(
+        {
+            "Gene": ["GENEA", "GENEA", "GENEA"],
+            "hg38_start": ["100", "100", "200"],
+            "ref_allele": ["A", "A", "C"],
+            "alt_allele": ["G", "G", "T"],
+            "hgvs_c": ["c.1A>G", "c.2A>G", "c.3C>T"],
+            "hgvs_p": ["p.Lys1Glu", "p.Lys1Glu_alt", "p.Arg2Cys"],
+            "REVEL": ["0.5", "", ""],
+            "AM_score": ["", "", ""],
+            "MutPred2": ["", "", ""],
+            "clinvar_sig_2025": ["Pathogenic", "Benign", "Uncertain significance"],
+            "gnomad_MAF": ["", "", ""],
+            "transcript_ref": ["A", "A", "C"],
+            "transcript_alt": ["G", "G", "T"],
+        }
+    )
+
+    by_hgvs_pair = distinct_variant_flags(df, SNV_ACCESSIBLE_LABEL)
+    assert len(by_hgvs_pair) == 3
+    assert int(by_hgvs_pair[CLINVAR_CONFLICT_LABEL].sum()) == 0
+
+    by_genomic_coord = distinct_variant_flags(
+        df, SNV_ACCESSIBLE_LABEL, variant_key_cols=GENOMIC_COORD_VARIANT_KEY_COLS
+    )
+    # The first two rows share (Gene, hg38_start, ref_allele, alt_allele) and
+    # disagree (Pathogenic vs. Benign), so they merge into one conflicted
+    # genomic variant; the third stays its own distinct VUS.
+    assert len(by_genomic_coord) == 2
+    assert int(by_genomic_coord[CLINVAR_CONFLICT_LABEL].sum()) == 1
+    assert int(by_genomic_coord[VUS_LABEL].sum()) == 1
+
+
+def test_non_clinvar_row_flags_snv_ref_alt_cols_overrides_transcript_columns():
+    # A row where transcript_ref/transcript_alt (a 2-base substitution) and
+    # the genomic ref_allele/alt_allele (a true single-base SNV) disagree --
+    # the kind of data artifact seen in some real DNA-level deletion rows
+    # (see GENOMIC_REF_ALT_COLS). The default should follow transcript_ref/
+    # transcript_alt; GENOMIC_REF_ALT_COLS should follow the genomic columns.
+    df = pd.DataFrame(
+        {
+            "REVEL": [""],
+            "AM_score": [""],
+            "MutPred2": [""],
+            "gnomad_MAF": [""],
+            "transcript_ref": ["AC"],
+            "transcript_alt": ["GT"],
+            "ref_allele": ["A"],
+            "alt_allele": ["G"],
+        }
+    )
+
+    default_flags = non_clinvar_row_flags(df, SNV_LABEL)
+    assert list(default_flags[SNV_LABEL]) == [False]
+
+    genomic_flags = non_clinvar_row_flags(df, SNV_LABEL, snv_ref_alt_cols=GENOMIC_REF_ALT_COLS)
+    assert list(genomic_flags[SNV_LABEL]) == [True]
+
+
 def test_clinvar_classification_from_flags():
     def classify(value):
         has_pathogenic, has_benign, has_vus, has_literal_conflict = clinvar_significance_flags(pd.Series([value]))
@@ -1524,9 +1592,14 @@ def test_cli_prints_table_and_writes_output(full_dataset_files, tmp_path):
     # Assayed level: all 4 distinct variants (and all 5 measurement rows) are SNV-accessible.
     assert "Total: 4 (4 SNV-accessible)" in result.output
     assert "Total: 5 (5 SNV-accessible)" in result.output
-    # DNA level: 3 of the 5 distinct (and 5 measurement-row) DNA variants are SNVs
-    # (c4a/c4b's 2-base substitution isn't one).
-    assert "Total: 5 (3 SNV)" in result.output
+    # DNA level: 4 of the 5 distinct (and 5 measurement-row) DNA variants are SNVs.
+    # The SNV flag here is genomic (ref_allele/alt_allele), not transcript_ref/
+    # transcript_alt: c4a's genomic AC>GT is a real 2-base substitution (not a
+    # SNV either way), but c4b's transcript_ref/transcript_alt ("AC"/"GT",
+    # same as sibling row c4a's) disagree with its own genomic ref_allele/
+    # alt_allele ("A"/"G", a true SNV) -- the genomic columns are the correct
+    # source of truth here (see GENOMIC_REF_ALT_COLS), so c4b counts as a SNV.
+    assert "Total: 5 (4 SNV)" in result.output
     assert "% of SNV-accessible" in result.output
     assert "% of SNV" in result.output
 

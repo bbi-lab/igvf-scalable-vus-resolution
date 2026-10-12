@@ -21,6 +21,10 @@ p-value vs. nfe, and its Bonferroni correction across the 8 non-reference
 groups. CIs are 95% percentile bootstrap intervals (resampling variants with
 replacement).
 
+By default only exome records passing all gnomAD filters (FILTER == PASS)
+are used; records failing a filter are treated as absent. --include-filtered
+uses all records.
+
 In the "present" framing a variant shared by several groups counts in each,
 so groups are not independent and the z-test is approximate; "unique" groups
 are fully independent.
@@ -93,16 +97,31 @@ def ztest(x1, n1, x2, n2):
 # ======================================================================
 
 
-def load(path):
+def load(path, pass_only=False):
     """Read one ancestry-mapped CSV, coercing AF_<group> columns to numeric
     (missing/unparseable -> 0). Raises ValueError if Class_REVEL or any
-    AF_<group> column is absent."""
+    AF_<group> column is absent.
+
+    If `pass_only`, exome records that fail a gnomAD quality filter (per
+    `exomes_FILTER`) have all their AF_<group> values zeroed out, i.e. are
+    treated as absent from gnomAD exomes."""
     d = pd.read_csv(path, low_memory=False)
     missing = [c for c in ["Class_REVEL"] + [f"AF_{g}" for g in GROUPS] if c not in d.columns]
     if missing:
         raise ValueError(f"{path} is missing columns: {missing}")
     for g in GROUPS:
         d[f"AF_{g}"] = pd.to_numeric(d[f"AF_{g}"], errors="coerce").fillna(0)
+    if pass_only:
+        if "exomes_FILTER" not in d.columns:
+            raise ValueError(f"--pass-only needs an exomes_FILTER column, not found in {path}")
+        fail = d["exomes_FILTER"].notna() & (d["exomes_FILTER"] != "PASS")
+        had_af = (d[[f"AF_{g}" for g in GROUPS]] > 0).any(axis=1)
+        for g in GROUPS:
+            d.loc[fail, f"AF_{g}"] = 0
+        print(
+            f"{path}: PASS only -- {fail.sum():,} variants have a non-PASS exome record; "
+            f"{(fail & had_af).sum():,} of them had exome AF > 0 and are now treated as absent"
+        )
     return d
 
 
@@ -252,6 +271,12 @@ CALIBRATED_STYLE = {
 }
 
 
+def tick_label(g, lowercase):
+    if lowercase:
+        return g
+    return "Remaining" if g == "remaining" else g.upper()
+
+
 def panel_title(vset, framing):
     noun = NOUN.get(vset, "variants")
     if framing == "present":
@@ -259,7 +284,7 @@ def panel_title(vset, framing):
     return f"{noun} unique to population"
 
 
-def panel(ax, sub, title, ylabel, stars, colors, style, bar_width=0.6, show_legend=True):
+def panel(ax, sub, title, ylabel, stars, colors, style, lowercase=False, bar_width=0.6, show_legend=True):
     sub = sub.set_index("group").reindex(GROUPS)
     x = np.arange(len(GROUPS))
     rate = sub["pct_resolved"].to_numpy()
@@ -293,9 +318,9 @@ def panel(ax, sub, title, ylabel, stars, colors, style, bar_width=0.6, show_lege
                 )
 
     ax.set_xticks(x)
-    ax.set_xticklabels(GROUPS, fontsize=style["tick_fontsize"], color=TEXT)
+    ax.set_xticklabels([tick_label(g, lowercase) for g in GROUPS], fontsize=style["tick_fontsize"], color=TEXT)
     for t in ax.get_xticklabels():
-        if t.get_text() == REF_GROUP:
+        if t.get_text() == tick_label(REF_GROUP, lowercase):
             t.set_fontweight("bold")
             t.set_fontsize(style["ref_tick_fontsize"])
     ax.tick_params(axis="y", colors=TEXT, labelsize=style["tick_fontsize"] - 1)
@@ -334,7 +359,7 @@ def panel(ax, sub, title, ylabel, stars, colors, style, bar_width=0.6, show_lege
     )
 
 
-def make_figures(results, outdir, width, height, no_stars, ci_label):
+def make_figures(results, outdir, width, height, no_stars, ci_label, lowercase_labels=False):
     plt.rcParams["font.family"] = "DejaVu Sans"
     colors = COLORS
     outdir.mkdir(parents=True, exist_ok=True)
@@ -344,7 +369,14 @@ def make_figures(results, outdir, width, height, no_stars, ci_label):
         fig, axes = plt.subplots(1, 2, figsize=(width, height), facecolor="white")
         for ax, framing in zip(axes, ["present", "unique"]):
             panel(
-                ax, d[d["framing"] == framing], panel_title(vset, framing), ylab, not no_stars, colors, DIAGNOSTIC_STYLE
+                ax,
+                d[d["framing"] == framing],
+                panel_title(vset, framing),
+                ylab,
+                not no_stars,
+                colors,
+                DIAGNOSTIC_STYLE,
+                lowercase=lowercase_labels,
             )
         plt.tight_layout()
         stem = "ancestry_resolution_" + re.sub(r"[^A-Za-z0-9]+", "_", vset).strip("_")
@@ -361,7 +393,7 @@ CALIBRATED_WIDTH_IN = 6.5
 CALIBRATED_HEIGHT_IN = 3.0
 
 
-def build_calibrated_figures(results, outdir, no_stars, ci_label):
+def build_calibrated_figures(results, outdir, no_stars, ci_label, lowercase_labels=False):
     """Write one 6.5in-wide, exact-print-size two-panel PDF per variant set
     (ancestry_resolution_<set>_calibrated.pdf) -- the same present/unique
     panels as `make_figures`'s diagnostic PNGs, at print font sizes (Arial,
@@ -391,6 +423,7 @@ def build_calibrated_figures(results, outdir, no_stars, ci_label):
                     not no_stars,
                     COLORS,
                     CALIBRATED_STYLE,
+                    lowercase=lowercase_labels,
                     bar_width=0.7,
                     show_legend=False,
                 )
@@ -435,11 +468,45 @@ def build_calibrated_figures(results, outdir, no_stars, ci_label):
 @click.option("--width", "width", type=float, default=28, show_default=True, help="figure width in inches")
 @click.option("--height", "height", type=float, default=14.5, show_default=True, help="figure height in inches")
 @click.option("--no-figures", "no_figures", is_flag=True, help="statistics only")
-def main(vus_input, gnomad_input, outdir, output, n_bootstrap, no_stars, ci_label, width, height, no_figures):
+@click.option(
+    "--lowercase-labels",
+    "lowercase_labels",
+    is_flag=True,
+    help="x-axis labels as gnomAD codes (afr, nfe, ...) instead of AFR, NFE, ...",
+)
+@click.option(
+    "--include-filtered",
+    "include_filtered",
+    is_flag=True,
+    help="also use exome records that fail gnomAD quality filters (default: PASS sites only)",
+)
+def main(
+    vus_input,
+    gnomad_input,
+    outdir,
+    output,
+    n_bootstrap,
+    no_stars,
+    ci_label,
+    width,
+    height,
+    no_figures,
+    lowercase_labels,
+    include_filtered,
+):
+    pass_only = not include_filtered
+    click.echo(
+        "gnomAD exome records used: "
+        + (
+            "PASS sites only (default)"
+            if pass_only
+            else "all records, including those failing gnomAD filters (--include-filtered)"
+        )
+    )
     try:
         results = []
-        analyze(load(vus_input), "VUS", n_bootstrap, results)
-        analyze(load(gnomad_input), "gnomAD", n_bootstrap, results)
+        analyze(load(vus_input, pass_only), "VUS", n_bootstrap, results)
+        analyze(load(gnomad_input, pass_only), "gnomAD", n_bootstrap, results)
     except ValueError as e:
         raise click.ClickException(str(e)) from e
 
@@ -449,8 +516,8 @@ def main(vus_input, gnomad_input, outdir, output, n_bootstrap, no_stars, ci_labe
     res.to_csv(csv_path, index=False)
     click.echo(f"\nWrote {csv_path}")
     if not no_figures:
-        make_figures(res, outdir, width, height, no_stars, ci_label)
-        build_calibrated_figures(res, outdir, no_stars, ci_label)
+        make_figures(res, outdir, width, height, no_stars, ci_label, lowercase_labels)
+        build_calibrated_figures(res, outdir, no_stars, ci_label, lowercase_labels)
 
 
 if __name__ == "__main__":

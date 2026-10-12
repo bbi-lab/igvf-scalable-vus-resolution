@@ -34,6 +34,14 @@ nature_theme <- theme_linedraw() +
     #axis.title = element_text(size = 20),
     axis.title.y = element_blank(),
     axis.text = element_text(size = 6),
+    # Gene is italicized at the facet level instead (make_func_plot below,
+    # via facet_grid2()'s `strip` argument) -- not here. nature_theme is a
+    # *complete* theme (built from theme_linedraw()), and `plot +
+    # <complete theme>` replaces the plot's whole existing theme rather than
+    # merging into it; a theme(strip.text.x = ...) tweak set on the plot
+    # before nature_theme is applied would simply vanish (confirmed with a
+    # minimal repro). A facet's own `strip` lives outside the theme object,
+    # so it survives.
     strip.text = element_text(size = 7, face = 'bold', color = 'black', margin = margin(3,3,3,3)),
     strip.background = element_blank(),
     legend.title = element_blank(),
@@ -105,6 +113,7 @@ if (length(ABNORMAL_BREAKDOWN_CONSEQUENCES) > 0) {
 
 func_df <- func_df %>%
   filter(Gene != 'TSC2') %>% # TSC2 excluded -- remove this filter to re-include
+  filter(Gene != 'RAD51D') %>% # RAD51D excluded -- remove this filter to re-include
   mutate(
     `Odds Ratio` = exp(LogOR),
     OR_LI = exp(LogOR_LI),
@@ -133,7 +142,20 @@ make_func_plot <- function(plot_df, x_limits)
       y=Classification
     )
   ) +
-  facet_grid(cols = vars(Gene), scales = 'free_x') +
+  # facet_nested() (ggh4x) with a single facet var behaves like plain
+  # facet_grid() -- used here instead so the italics (`strip` below) live in
+  # the same strip_nested()-based mechanism as Figure_6b.R and panel a of
+  # Extended_Data_Figure_4.R, both confirmed to render correctly under this
+  # figure's own cairo_pdf ggsave device below. facet_grid2()'s
+  # strip_themed() (ggh4x's other themed-strip mechanism) was tried first
+  # and worked under the base pdf() device (Extended_Data_Figure_4.R panel
+  # b) but not under cairo_pdf here -- switched to the mechanism with a
+  # confirmed cairo_pdf track record rather than chase that further.
+  facet_nested(
+    cols = vars(Gene),
+    scales = 'free_x',
+    strip = strip_nested(text_x = list(element_text(face = 'bold.italic')))
+  ) +
   geom_pointrange() +
   geom_errorbar(width = 0.2) +
   scale_x_log10(

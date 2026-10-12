@@ -55,14 +55,21 @@ gene_groups_df <- tribble(
   "BRCA2", "Cancer", "Cancer", "Cancer",
   "CALM3", "Cardiovascular", "Cardio- vascular", "Cardiovascular",
   "CHEK2", "Cancer", "Cancer", "Cancer",
-  "G6PD", "Metabolic", "Meta- bolic", "Meta- bolic",
-  "GCK", "Metabolic", "Meta- bolic", "Meta- bolic",
+  # D3's Metabolic rows are left as the plain "Metabolic" (not pre-split
+  # like "Meta- bolic" below) -- str_wrap()'s default whitespace_only = TRUE
+  # (confirmed against the installed stringr) only ever breaks at an
+  # existing space, so a single word with no internal space, like this one,
+  # is never wrapped regardless of panel width; strip.clip = 'off' in
+  # cfig_theme below already permits it to overflow its narrow column
+  # rather than being clipped.
+  "G6PD", "Metabolic", "Meta- bolic", "Metabolic",
+  "GCK", "Metabolic", "Meta- bolic", "Metabolic",
   "KCNE1", "Cardiovascular", "Cardio- vascular", "Cardiovascular",
   "KCNH2", "Cardiovascular", "Cardio- vascular", "Cardiovascular",
   "KCNQ4", "Hearing loss", "Hearing loss", "Hearing loss", #Rare disease",
-  "LDLR", "Metabolic", "Meta- bolic", "Meta- bolic",
+  "LDLR", "Metabolic", "Meta- bolic", "Metabolic",
   "MSH2", "Cancer", "Cancer", "Cancer",
-  "OTC", "Metabolic", "Meta- bolic", "Meta- bolic",
+  "OTC", "Metabolic", "Meta- bolic", "Metabolic",
   "PALB2", "Cancer", "Cancer", "Cancer",
   "PTEN", "Cancer", "Cancer", "Cancer",
   "RAD51C", "Cancer", "Cancer", "Cancer",
@@ -130,6 +137,16 @@ combined_points_condensed_plot <- ggplot(
     scales = 'free',
     labeller = as_labeller(
       function(s) s %>% str_replace_all('_', ' ') %>% str_wrap(width=7)
+    ),
+    # Italicize only the inner (Gene) strip layer -- gene symbols are
+    # conventionally italicized, D3's broad disease-category labels aren't.
+    # by_layer_x = TRUE maps text_x's two elements to cols = vars(D3, Gene)'s
+    # two nesting layers in order; NULL for the D3 layer means "use the
+    # theme" (cfig_theme's strip.text below), same as every other property
+    # element_text(face=...) here doesn't set.
+    strip = strip_nested(
+      by_layer_x = TRUE,
+      text_x = list(NULL, element_text(face = 'bold.italic'))
     )
   ) +
   geom_errorbar(width = 0.5, position = position_dodge(width=0.5)) +

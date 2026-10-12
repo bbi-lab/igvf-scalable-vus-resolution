@@ -164,10 +164,21 @@ make_predictor_plot <- function(
       shape = significance
     )
   ) +
-  facet_grid(
+  # facet_grid2() (ggh4x), not plain facet_grid() -- its `strip` argument
+  # below italicizes the Gene (column) strips without touching Dataset
+  # (row), and -- unlike a theme(strip.text.x = ...) call on this plot --
+  # survives `figure_predictor_plot + nature_theme` further down. nature_theme
+  # starts from theme_linedraw(), a *complete* theme; ggplot2 has a plot
+  # (not theme) add a complete theme by replacing its whole existing theme
+  # rather than merging into it, which would silently drop a
+  # theme(strip.text.x = ...) set here (confirmed with a minimal repro --
+  # the strip vanished). A facet's own `strip` lives outside the theme
+  # object entirely, so it isn't subject to that replacement.
+  facet_grid2(
     cols = vars(Gene),
     rows = vars(Dataset),
-    scales = scales
+    scales = scales,
+    strip = strip_themed(text_x = element_text(face = 'bold.italic'))
   ) +
   geom_errorbar(width = 0.5, position = position_dodge(width=0.5)) +
   geom_pointrange(position = position_dodge(width=0.5), fill = 'white') +
@@ -619,8 +630,11 @@ condensed_assay_plot <- ggplot(
     strip = strip_nested(
       text_x = list(
         element_text(size = 7, face = 'bold'),
+        # bold.italic, not bold -- the Gene level only, since gene symbols
+        # are conventionally italicized and Disease (the other list element,
+        # above) isn't.
         element_text(
-          size = 7, face = 'bold',
+          size = 7, face = 'bold.italic',
           margin = margin(t = 3, r = 3, b = if (SHOW_SAMPLE_SIZE_ANNOTATIONS) 9 else 3, l = 3)
         )
       ),

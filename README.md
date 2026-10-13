@@ -12,14 +12,20 @@ generates the manuscript's main and extended data figures.
 > significance.* bioRxiv (2026).
 > https://www.biorxiv.org/content/10.64898/2026.02.14.705848
 
-The pipeline runs in three stages, each covered in its own section below:
+The pipeline runs in three stages, each covered in its own section below --
+with two external interim hand-offs in between, where data leaves this
+repository for a process this codebase can't run itself, and the result
+comes back before the next stage continues:
 
 1. [Data preparation and variant annotation](#1-data-preparation-and-variant-annotation)
+   - *Interim:* [ExCALIBR calibration](#interim-excalibr-calibration-external)
 2. [Data analysis / variant classification and table preparation](#2-data-analysis--variant-classification-and-table-preparation)
+   - *Interim:* [Biobank carrier odds-ratio analysis](#interim-biobank-carrier-odds-ratio-analysis-external)
 3. [Figure preparation](#3-figure-preparation)
 
-All three stages run in Docker -- see
-[Software Requirements](#software-requirements) below.
+All three numbered stages run in Docker -- see
+[Software Requirements](#software-requirements) below. The two interim
+steps are external and manual; see each section for why.
 
 **Verifying your setup:** `scripts/smoke_test_variant_annotation.sh` and
 `scripts/smoke_test_analysis.sh` run Stage 1 and Stage 2 end-to-end against
@@ -149,6 +155,39 @@ numbered step for debugging — see
 [`docs/variant_annotation_pipeline.md`](docs/variant_annotation_pipeline.md)
 for the full step list and every per-step doc it links to.
 
+---
+
+## Interim: ExCALIBR calibration (external)
+
+Between Stage 1 and Stage 2, `data/output/maves/integrated_variant_effect_dataset.tsv.gz`
+is shared outside this repository with the ExCALIBR calibration process --
+a separate analysis pipeline, maintained elsewhere, that fits per-dataset
+functional-evidence calibrations. Nothing in this repo can run that step
+itself.
+
+ExCALIBR calibration returns four artifacts, all checked into
+`data/input/mave_calibration/`:
+
+- Per-dataset calibration summaries (`excalibr/json/`), loaded into
+  Supplementary Data 4's `ExCALIBR_calibrations` sheet by Stage 2's
+  `src/load_excalibr_calibrations.py` below.
+- Its own copy of the integrated dataset, with `excalibr_*` evidence
+  columns added (`integrated_variant_effect_dataset_with_excalibr.csv.gz`)
+  -- used just below to finish Supplementary Data 1, and by
+  `src/filter_pillar_data.py` (Extended Data Figure 10 prep; see
+  [`docs/gnomad_ancestry_resolution.md`](docs/gnomad_ancestry_resolution.md)).
+- Gene-specific predictor calibration thresholds, pre-populated into
+  `Supplementary_Data_4.seed.xlsx`'s three externally-sourced sheets --
+  copy this to `data/output/supplementary_data/Supplementary_Data_4.xlsx`
+  as your starting point in a fresh checkout.
+- Figure 4's out-of-bag export and seed cache (`excalibr/fig4_data_oob.tar.gz`,
+  `excalibr/figure4_data.seed.json.gz`) -- see
+  [`docs/build_figure4_data.md`](docs/build_figure4_data.md).
+
+See [`docs/load_excalibr_calibrations.md`](docs/load_excalibr_calibrations.md)
+and [`docs/data.md`](docs/data.md) for exactly where each file lives and how
+it's produced.
+
 ### Adding ExCALIBR evidence columns (Supplementary Data 1)
 
 A separate, manual step folds in per-variant ExCALIBR likelihood-ratio
@@ -164,12 +203,10 @@ This step isn't part of `scripts/run_variant_annotation_pipeline.sh` because
 its input — the ExCALIBR calibration run's own copy of the integrated
 dataset,
 `data/input/mave_calibration/integrated_variant_effect_dataset_with_excalibr.csv.gz`
-(checked in; see [`docs/add_excalibr_columns.md`](docs/add_excalibr_columns.md)
-for where it comes from) — is only produced after that pipeline run and the
-exCALIBR calibration step in
-[Section 2](#2-data-analysis--variant-classification-and-table-preparation)
-below. Once `data/output/maves/integrated_variant_effect_dataset.tsv.gz`
-(above) exists, run:
+above (checked in; see [`docs/add_excalibr_columns.md`](docs/add_excalibr_columns.md)
+for where it comes from) — only exists once the interim hand-off above has
+returned. Once both that file and
+`data/output/maves/integrated_variant_effect_dataset.tsv.gz` exist, run:
 
 ```bash
 poetry run python -m src.add_excalibr_columns
@@ -227,15 +264,11 @@ Run in this order:
    surviving measurement for a given variant can differ by predictor —
    see [`docs/build_variant_reclassification_dataset.md`](docs/build_variant_reclassification_dataset.md)).
    Produces `data/output/reclassification/integrated_variant_effect_reclassification_<REVEL|AM|MP2>.tsv.gz`.
-6. **`src/build_variant_reclassification_dataset.py`** — the same script,
-   default invocation: no `--dedup` (one row per surviving measurement,
-   not deduplicated to one row per DNA variant — `SFPQ`, the CHEK2 QC
-   flag, and unmeasured-splice/start-lost `VariantNotes` tags are still
-   excluded, but bare `conflicting_fxn_data` is deliberately kept, since
-   each row is one dataset's measurement) and REVEL as the default
-   predictor. Produces
-   `data/output/reclassification/integrated_variant_effect_biobank_input_data.tsv.gz`,
-   which collaborators use for downstream biobank analysis.
+
+(The same script's default invocation -- no `--dedup` -- builds the biobank
+analysis input file; see
+[Interim: Biobank carrier odds-ratio analysis](#interim-biobank-carrier-odds-ratio-analysis-external)
+below, after this stage.)
 
 Two more `src/` scripts support this stage (beyond `load_oddspath_calibrations.py`
 above) and are already converted:
@@ -284,9 +317,6 @@ for predictor in REVEL AM MP2; do
   src/scripts/run_build_variant_reclassification_dataset.sh --dedup --predictor "$predictor" \
     --output "data/output/reclassification/integrated_variant_effect_reclassification_${predictor}.tsv.gz"
 done
-
-# 6. Build the biobank-analysis reclassification export from that notebook's checkpoint
-src/scripts/run_build_variant_reclassification_dataset.sh
 ```
 
 Each `nbconvert --execute` leaves a side-effect `executed_<name>.ipynb` next
@@ -299,9 +329,41 @@ Outputs land under `data/output/supplementary_data/` (`Supplementary_Data_4.xlsx
 `Supplementary_Data_5.xlsx`), `data/output/predictor_calibration/` (the
 per-gene control files also used by Extended Data Figure 4), and
 `data/output/reclassification/` (the per-predictor deduplicated
-reclassification datasets from step 5, and
-`integrated_variant_effect_biobank_input_data.tsv.gz`, the biobank-analysis
-export from step 6).
+reclassification datasets from step 5).
+
+---
+
+## Interim: Biobank carrier odds-ratio analysis (external)
+
+Between Stage 2 and Stage 3, a subset of figures (Figure 2i, Figure 6b,
+Extended Data Figure 2) need carrier odds ratios computed against a
+biobank cohort -- something this repo can't do itself, since it requires
+individual-level biobank genotype/phenotype data under access
+restrictions this codebase doesn't (and shouldn't) have a path to.
+
+1. Build the biobank analysis input file from Stage 2's
+   `Variant_Classification_analysis.ipynb` checkpoint:
+
+   ```bash
+   src/scripts/run_build_variant_reclassification_dataset.sh
+   ```
+
+   Produces `data/output/reclassification/integrated_variant_effect_biobank_input_data.tsv.gz`
+   (one row per surviving variant-effect measurement, not deduplicated to
+   one row per DNA variant -- see
+   [`docs/build_variant_reclassification_dataset.md`](docs/build_variant_reclassification_dataset.md)).
+2. That file is handed off manually to the biobank-side analysis --
+   currently the All of Us Research Program's Researcher Workbench, an
+   access-restricted environment -- which computes carrier log-odds-ratios
+   per gene/dataset against its cohort. Nothing in this repo can run or
+   automate this step.
+3. The result is checked back into `data/input/biobank/` (currently
+   `AoU-OR-estimates_2026-10-07.tsv.gz`, a stand-in pending a long-term,
+   citable re-export of the same analysis) and consumed by the three
+   figures above via `src/lib/figures/load_biobank_or_table.R`.
+
+See [`docs/biobank_analysis.md`](docs/biobank_analysis.md) for the full
+workflow.
 
 ---
 
@@ -325,12 +387,9 @@ Two toolchains are in play, depending on the figure, both Dockerized:
   in a container.
 
 A few figures (Figure 2i, Figure 6b, Extended Data Figure 2) additionally
-need a biobank carrier odds-ratio table, checked into this repo at
-`data/input/biobank/` -- see
-[`docs/biobank_analysis.md`](docs/biobank_analysis.md) for what it is, why
-it can't be regenerated from inside this repo, and the current All of
-Us-sourced stand-in these figures read pending a long-term, citable
-re-export.
+need a biobank carrier odds-ratio table -- see
+[Interim: Biobank carrier odds-ratio analysis](#interim-biobank-carrier-odds-ratio-analysis-external)
+above.
 
 ### Running it
 

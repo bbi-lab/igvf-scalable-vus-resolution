@@ -1,0 +1,51 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "igvf-scalable-vus-resolution: a scalable approach to resolving variants of uncertain significance"
+abstract: >-
+  Data-processing pipeline and figure-generation code for harmonizing variant
+  effect measurements from published MAVE datasets, annotating them with
+  ClinVar/gnomAD/predictor scores, and running the OddsPath/ACMG-AMP
+  classification analysis described in the accompanying paper.
+authors:
+  - given-names: Jeremy
+    family-names: Stone
+    orcid: "https://orcid.org/0000-0002-7565-2463"
+  - given-names: Malvika
+    family-names: Tejura
+  - given-names: Ross
+    family-names: Stewart
+  - given-names: Yuriy
+    family-names: Sverchkov
+  - given-names: Ivan
+    family-names: Woo
+  - given-names: Haneen
+    family-names: Abderrazzaq
+repository-code: "https://github.com/bbi-lab/igvf-scalable-vus-resolution"
+license: BSD-3-Clause
+# CHANGEME: set version and date-released to match the git tag you release,
+# then re-run `cffconvert --validate` (or just re-check by eye) before tagging.
+version: "1.0.0"
+date-released: "2026-10-12"
+references:
+  - type: software
+    title: "variant-annotation"
+    authors:
+      - given-names: Jeremy
+        family-names: Stone
+    repository-code: "https://github.com/bbi-lab/variant-annotation"
+    license: AGPL-3.0-or-later
+    notes: >-
+      Vendored as a git submodule at vendor/variant-annotation and archived
+      separately on Zenodo; see its own CITATION.cff for the DOI to cite.
+# CHANGEME: add a preferred-citation entry once the paper has a DOI/venue, e.g.:
+# preferred-citation:
+#   type: article
+#   title: "A scalable approach to resolving variants of uncertain significance"
+#   authors:
+#     - given-names: Jeremy
+#       family-names: Stone
+#     # ... remaining paper authors in byline order
+#   doi: "10.xxxx/xxxxx"
+#   journal: "TBD"
+#   year: 2026

@@ -734,7 +734,13 @@ several other third-party sources, each under its own license:
   database's March 2024 relicensing (an earlier, non-commercial-only release
   has since been superseded). Attribution: Cheng et al., "Accurate
   proteome-wide missense variant effect prediction with AlphaMissense,"
-  *Science* (2023).
+  *Science* (2023). ⚠️ The file's own in-content header comment still says
+  `Licensed under CC BY-NC-SA 4.0 license` — stale boilerplate DeepMind
+  never updated in the file itself when they relicensed it; confirmed
+  byte-identical to the file currently served from their CC-BY-4.0-licensed
+  [Zenodo record](https://zenodo.org/records/10813168) (same size, matching
+  MD5 on a byte-range check), so the file's own comment is wrong, not the
+  license. Trust the Zenodo record's license, not the file's text.
 - **REVEL** (`data/input/predictors/revel_hg38.tsv.gz`,
   `clustering_variants_revel_training_overlap.csv.gz`) — free for
   non-commercial use only; commercial use requires contacting the developer

@@ -15,17 +15,21 @@ generates the manuscript's main and extended data figures.
 The pipeline runs in three stages, each covered in its own section below --
 with two external interim hand-offs in between, where data leaves this
 repository for a process this codebase can't run itself, and the result
-comes back before the next stage continues:
+comes back before the next stage continues. A third, manual interim step
+follows Stage 3, needed only when assembling a paper submission:
 
 1. [Data preparation and variant annotation](#1-data-preparation-and-variant-annotation)
    - *Interim:* [ExCALIBR calibration](#interim-excalibr-calibration-external)
 2. [Data analysis / variant classification and table preparation](#2-data-analysis--variant-classification-and-table-preparation)
    - *Interim:* [Biobank carrier odds-ratio analysis](#interim-biobank-carrier-odds-ratio-analysis-external)
 3. [Figure preparation](#3-figure-preparation)
+   - *Interim:* [Figure assembly](#interim-figure-assembly-manual-adobe-illustrator)
 
 All three numbered stages run in Docker -- see
-[Software Requirements](#software-requirements) below. The two interim
-steps are external and manual; see each section for why.
+[Software Requirements](#software-requirements) below. The first two interim
+steps are external and manual; see each section for why. The third (figure
+assembly) is manual too, but requires a local Adobe Illustrator install
+rather than Docker.
 
 **Verifying your setup:** `scripts/smoke_test_variant_annotation.sh` and
 `scripts/smoke_test_analysis.sh` run Stage 1 and Stage 2 end-to-end against
@@ -581,6 +585,33 @@ itself — delete that manually if you don't want it in the working tree. See
 individual panel and several figure-specific gotchas (date-stamped
 filenames, figures that only reconstruct from a cached intermediate, output
 directories that aren't created automatically).
+
+---
+
+## Interim: Figure assembly (manual, Adobe Illustrator)
+
+Only needed by the project team when preparing a paper submission -- not
+part of a normal pipeline run, and the only step in this repo that isn't
+Dockerized or Poetry-managed. Two checked-in Illustrator documents,
+`data/output/figures/illustrator/figures_2_3_5_6.ai` and
+`extended_data_figures.ai`, assemble every figure Stage 3 generates assets
+for, by placing those assets onto per-figure artboards;
+`export_artboards.jsx` in the same directory then exports each artboard to
+its own PNG or PDF.
+
+Figures 1 and 7, and Extended Data Figures 1, 11, and 12, aren't generated
+by this repo at all -- they're checked into
+`data/input/external_figure_assets/` as provided externally. Figures 1 and 7
+are each their own standalone Illustrator document, exported the same way as
+the two above; Extended Data Figures 1, 11, and 12 have no `.ai` of their
+own here -- their PDFs are placed directly into `extended_data_figures.ai`
+and come out as part of its own export.
+
+See [`docs/figure_assembly.md`](docs/figure_assembly.md) for the full
+process: resolving the `.ai` files' absolute-path links (Illustrator has no
+relative-link mechanism), the PNG/PDF export options and which PDF standard
+to use, and the two artboards (with and without a caption) each Extended
+Data Figure exports.
 
 ---
 

@@ -61,7 +61,7 @@ from
   variants v
     left outer join mapped_variants mv on v.id = mv.variant_id and mv."current" = true
 where ss.urn in (
-  -- All datasets from the originexcept CALM1/2/3
+  -- All datasets from the preprint, except CALM1/2/3, which we will load later
   'urn:mavedb:00000005-a-5',
   'urn:mavedb:00000005-a-6',
   'urn:mavedb:00000013-a-1',
@@ -134,7 +134,6 @@ where ss.urn in (
   'urn:mavedb:00001242-a-1',
   'urn:mavedb:00001250-a-2',
   'urn:mavedb:00001251-a-1',
-  'urn:mavedb:00001250-a-2',
   'urn:mavedb:00001254-a-1',
   'urn:mavedb:00001259-a-2',
   'urn:mavedb:00001260-a-2',
@@ -143,7 +142,7 @@ where ss.urn in (
   'urn:mavedb:00001264-a-2',
   'urn:mavedb:00001265-a-2',
   'urn:mavedb:00001266-b-1',
-  'urn:mavedb:00001267-0-2',
+  'urn:mavedb:00001267-0-3',
   'urn:mavedb:00001268-0-1',
   'urn:mavedb:00001268-a-1',
   'urn:mavedb:00001268-b-1',
@@ -151,7 +150,6 @@ where ss.urn in (
   -- 7 new datasets
   'urn:mavedb:00001269-a-1',
   'urn:mavedb:00001269-b-1',
-  'urn:mavedb:00001269-c-1',
   'urn:mavedb:00001280-a-1',
   'urn:mavedb:00001279-a-1',
   'urn:mavedb:00001278-a-1',

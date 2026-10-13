@@ -64,11 +64,23 @@ data/intermediate/
 # Generated/large data directories -- kept as empty folders in git via a
 # .gitkeep placeholder so the expected paths exist on a fresh clone, but their
 # actual contents (regenerated or hand-supplied locally) aren't tracked.
+# Two exceptions, checked in despite the blanket ignore: json/ (the small,
+# aggregated per-dataset ExCALIBR calibration summaries -- see
+# docs/load_excalibr_calibrations.md) and fig4_data_oob.tar.gz (the
+# out-of-bag export Figure 4 reads directly -- see docs/build_figure4_data.md).
+# Everything else here (png/, before_tsc2_ldlr/, last/, the raw bootstrap
+# archive) stays gitignored: either large, visual-reference-only, or a stale
+# snapshot.
 data/input/mave_calibration/excalibr/*
 !data/input/mave_calibration/excalibr/.gitkeep
+!data/input/mave_calibration/excalibr/json/
+!data/input/mave_calibration/excalibr/fig4_data_oob.tar.gz
 
+# Checked in despite the blanket ignore: the current All of Us stand-in for
+# the biobank carrier odds-ratio table (see docs/biobank_analysis.md).
 data/input/biobank/*
 !data/input/biobank/.gitkeep
+!data/input/biobank/AoU-OR-estimates_2026-10-07.tsv.gz
 
 # User-downloaded GRCh38 reference FASTA + gnomAD v4.1 sites VCFs for
 # src/map_gnomad_ancestry.py -- hundreds of GB, never committed. The small,

@@ -1,0 +1,68 @@
+{
+  "prior": 0.059606933658061766,
+  "prior_unstable": 0,
+  "pathomechanism_prior": null,
+  "pathomechanism_prior_unstable": 0,
+  "pathomechanism_method": null,
+  "PLP_frac_pathomechanism_measured": NaN,
+  "PLP_frac_pathomechanism_measured_unstable": 0,
+  "pct_bootstraps_kept": 1.0,
+  "pct_pathogenic_rows_kept": null,
+  "point_ranges": {
+    "1": [
+      [
+        33.29835410170085,
+        43.340714862531264
+      ]
+    ],
+    "2": [
+      [
+        0.17618176773386693,
+        33.29835410170085
+      ]
+    ],
+    "3": [
+      [
+        -Infinity,
+        0.17618176773386693
+      ]
+    ],
+    "4": [],
+    "5": [],
+    "6": [],
+    "7": [],
+    "8": [],
+    "-1": [
+      [
+        68.35852588074037,
+        78.75325017703852
+      ]
+    ],
+    "-2": [
+      [
+        78.75325017703852,
+        96.89997225362681
+      ]
+    ],
+    "-3": [
+      [
+        96.89997225362681,
+        Infinity
+      ]
+    ],
+    "-4": [],
+    "-5": [],
+    "-6": [],
+    "-7": [],
+    "-8": []
+  },
+  "dataset": "KCNH2_O_Neill_2024_surface_expression",
+  "relax": 1,
+  "liberal_monotonicity": 1,
+  "n_c": "3c_avg",
+  "benign_method": "avg",
+  "clinvar_2018": 0,
+  "scoreset_flipped": 0,
+  "uncalibratable_reason": null,
+  "model_selected": null
+}

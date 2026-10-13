@@ -1,0 +1,78 @@
+{
+  "prior": 0.49706575244735035,
+  "prior_unstable": 0,
+  "pathomechanism_prior": null,
+  "pathomechanism_prior_unstable": 0,
+  "pathomechanism_method": null,
+  "PLP_frac_pathomechanism_measured": NaN,
+  "PLP_frac_pathomechanism_measured_unstable": 0,
+  "pct_bootstraps_kept": 1.0,
+  "pct_pathogenic_rows_kept": null,
+  "point_ranges": {
+    "1": [
+      [
+        0.17913600849736377,
+        0.19727606234925882
+      ]
+    ],
+    "2": [
+      [
+        0.19727606234925882,
+        0.2132393097389264
+      ]
+    ],
+    "3": [
+      [
+        0.2132393097389264,
+        0.2284769549745182
+      ]
+    ],
+    "4": [
+      [
+        0.2284769549745182,
+        0.24226339590195844
+      ]
+    ],
+    "5": [
+      [
+        0.24226339590195844,
+        0.25750104113755024
+      ]
+    ],
+    "6": [
+      [
+        0.25750104113755024,
+        0.2720130842190662
+      ]
+    ],
+    "7": [
+      [
+        0.2720130842190662,
+        0.2850739229924306
+      ]
+    ],
+    "8": [
+      [
+        0.2850739229924306,
+        Infinity
+      ]
+    ],
+    "-1": [],
+    "-2": [],
+    "-3": [],
+    "-4": [],
+    "-5": [],
+    "-6": [],
+    "-7": [],
+    "-8": []
+  },
+  "dataset": "ASPA_Gr\u00f8nb\u00e6k-Thygesen_2024_toxicity",
+  "relax": 1,
+  "liberal_monotonicity": 1,
+  "n_c": "3c_avg",
+  "benign_method": "benign",
+  "clinvar_2018": 0,
+  "scoreset_flipped": 1,
+  "uncalibratable_reason": null,
+  "model_selected": null
+}

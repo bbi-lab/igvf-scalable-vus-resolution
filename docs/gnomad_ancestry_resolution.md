@@ -34,7 +34,7 @@ data-refresh steps rather than something run on every pipeline invocation.
     checked-in snapshot `src/make_extended_data_figure_10.py` reads by
     default. These are reproducible via steps 2-3 below, but deliberately
     stay a committed snapshot rather than a rebuilt-every-run pipeline
-    output (same reasoning as `data/input/maves/dataframe_with_points.csv.gz`
+    output (same reasoning as `data/input/mave_calibration/integrated_variant_effect_dataset_with_excalibr.csv.gz`
     -- see `docs/add_excalibr_columns.md`); refresh them by copying over the
     result of step 3 when you want to update the figure's input data.
 - **`data/intermediate/figures/extended_data_figure_10/`** -- gitignored
@@ -92,13 +92,13 @@ Run once per category needed (`VUS` and `gnomAD` for Extended Data Figure
 
 ```bash
 poetry run python -m src.filter_pillar_data \
-    --points-input data/input/maves/dataframe_with_points.csv.gz \
+    --points-input data/input/mave_calibration/integrated_variant_effect_dataset_with_excalibr.csv.gz \
     --supp4-input data/output/supplementary_data/Supplementary_Data_4.xlsx \
     --supp3-input data/input/maves/Supplementary_Data_3.xlsx \
     --category VUS
 
 poetry run python -m src.filter_pillar_data \
-    --points-input data/input/maves/dataframe_with_points.csv.gz \
+    --points-input data/input/mave_calibration/integrated_variant_effect_dataset_with_excalibr.csv.gz \
     --supp4-input data/output/supplementary_data/Supplementary_Data_4.xlsx \
     --supp3-input data/input/maves/Supplementary_Data_3.xlsx \
     --category gnomAD

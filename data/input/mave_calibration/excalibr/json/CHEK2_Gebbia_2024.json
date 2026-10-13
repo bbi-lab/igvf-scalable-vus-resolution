@@ -1,0 +1,73 @@
+{
+  "prior": 0.21440714315969567,
+  "prior_unstable": 0,
+  "pathomechanism_prior": null,
+  "pathomechanism_prior_unstable": 0,
+  "pathomechanism_method": null,
+  "PLP_frac_pathomechanism_measured": NaN,
+  "PLP_frac_pathomechanism_measured_unstable": 0,
+  "pct_bootstraps_kept": 1.0,
+  "pct_pathogenic_rows_kept": null,
+  "point_ranges": {
+    "1": [
+      [
+        0.4431553829079533,
+        0.46576417049774843
+      ]
+    ],
+    "2": [
+      [
+        0.4148943984207101,
+        0.4431553829079533
+      ]
+    ],
+    "3": [
+      [
+        0.38380731548474145,
+        0.4148943984207101
+      ]
+    ],
+    "4": [
+      [
+        0.3385897403051521,
+        0.38380731548474145
+      ]
+    ],
+    "5": [
+      [
+        -Infinity,
+        0.3385897403051521
+      ]
+    ],
+    "6": [],
+    "7": [],
+    "8": [],
+    "-1": [
+      [
+        0.6748954557033509,
+        0.7427218184727353
+      ]
+    ],
+    "-2": [
+      [
+        0.7427218184727353,
+        Infinity
+      ]
+    ],
+    "-3": [],
+    "-4": [],
+    "-5": [],
+    "-6": [],
+    "-7": [],
+    "-8": []
+  },
+  "dataset": "CHEK2_Gebbia_2024",
+  "relax": 1,
+  "liberal_monotonicity": 1,
+  "n_c": "2c_avg",
+  "benign_method": "avg",
+  "clinvar_2018": 0,
+  "scoreset_flipped": 0,
+  "uncalibratable_reason": null,
+  "model_selected": null
+}

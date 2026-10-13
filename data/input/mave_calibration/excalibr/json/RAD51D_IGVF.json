@@ -1,0 +1,78 @@
+{
+  "prior": 0.08084078666634868,
+  "prior_unstable": 0,
+  "pathomechanism_prior": null,
+  "pathomechanism_prior_unstable": 0,
+  "pathomechanism_method": null,
+  "PLP_frac_pathomechanism_measured": NaN,
+  "PLP_frac_pathomechanism_measured_unstable": 0,
+  "pct_bootstraps_kept": 1.0,
+  "pct_pathogenic_rows_kept": null,
+  "point_ranges": {
+    "1": [
+      [
+        -0.0928889909954978,
+        -0.07678123011505755
+      ]
+    ],
+    "2": [
+      [
+        -0.11973525912956479,
+        -0.0928889909954978
+      ]
+    ],
+    "3": [
+      [
+        -0.14545115807903952,
+        -0.11973525912956479
+      ]
+    ],
+    "4": [
+      [
+        -Infinity,
+        -0.14545115807903952
+      ]
+    ],
+    "5": [],
+    "6": [],
+    "7": [],
+    "8": [],
+    "-1": [
+      [
+        -0.018284624812406225,
+        -0.012632778889444751
+      ]
+    ],
+    "-2": [
+      [
+        -0.012632778889444751,
+        -0.005285379189594819
+      ]
+    ],
+    "-3": [
+      [
+        -0.005285379189594819,
+        0.015626450725362673
+      ]
+    ],
+    "-4": [
+      [
+        0.015626450725362673,
+        Infinity
+      ]
+    ],
+    "-5": [],
+    "-6": [],
+    "-7": [],
+    "-8": []
+  },
+  "dataset": "RAD51D_IGVF",
+  "relax": 1,
+  "liberal_monotonicity": 1,
+  "n_c": "3c_avg",
+  "benign_method": "avg",
+  "clinvar_2018": 0,
+  "scoreset_flipped": 0,
+  "uncalibratable_reason": null,
+  "model_selected": null
+}

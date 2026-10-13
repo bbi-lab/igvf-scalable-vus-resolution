@@ -1,0 +1,83 @@
+{
+  "prior": 0.3216158346014414,
+  "prior_unstable": 0,
+  "pathomechanism_prior": null,
+  "pathomechanism_prior_unstable": 0,
+  "pathomechanism_method": null,
+  "PLP_frac_pathomechanism_measured": NaN,
+  "PLP_frac_pathomechanism_measured_unstable": 0,
+  "pct_bootstraps_kept": 1.0,
+  "pct_pathogenic_rows_kept": null,
+  "point_ranges": {
+    "1": [
+      [
+        33.738669334667335,
+        38.092046023011505
+      ]
+    ],
+    "2": [
+      [
+        29.540770385192598,
+        33.738669334667335
+      ]
+    ],
+    "3": [
+      [
+        23.788094047023513,
+        29.540770385192598
+      ]
+    ],
+    "4": [
+      [
+        19.12376188094047,
+        23.788094047023513
+      ]
+    ],
+    "5": [
+      [
+        13.371085542771386,
+        19.12376188094047
+      ]
+    ],
+    "6": [
+      [
+        6.219109554777389,
+        13.371085542771386
+      ]
+    ],
+    "7": [
+      [
+        -Infinity,
+        6.219109554777389
+      ]
+    ],
+    "8": [],
+    "-1": [
+      [
+        79.91555777888945,
+        108.83441720860431
+      ]
+    ],
+    "-2": [
+      [
+        108.83441720860431,
+        Infinity
+      ]
+    ],
+    "-3": [],
+    "-4": [],
+    "-5": [],
+    "-6": [],
+    "-7": [],
+    "-8": []
+  },
+  "dataset": "TP53_Kato_2003_P53R2nWT_clinvar_2018",
+  "relax": 1,
+  "liberal_monotonicity": 1,
+  "n_c": "3c_avg",
+  "benign_method": "benign",
+  "clinvar_2018": 1,
+  "scoreset_flipped": 0,
+  "uncalibratable_reason": null,
+  "model_selected": null
+}

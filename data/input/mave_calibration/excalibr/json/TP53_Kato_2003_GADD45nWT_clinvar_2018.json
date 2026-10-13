@@ -1,0 +1,93 @@
+{
+  "prior": 0.312386216302557,
+  "prior_unstable": 0,
+  "pathomechanism_prior": null,
+  "pathomechanism_prior_unstable": 0,
+  "pathomechanism_method": null,
+  "PLP_frac_pathomechanism_measured": NaN,
+  "PLP_frac_pathomechanism_measured_unstable": 0,
+  "pct_bootstraps_kept": 0.999,
+  "pct_pathogenic_rows_kept": null,
+  "point_ranges": {
+    "1": [
+      [
+        18.05822911455728,
+        19.985792896448224
+      ]
+    ],
+    "2": [
+      [
+        15.82631315657829,
+        18.05822911455728
+      ]
+    ],
+    "3": [
+      [
+        13.290045022511256,
+        15.82631315657829
+      ]
+    ],
+    "4": [
+      [
+        10.753776888444223,
+        13.290045022511256
+      ]
+    ],
+    "5": [
+      [
+        8.31895947973987,
+        10.753776888444223
+      ]
+    ],
+    "6": [
+      [
+        5.072536268134067,
+        8.31895947973987
+      ]
+    ],
+    "7": [
+      [
+        0.10145072536268135,
+        5.072536268134067
+      ]
+    ],
+    "8": [
+      [
+        -Infinity,
+        0.10145072536268135
+      ]
+    ],
+    "-1": [
+      [
+        62.49364682341171,
+        63.406703351675844
+      ]
+    ],
+    "-2": [
+      [
+        63.406703351675844,
+        77.10255127563782
+      ]
+    ],
+    "-3": [
+      [
+        77.10255127563782,
+        Infinity
+      ]
+    ],
+    "-4": [],
+    "-5": [],
+    "-6": [],
+    "-7": [],
+    "-8": []
+  },
+  "dataset": "TP53_Kato_2003_GADD45nWT_clinvar_2018",
+  "relax": 1,
+  "liberal_monotonicity": 1,
+  "n_c": "3c_avg",
+  "benign_method": "benign",
+  "clinvar_2018": 1,
+  "scoreset_flipped": 0,
+  "uncalibratable_reason": null,
+  "model_selected": null
+}

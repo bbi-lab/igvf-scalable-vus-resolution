@@ -1,0 +1,58 @@
+{
+  "prior": 0.5463754854709866,
+  "prior_unstable": 0,
+  "pathomechanism_prior": null,
+  "pathomechanism_prior_unstable": 0,
+  "pathomechanism_method": null,
+  "PLP_frac_pathomechanism_measured": NaN,
+  "PLP_frac_pathomechanism_measured_unstable": 0,
+  "pct_bootstraps_kept": 0.999,
+  "pct_pathogenic_rows_kept": null,
+  "point_ranges": {
+    "1": [
+      [
+        0.08372986493246626,
+        0.10725412706353177
+      ]
+    ],
+    "2": [
+      [
+        0.05806703351675838,
+        0.08372986493246626
+      ]
+    ],
+    "3": [
+      [
+        0.019572786393196602,
+        0.05806703351675838
+      ]
+    ],
+    "4": [
+      [
+        -Infinity,
+        0.019572786393196602
+      ]
+    ],
+    "5": [],
+    "6": [],
+    "7": [],
+    "8": [],
+    "-1": [],
+    "-2": [],
+    "-3": [],
+    "-4": [],
+    "-5": [],
+    "-6": [],
+    "-7": [],
+    "-8": []
+  },
+  "dataset": "OTC_Lo_2023",
+  "relax": 1,
+  "liberal_monotonicity": 1,
+  "n_c": "3c_avg",
+  "benign_method": "benign",
+  "clinvar_2018": 0,
+  "scoreset_flipped": 0,
+  "uncalibratable_reason": null,
+  "model_selected": null
+}

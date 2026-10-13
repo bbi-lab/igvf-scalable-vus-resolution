@@ -1,11 +1,11 @@
 # Extended Data Figure 2
 
-# This script requires IGVFFI3804AVJR.csv.gz which is available from
-# https://data.igvf.org/tabular-files/IGVFFI3804AVJR/ and expected at
-# data/input/biobank/IGVFFI3804AVJR.csv.gz. Pending a re-export of that
-# file, it currently instead reads an AoU-only stand-in (see
-# load_biobank_or_table.R) -- swap the read below back to a plain
-# read_csv() once IGVFFI3804AVJR.csv.gz is available again.
+# Reads the biobank carrier odds-ratio table via load_biobank_or_table.R,
+# currently the checked-in All of Us stand-in
+# (data/input/biobank/AoU-OR-estimates_2026-10-07.tsv.gz). See
+# docs/biobank_analysis.md for the full workflow and why this will be
+# swapped back to a plain read_csv() against IGVFFI3804AVJR.csv.gz once a
+# fresh re-export of that file is available.
 
 # Load libraries
 library(tidyverse)

@@ -15,30 +15,46 @@ support, and carries the rest forward unchanged from a prior cache.
 | `gene_4e`, `dist_4e`, `labdat_4e`, `snvdf_4e`, `sorted_thresholds_4e`, `oldsorted_thresholds_4e` | MSH2 REVEL gene-specific-vs-genome-wide calibration, from the integrated dataset plus the `REVEL_gene_specific_calibration` sheet of `Supplementary_Data_4.xlsx` |
 | `dist_4f`, `finalout_4f` | the same REVEL comparison across a fixed 6-gene set (`FIGURE_4F_GENES`) |
 
-## What can't be rebuilt (must be carried forward)
+## What can't be rebuilt by this script (must be carried forward)
 
 Pass `--cached-json` pointing at a prior `figure4_data.json.gz` (e.g.
 `notebooks/figures/figure_4/old_figure4_data.json.gz`) to carry these fields
-forward unchanged. There is currently no other source for them:
+forward unchanged -- **this script** has no other source for them:
 
 - **Panel a's density-band fit** — `fits`, and `indv_summary`'s
   `priors`/`log_lr_plus`/`score_range`/`C`, plus the top-level `score_range`.
   This needs exCALIBR's raw per-bootstrap fit output (1000 bootstrap replicate
-  fits). The only exCALIBR artifact checked into
-  `data/input/mave_calibration/` is the *aggregated* per-dataset summary — the
-  same fields `src/load_excalibr_calibrations.py` reads. The raw bootstrap
-  ensemble isn't retained anywhere on disk.
+  fits), which this script doesn't read from anywhere.
 - **Panel c's out-of-bag confusion matrices** — `danzs_oob`, `auths_oob`,
   `datasets`. Needs exCALIBR's out-of-bag evidence-direction predictions per
-  MAVE dataset, which also aren't in any current pipeline output.
+  MAVE dataset, which this script also doesn't read from anywhere.
 - **Panel d's cartoon** — `prior`, `Post_p`, `Post_b`, `p_data`, `b_data`.
   This panel is illustrative: the posterior curves it actually plots
   (`1 - x**2` and `exp(3x)/exp(3)`) are hardcoded in
   `notebooks/figures/figure_4/plot_utils.py`'s `plot_panel_d`, not derived from
   these inputs. There's no recorded recipe for the original synthetic
-  `p_data`/`b_data`/`Post_p`/`Post_b` values.
+  `p_data`/`b_data`/`Post_p`/`Post_b` values -- this one is genuinely
+  unrecoverable, not just unsupported by this script.
 
 Running without `--cached-json` raises immediately and lists these fields.
+
+**Note:** `figure4.ipynb` itself no longer actually needs this script's cache
+for panels a, b, c, e, or f -- it reads
+`data/input/mave_calibration/excalibr/fig4_data_oob.tar.gz` (a full
+out-of-bag export from the same external ExCALIBR calibration run as the
+JSON calibration files above; see
+`docs/load_excalibr_calibrations.md#where-the-calibration-json-files-come-from`)
+directly, which carries the raw bootstrap fits (`bootstrap_fits.json.gz`)
+and the out-of-bag confusion matrices (`panel_c.json`'s `danz_agg`/`auth_agg`)
+that this script can't reconstruct, plus the MSH2 scoreset and REVEL data
+this script *can*. Only panel d's cartoon and part of panel e's legacy
+genome-wide REVEL thresholds (`genome_wide_thresholds_4e`) still come from
+`--cached-json`'s blob -- see `figure4.ipynb`'s first cell. This script's
+own output (`figure4_data.json.gz`) is therefore mostly superseded for this
+notebook already; it's kept for the fields `fig4_data_oob.tar.gz` doesn't
+carry, and as a `--cached-json` source for anyone who wants to reconstruct
+`danzs_oob`/`auths_oob` into *this script's* schema rather than reading the
+tarball directly.
 
 ## Known discrepancies vs. the original figure
 

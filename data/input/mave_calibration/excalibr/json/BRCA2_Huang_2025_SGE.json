@@ -1,0 +1,88 @@
+{
+  "prior": 0.12656333743958645,
+  "prior_unstable": 0,
+  "pathomechanism_prior": null,
+  "pathomechanism_prior_unstable": 0,
+  "pathomechanism_method": null,
+  "PLP_frac_pathomechanism_measured": NaN,
+  "PLP_frac_pathomechanism_measured_unstable": 0,
+  "pct_bootstraps_kept": 1.0,
+  "pct_pathogenic_rows_kept": null,
+  "point_ranges": {
+    "1": [
+      [
+        -0.7243403036308149,
+        -0.643601752123061
+      ]
+    ],
+    "2": [
+      [
+        -0.8145775082571283,
+        -0.7243403036308149
+      ]
+    ],
+    "3": [
+      [
+        -0.9190626925612801,
+        -0.8145775082571283
+      ]
+    ],
+    "4": [
+      [
+        -1.1137850814917456,
+        -0.9190626925612801
+      ]
+    ],
+    "5": [
+      [
+        -Infinity,
+        -1.1137850814917456
+      ]
+    ],
+    "6": [],
+    "7": [],
+    "8": [],
+    "-1": [
+      [
+        -0.39663677104051986,
+        -0.30402490313456676
+      ]
+    ],
+    "-2": [
+      [
+        -0.30402490313456676,
+        -0.2161623617878936
+      ]
+    ],
+    "-3": [
+      [
+        -0.2161623617878936,
+        -0.1235504938819405
+      ]
+    ],
+    "-4": [
+      [
+        -0.1235504938819405,
+        -0.023814636137068135
+      ]
+    ],
+    "-5": [
+      [
+        -0.023814636137068135,
+        Infinity
+      ]
+    ],
+    "-6": [],
+    "-7": [],
+    "-8": []
+  },
+  "dataset": "BRCA2_Huang_2025_SGE",
+  "relax": 1,
+  "liberal_monotonicity": 1,
+  "n_c": "3c_benign",
+  "benign_method": "benign",
+  "clinvar_2018": 0,
+  "scoreset_flipped": 0,
+  "uncalibratable_reason": null,
+  "model_selected": null
+}

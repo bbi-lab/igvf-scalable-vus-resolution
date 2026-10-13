@@ -1,0 +1,58 @@
+{
+  "prior": 0.4743561932118171,
+  "prior_unstable": 0,
+  "pathomechanism_prior": null,
+  "pathomechanism_prior_unstable": 0,
+  "pathomechanism_method": null,
+  "PLP_frac_pathomechanism_measured": NaN,
+  "PLP_frac_pathomechanism_measured_unstable": 0,
+  "pct_bootstraps_kept": 1.0,
+  "pct_pathogenic_rows_kept": null,
+  "point_ranges": {
+    "1": [
+      [
+        0.4443896599866475,
+        0.4915724822139977
+      ]
+    ],
+    "2": [
+      [
+        0.36289205795758805,
+        0.4443896599866475
+      ]
+    ],
+    "3": [
+      [
+        0.22563293875075113,
+        0.36289205795758805
+      ]
+    ],
+    "4": [
+      [
+        -Infinity,
+        0.22563293875075113
+      ]
+    ],
+    "5": [],
+    "6": [],
+    "7": [],
+    "8": [],
+    "-1": [],
+    "-2": [],
+    "-3": [],
+    "-4": [],
+    "-5": [],
+    "-6": [],
+    "-7": [],
+    "-8": []
+  },
+  "dataset": "RHO_Wan_2019",
+  "relax": 1,
+  "liberal_monotonicity": 1,
+  "n_c": "2c_avg",
+  "benign_method": "avg",
+  "clinvar_2018": 0,
+  "scoreset_flipped": 0,
+  "uncalibratable_reason": null,
+  "model_selected": null
+}

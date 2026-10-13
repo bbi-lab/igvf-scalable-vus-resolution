@@ -11,6 +11,44 @@ workbook (default: `data/output/supplementary_data/Supplementary_Data_4.xlsx`),
 **overwriting that sheet's existing contents in place**. All other sheets,
 the sheet's tab position, and its column widths are left untouched.
 
+If `Supplementary_Data_4.xlsx` doesn't exist yet in a fresh checkout, start
+from a copy of `data/input/mave_calibration/Supplementary_Data_4.seed.xlsx`
+-- see [Where the gene-specific calibration sheets come from](#where-the-gene-specific-calibration-sheets-come-from)
+below.
+
+## Where the calibration JSON files come from
+
+The per-dataset JSON files under `data/input/mave_calibration/excalibr/json/`
+are produced by an external ExCALIBR calibration run that itself consumes
+this repo's own `data/output/maves/integrated_variant_effect_dataset.tsv.gz`
+as input -- so a fresh set is only obtainable after the variant-annotation
+pipeline has already completed (see `docs/variant_annotation_pipeline.md`).
+The same external run also produces
+`data/input/mave_calibration/integrated_variant_effect_dataset_with_excalibr.csv.gz`
+(see `docs/add_excalibr_columns.md`) and
+`data/input/mave_calibration/excalibr/fig4_data_oob.tar.gz` (see
+`docs/build_figure4_data.md`). A copy of the JSON files is checked into this
+repo so the pipeline is reproducible without rerunning ExCALIBR; refresh
+them by replacing this directory's contents the next time ExCALIBR
+calibration is rerun.
+
+## Where the gene-specific calibration sheets come from
+
+`Supplementary_Data_4.xlsx` also carries `REVEL_gene_specific_calibration`,
+`MP2_gene_specific_calibrations`, and `AM_gene_specific_calibrations` --
+pre-populated, gene-specific predictor-score calibration thresholds that
+**no script in this repo produces or overwrites**. Unlike
+`ExCALIBR_calibrations`/`OddsPath_calibrations` above, these come from an
+external source and must already be present in the workbook before this
+script (or `load_oddspath_calibrations`) runs; this script never touches
+them. `data/input/mave_calibration/Supplementary_Data_4.seed.xlsx` is a
+checked-in snapshot of a workbook with these three sheets populated -- copy
+it to `data/output/supplementary_data/Supplementary_Data_4.xlsx` as your
+starting point in a fresh checkout (its own `ExCALIBR_calibrations`/
+`OddsPath_calibrations` sheets are stale snapshots too, but this script and
+`load_oddspath_calibrations` overwrite them in place on the next run
+regardless).
+
 ## Column mapping
 
 | Column | Source |

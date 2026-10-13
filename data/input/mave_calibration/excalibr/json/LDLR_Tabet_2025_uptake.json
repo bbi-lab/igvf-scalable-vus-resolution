@@ -1,0 +1,58 @@
+{
+  "prior": 0.1821528976651309,
+  "prior_unstable": 0,
+  "pathomechanism_prior": null,
+  "pathomechanism_prior_unstable": 0,
+  "pathomechanism_method": null,
+  "PLP_frac_pathomechanism_measured": NaN,
+  "PLP_frac_pathomechanism_measured_unstable": 0,
+  "pct_bootstraps_kept": 1.0,
+  "pct_pathogenic_rows_kept": null,
+  "point_ranges": {
+    "1": [
+      [
+        0.3000126147733867,
+        0.3625303733876938
+      ]
+    ],
+    "2": [
+      [
+        0.22939070226463232,
+        0.3000126147733867
+      ]
+    ],
+    "3": [
+      [
+        -Infinity,
+        0.22939070226463232
+      ]
+    ],
+    "4": [],
+    "5": [],
+    "6": [],
+    "7": [],
+    "8": [],
+    "-1": [
+      [
+        0.910139629398199,
+        Infinity
+      ]
+    ],
+    "-2": [],
+    "-3": [],
+    "-4": [],
+    "-5": [],
+    "-6": [],
+    "-7": [],
+    "-8": []
+  },
+  "dataset": "LDLR_Tabet_2025_uptake",
+  "relax": 1,
+  "liberal_monotonicity": 1,
+  "n_c": "3c_benign",
+  "benign_method": "benign",
+  "clinvar_2018": 0,
+  "scoreset_flipped": 0,
+  "uncalibratable_reason": null,
+  "model_selected": null
+}

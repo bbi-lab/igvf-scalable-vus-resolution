@@ -13,7 +13,13 @@ row per dataset, sorted by `Dataset`, into the `OddsPath_calibrations` sheet
 of a workbook (default:
 `data/output/supplementary_data/Supplementary_Data_4.xlsx`),
 **overwriting that sheet's existing contents in place**. All other sheets,
-the sheet's tab position, and its column widths are left untouched.
+the sheet's tab position, and its column widths are left untouched -- in
+particular, this script never touches the externally-sourced gene-specific
+calibration sheets (`REVEL_gene_specific_calibration`,
+`MP2_gene_specific_calibrations`, `AM_gene_specific_calibrations`); see
+[`docs/load_excalibr_calibrations.md`](load_excalibr_calibrations.md#where-the-gene-specific-calibration-sheets-come-from)
+for where those come from and the checked-in seed workbook to start from in
+a fresh checkout.
 
 ## Column mapping
 

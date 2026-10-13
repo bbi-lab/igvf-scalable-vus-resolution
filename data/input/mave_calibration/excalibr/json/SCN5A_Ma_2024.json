@@ -1,0 +1,88 @@
+{
+  "prior": 0.38626689755885896,
+  "prior_unstable": 0,
+  "pathomechanism_prior": null,
+  "pathomechanism_prior_unstable": 0,
+  "pathomechanism_method": null,
+  "PLP_frac_pathomechanism_measured": NaN,
+  "PLP_frac_pathomechanism_measured_unstable": 0,
+  "pct_bootstraps_kept": 0.999,
+  "pct_pathogenic_rows_kept": null,
+  "point_ranges": {
+    "1": [
+      [
+        55.45106053026513,
+        60.11741870935467
+      ]
+    ],
+    "2": [
+      [
+        52.2091695847924,
+        55.45106053026513
+      ]
+    ],
+    "3": [
+      [
+        48.86903951975988,
+        52.2091695847924
+      ]
+    ],
+    "4": [
+      [
+        45.03771385692846,
+        48.86903951975988
+      ]
+    ],
+    "5": [
+      [
+        41.35374687343672,
+        45.03771385692846
+      ]
+    ],
+    "6": [
+      [
+        40.4695947973987,
+        41.35374687343672
+      ]
+    ],
+    "7": [
+      [
+        33.88757378689344,
+        36.441790895447724
+      ]
+    ],
+    "8": [
+      [
+        -Infinity,
+        33.88757378689344
+      ]
+    ],
+    "-1": [
+      [
+        87.72261130565282,
+        92.04513256628314
+      ]
+    ],
+    "-2": [
+      [
+        92.04513256628314,
+        Infinity
+      ]
+    ],
+    "-3": [],
+    "-4": [],
+    "-5": [],
+    "-6": [],
+    "-7": [],
+    "-8": []
+  },
+  "dataset": "SCN5A_Ma_2024",
+  "relax": 1,
+  "liberal_monotonicity": 1,
+  "n_c": "3c_avg",
+  "benign_method": "benign",
+  "clinvar_2018": 0,
+  "scoreset_flipped": 0,
+  "uncalibratable_reason": null,
+  "model_selected": null
+}

@@ -1,0 +1,73 @@
+{
+  "prior": 0.08788215924433768,
+  "prior_unstable": 0,
+  "pathomechanism_prior": null,
+  "pathomechanism_prior_unstable": 0,
+  "pathomechanism_method": null,
+  "PLP_frac_pathomechanism_measured": NaN,
+  "PLP_frac_pathomechanism_measured_unstable": 0,
+  "pct_bootstraps_kept": 0.994,
+  "pct_pathogenic_rows_kept": null,
+  "point_ranges": {
+    "1": [
+      [
+        1.1547308308109052,
+        1.2088201438709358
+      ]
+    ],
+    "2": [
+      [
+        1.2088201438709358,
+        1.3041203621195603
+      ]
+    ],
+    "3": [
+      [
+        1.3041203621195603,
+        1.52047761435968
+      ]
+    ],
+    "4": [
+      [
+        1.52047761435968,
+        Infinity
+      ]
+    ],
+    "5": [],
+    "6": [],
+    "7": [],
+    "8": [],
+    "-1": [
+      [
+        0.7426217789249625,
+        0.8173165445792896
+      ]
+    ],
+    "-2": [
+      [
+        0.6653513316963484,
+        0.7426217789249625
+      ]
+    ],
+    "-3": [
+      [
+        -Infinity,
+        0.6653513316963484
+      ]
+    ],
+    "-4": [],
+    "-5": [],
+    "-6": [],
+    "-7": [],
+    "-8": []
+  },
+  "dataset": "PAX6_McDonnell_2024_BLX_no_geneticin",
+  "relax": 1,
+  "liberal_monotonicity": 1,
+  "n_c": "2c_benign",
+  "benign_method": "benign",
+  "clinvar_2018": 0,
+  "scoreset_flipped": 1,
+  "uncalibratable_reason": null,
+  "model_selected": null
+}

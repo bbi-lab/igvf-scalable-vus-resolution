@@ -1,0 +1,68 @@
+{
+  "prior": 0.20426706192014588,
+  "prior_unstable": 0,
+  "pathomechanism_prior": null,
+  "pathomechanism_prior_unstable": 0,
+  "pathomechanism_method": null,
+  "PLP_frac_pathomechanism_measured": NaN,
+  "PLP_frac_pathomechanism_measured_unstable": 0,
+  "pct_bootstraps_kept": 1.0,
+  "pct_pathogenic_rows_kept": null,
+  "point_ranges": {
+    "1": [
+      [
+        -0.5450418857576196,
+        -0.4543186795317524
+      ]
+    ],
+    "2": [
+      [
+        -0.7329685272254869,
+        -0.5450418857576196
+      ]
+    ],
+    "3": [
+      [
+        -Infinity,
+        -0.7329685272254869
+      ]
+    ],
+    "4": [],
+    "5": [],
+    "6": [],
+    "7": [],
+    "8": [],
+    "-1": [
+      [
+        -0.07846539659601737,
+        0.1386222754444506
+      ]
+    ],
+    "-2": [
+      [
+        0.1386222754444506,
+        0.5663173905092518
+      ]
+    ],
+    "-3": [
+      [
+        0.5663173905092518,
+        Infinity
+      ]
+    ],
+    "-4": [],
+    "-5": [],
+    "-6": [],
+    "-7": [],
+    "-8": []
+  },
+  "dataset": "TP53_Giacomelli_2018_p53null_etoposide_clinvar_2018",
+  "relax": 1,
+  "liberal_monotonicity": 1,
+  "n_c": "3c_benign",
+  "benign_method": "benign",
+  "clinvar_2018": 1,
+  "scoreset_flipped": 0,
+  "uncalibratable_reason": null,
+  "model_selected": null
+}

@@ -1,0 +1,78 @@
+{
+  "prior": 0.1743905758803111,
+  "prior_unstable": 0,
+  "pathomechanism_prior": null,
+  "pathomechanism_prior_unstable": 0,
+  "pathomechanism_method": null,
+  "PLP_frac_pathomechanism_measured": NaN,
+  "PLP_frac_pathomechanism_measured_unstable": 0,
+  "pct_bootstraps_kept": 0.998,
+  "pct_pathogenic_rows_kept": null,
+  "point_ranges": {
+    "1": [
+      [
+        0.6206441087783892,
+        0.6582012459099549
+      ]
+    ],
+    "2": [
+      [
+        0.5830869716468233,
+        0.6206441087783892
+      ]
+    ],
+    "3": [
+      [
+        0.5543668079579789,
+        0.5830869716468233
+      ]
+    ],
+    "4": [
+      [
+        0.5278558876298148,
+        0.5543668079579789
+      ]
+    ],
+    "5": [
+      [
+        0.5046588323426713,
+        0.5278558876298148
+      ]
+    ],
+    "6": [
+      [
+        0.4814617770555277,
+        0.5046588323426713
+      ]
+    ],
+    "7": [
+      [
+        0.4604739651290644,
+        0.4814617770555277
+      ]
+    ],
+    "8": [
+      [
+        -Infinity,
+        0.4604739651290644
+      ]
+    ],
+    "-1": [],
+    "-2": [],
+    "-3": [],
+    "-4": [],
+    "-5": [],
+    "-6": [],
+    "-7": [],
+    "-8": []
+  },
+  "dataset": "KCNE1_Muhammad_2024_trafficking_WT_background_DN",
+  "relax": 1,
+  "liberal_monotonicity": 1,
+  "n_c": "2c_avg",
+  "benign_method": "avg",
+  "clinvar_2018": 0,
+  "scoreset_flipped": 0,
+  "uncalibratable_reason": null,
+  "model_selected": null
+}

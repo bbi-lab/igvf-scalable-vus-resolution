@@ -1,0 +1,63 @@
+{
+  "prior": 0.16868592610539243,
+  "prior_unstable": 0,
+  "pathomechanism_prior": null,
+  "pathomechanism_prior_unstable": 0,
+  "pathomechanism_method": null,
+  "PLP_frac_pathomechanism_measured": NaN,
+  "PLP_frac_pathomechanism_measured_unstable": 0,
+  "pct_bootstraps_kept": 0.938,
+  "pct_pathogenic_rows_kept": null,
+  "point_ranges": {
+    "1": [
+      [
+        0.25571892579889965,
+        0.3463973333531767
+      ]
+    ],
+    "2": [
+      [
+        -Infinity,
+        0.25571892579889965
+      ]
+    ],
+    "3": [],
+    "4": [],
+    "5": [],
+    "6": [],
+    "7": [],
+    "8": [],
+    "-1": [
+      [
+        0.7951391963781891,
+        0.8765172544397202
+      ]
+    ],
+    "-2": [
+      [
+        0.8765172544397202,
+        1.053223894801901
+      ]
+    ],
+    "-3": [
+      [
+        1.053223894801901,
+        Infinity
+      ]
+    ],
+    "-4": [],
+    "-5": [],
+    "-6": [],
+    "-7": [],
+    "-8": []
+  },
+  "dataset": "HMBS_van_Loggerenberg_2023_erythroid",
+  "relax": 1,
+  "liberal_monotonicity": 1,
+  "n_c": "3c_benign",
+  "benign_method": "benign",
+  "clinvar_2018": 0,
+  "scoreset_flipped": 0,
+  "uncalibratable_reason": null,
+  "model_selected": null
+}

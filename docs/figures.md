@@ -88,12 +88,13 @@ them.
 ### 3. `Figure_2i.R` (separate from the notebook pipeline above)
 
 Same pattern as `Figure_6b.R` / `Extended_Data_Figure_4.R`: a plain Rscript
-run via the `r-figures` Docker service, reading
-`data/input/biobank/IGVFFI3804AVJR.csv.gz` (downloaded separately from
-https://data.igvf.org/tabular-files/IGVFFI3804AVJR/ -- nothing in this repo
-produces it). Builds panel i's odds-ratio plot for the IGVF functional
-assays, excluding `TSC2_IGVF` since its RapGAP dataset is broken out
-separately. Saves `data/output/figures/assets/figure_2/figure_2i.pdf`.
+run via the `r-figures` Docker service, reading the biobank carrier
+odds-ratio table (currently the checked-in All of Us stand-in,
+`data/input/biobank/AoU-OR-estimates_2026-10-07.tsv.gz`, via
+`load_biobank_or_table.R` -- see `docs/biobank_analysis.md` for the full
+workflow and provenance). Builds panel i's odds-ratio plot for the IGVF
+functional assays, excluding `TSC2_IGVF` since its RapGAP dataset is broken
+out separately. Saves `data/output/figures/assets/figure_2/figure_2i.pdf`.
 
 ```bash
 docker compose run --rm -w /usr/src/app/notebooks/figures/figure_2 \
@@ -147,11 +148,17 @@ pre-built, with no in-repo script that produced it. It isn't tracked in git
 at all right now -- it's moving to an intermediate data directory shortly --
 so regenerate it locally with step 1 below before running the notebook.
 
-`src/build_figure4_data.py` now rebuilds most of that cache from current
-pipeline outputs. Three sub-panels (the panel a density-band fit, panel c's
-out-of-bag confusion matrices, and panel d's illustrative cartoon) have no
-source anywhere in this repo and can only be carried forward from a prior
-cache -- see `docs/build_figure4_data.md` for exactly which fields and why.
+`src/build_figure4_data.py` rebuilds part of that cache from current
+pipeline outputs, but `figure4.ipynb` itself actually sources panels a, b,
+c, e, and f's ExCALIBR/REVEL data directly from
+`data/input/mave_calibration/excalibr/fig4_data_oob.tar.gz` -- a full
+out-of-bag export from the same external ExCALIBR calibration run that
+produces the JSON calibration files and `integrated_variant_effect_dataset_
+with_excalibr.csv.gz` (see `docs/load_excalibr_calibrations.md`), checked
+into this repo. Only panel d's illustrative cartoon, plus part of panel e's
+legacy genome-wide REVEL thresholds, still come from the older cached
+`figure4_data.json.gz` blob (`src/build_figure4_data.py`'s output) --
+see `docs/build_figure4_data.md` for exactly which fields and why.
 
 ### Steps
 
@@ -197,10 +204,8 @@ Directory: `notebooks/figures/figure_5_6/`. Two independent scripts, run separat
   same workbook the Extended Data Figures use; see `docs/mave_dataset_stats.md`
   for how it's built.
 - `Figure_6b.R` -- Fig 6b's per-gene odds-ratio forest plot, faceted by points
-  bin and disease group. Reads `data/input/biobank/IGVFFI3804AVJR.csv.gz`,
-  downloaded separately from
-  https://data.igvf.org/tabular-files/IGVFFI3804AVJR/ (nothing in this repo
-  produces it).
+  bin and disease group. Reads the biobank carrier odds-ratio table (see
+  `docs/biobank_analysis.md`), same as `Figure_2i.R` above.
 
 Like Extended Data Figures, both need the `r-figures` Docker service
 (`ggsankey`, `ggforce`, `patchwork`, `ggh4x`, `extrafont`/Arial, `cairo_pdf`)
@@ -210,8 +215,8 @@ r-figures` in that section above.
 ### Steps
 
 ```bash
-# Figure_6b.R: reads data/input/biobank/IGVFFI3804AVJR.csv.gz (see link
-# above). Writes figure_6b.pdf/figure_6b.svg to data/output/figures/assets/figure_6/.
+# Figure_6b.R: reads the biobank carrier odds-ratio table (see above).
+# Writes figure_6b.pdf/figure_6b.svg to data/output/figures/assets/figure_6/.
 docker compose run --rm -w /usr/src/app/notebooks/figures/figure_5_6 \
   r-figures Figure_6b.R
 
@@ -289,13 +294,12 @@ group then Gene (italicized heading), and is restricted to genes with an
 actual gene-specific calibration (BRCA1/BRCA2/MSH2/TP53, plus TSC2 if
 `INCLUDE_TSC2` is flipped on). Plain `Rscript`, not an `.Rmd` --
 same `tidyverse`/`patchwork`/`ggh4x`/`extrafont` dependencies and `r-figures`
-Docker service as `Figure_6b.R` (see Figure 5/6 above). Reads
-`data/input/biobank/IGVFFI3804AVJR.csv.gz`, downloaded separately from
-https://data.igvf.org/tabular-files/IGVFFI3804AVJR/ (nothing in this repo
-produces it).
+Docker service as `Figure_6b.R` (see Figure 5/6 above). Reads the biobank
+carrier odds-ratio table (see `docs/biobank_analysis.md`), same as
+`Figure_2i.R`/`Figure_6b.R`.
 
 ```bash
-# Reads data/input/biobank/IGVFFI3804AVJR.csv.gz (see link above).
+# Reads the biobank carrier odds-ratio table (see docs/biobank_analysis.md).
 docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_2 \
   r-figures Extended_Data_Figure_2.R
 ```

@@ -103,6 +103,20 @@ Committed to this repo (no action needed):
   — pinned predictor score files specific to this pipeline run.
 - `data/input/mave_calibration/excalibr/json/` — per-dataset exCALIBR JSON
   calibrations (see [Section 2](#2-data-analysis--variant-classification-and-table-preparation)).
+- `data/input/mave_calibration/integrated_variant_effect_dataset_with_excalibr.csv.gz`
+  — the exCALIBR calibration run's own copy of the integrated dataset (see
+  [Adding ExCALIBR evidence columns](#adding-excalibr-evidence-columns-supplementary-data-1)
+  below).
+- `data/input/mave_calibration/Supplementary_Data_4.seed.xlsx` — a seed
+  workbook with the externally-sourced, gene-specific predictor calibration
+  sheets pre-populated (see
+  [`docs/load_excalibr_calibrations.md`](docs/load_excalibr_calibrations.md#where-the-gene-specific-calibration-sheets-come-from)).
+- `data/input/mave_calibration/excalibr/fig4_data_oob.tar.gz` — exCALIBR's
+  out-of-bag export, read directly by Figure 4 (see
+  [Section 3](#3-figure-preparation)).
+- `data/input/biobank/AoU-OR-estimates_2026-10-07.tsv.gz` — the current
+  stand-in biobank carrier odds-ratio table (see
+  [`docs/biobank_analysis.md`](docs/biobank_analysis.md)).
 
 Not committed — you must populate or point at these yourself:
 
@@ -110,11 +124,6 @@ Not committed — you must populate or point at these yourself:
   already downloaded: SpliceAI VCFs, dbNSFP, `clinvar_cache/`, and the
   gnomAD Hail table cache above. These are tens of GB and are deliberately
   not duplicated into this repo.
-- `IGVFFI3804AVJR.csv.gz`, downloaded separately from
-  https://data.igvf.org/tabular-files/IGVFFI3804AVJR/ and placed at
-  `data/input/biobank/IGVFFI3804AVJR.csv.gz` — only needed later, for a
-  subset of figures (see [Section 3](#3-figure-preparation)), not for this
-  stage.
 
 ### Running it
 
@@ -149,11 +158,14 @@ pipeline's own classification used.
 
 This step isn't part of `scripts/run_variant_annotation_pipeline.sh` because
 its input — the ExCALIBR calibration run's own copy of the integrated
-dataset, `data/input/maves/dataframe_with_points.csv.gz` — isn't produced
-until after that pipeline run and the exCALIBR calibration step in
+dataset,
+`data/input/mave_calibration/integrated_variant_effect_dataset_with_excalibr.csv.gz`
+(checked in; see [`docs/add_excalibr_columns.md`](docs/add_excalibr_columns.md)
+for where it comes from) — is only produced after that pipeline run and the
+exCALIBR calibration step in
 [Section 2](#2-data-analysis--variant-classification-and-table-preparation)
-below. Once both `data/output/maves/integrated_variant_effect_dataset.tsv.gz`
-(above) and `data/input/maves/dataframe_with_points.csv.gz` exist, run:
+below. Once `data/output/maves/integrated_variant_effect_dataset.tsv.gz`
+(above) exists, run:
 
 ```bash
 poetry run python -m src.add_excalibr_columns
@@ -308,10 +320,13 @@ Two toolchains are in play, depending on the figure, both Dockerized:
   system fonts (Arial) and `cairo_pdf` output that are easiest to reproduce
   in a container.
 
-A few figures additionally require `IGVFFI3804AVJR.csv.gz`, downloaded
-separately from https://data.igvf.org/tabular-files/IGVFFI3804AVJR/ (nothing
-in this repo produces it) and placed at
-`data/input/biobank/IGVFFI3804AVJR.csv.gz`.
+A few figures (Figure 2i, Figure 6b, Extended Data Figure 2) additionally
+need a biobank carrier odds-ratio table, checked into this repo at
+`data/input/biobank/` -- see
+[`docs/biobank_analysis.md`](docs/biobank_analysis.md) for what it is, why
+it can't be regenerated from inside this repo, and the current All of
+Us-sourced stand-in these figures read pending a long-term, citable
+re-export.
 
 ### Running it
 
@@ -340,7 +355,7 @@ for nb in PP_ClinVarPrecisionRecall PP_Fig2_Heatmaps PP_ResolutionOverview PP_St
     notebooks/figures/figure_2/${nb}.ipynb
 done
 
-# 3. Figure_2i.R -- reads data/input/biobank/IGVFFI3804AVJR.csv.gz (see above)
+# 3. Figure_2i.R -- reads the biobank carrier odds-ratio table (see above)
 docker compose run --rm -w /usr/src/app/notebooks/figures/figure_2 \
   r-figures Figure_2i.R
 ```
@@ -381,7 +396,7 @@ src/scripts/run_notebook.sh --to notebook --execute \
 #### Figure 5/6
 
 ```bash
-# Figure_6b.R -- reads data/input/biobank/IGVFFI3804AVJR.csv.gz (see above)
+# Figure_6b.R -- reads the biobank carrier odds-ratio table (see above)
 docker compose run --rm -w /usr/src/app/notebooks/figures/figure_5_6 \
   r-figures Figure_6b.R
 
@@ -399,7 +414,7 @@ docker compose run --rm -w /usr/src/app/notebooks/figures/figure_5_6 \
 #### Extended Data Figure 2
 
 ```bash
-# Extended_Data_Figure_2.R -- reads data/input/biobank/IGVFFI3804AVJR.csv.gz (see above)
+# Extended_Data_Figure_2.R -- reads the biobank carrier odds-ratio table (see above)
 docker compose run --rm -w /usr/src/app/notebooks/figures/extended_data_figure_2 \
   r-figures Extended_Data_Figure_2.R
 ```

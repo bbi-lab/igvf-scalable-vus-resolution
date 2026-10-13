@@ -35,7 +35,7 @@ obtain-gnomAD-files-through-generate-the-figure walkthrough. Its output feeds
 
 Usage:
   poetry run python -m src.filter_pillar_data \\
-      --points-input data/input/maves/dataframe_with_points.csv.gz \\
+      --points-input data/input/mave_calibration/integrated_variant_effect_dataset_with_excalibr.csv.gz \\
       --supp4-input data/output/supplementary_data/Supplementary_Data_4.xlsx \\
       --supp3-input data/input/maves/Supplementary_Data_3.xlsx \\
       --category VUS
@@ -51,7 +51,7 @@ import click
 import numpy as np
 import pandas as pd
 
-DEFAULT_POINTS_INPUT = Path("data/input/maves/dataframe_with_points.csv.gz")
+DEFAULT_POINTS_INPUT = Path("data/input/mave_calibration/integrated_variant_effect_dataset_with_excalibr.csv.gz")
 DEFAULT_OUTDIR = Path("data/intermediate/figures/extended_data_figure_10")
 
 TP53_F9_EXCLUDED = [
@@ -572,7 +572,8 @@ def filter_pillar_data(
     default=DEFAULT_POINTS_INPUT,
     show_default=True,
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
-    help="dataframe_with_points.csv.gz",
+    help="the ExCALIBR calibration run's own copy of the integrated dataset, with "
+    "excalibr_* columns added -- see docs/add_excalibr_columns.md",
 )
 @click.option(
     "--supp4-input",

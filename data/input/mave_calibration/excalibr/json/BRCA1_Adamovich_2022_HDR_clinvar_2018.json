@@ -1,0 +1,98 @@
+{
+  "prior": 0.13862672091575973,
+  "prior_unstable": 0,
+  "pathomechanism_prior": null,
+  "pathomechanism_prior_unstable": 0,
+  "pathomechanism_method": null,
+  "PLP_frac_pathomechanism_measured": NaN,
+  "PLP_frac_pathomechanism_measured_unstable": 0,
+  "pct_bootstraps_kept": 0.983,
+  "pct_pathogenic_rows_kept": null,
+  "point_ranges": {
+    "1": [
+      [
+        -0.8307911239599801,
+        -0.7556119897113556
+      ]
+    ],
+    "2": [
+      [
+        -0.8991357914587295,
+        -0.8307911239599801
+      ]
+    ],
+    "3": [
+      [
+        -0.9788712368739372,
+        -0.8991357914587295
+      ]
+    ],
+    "4": [
+      [
+        -1.049494059955978,
+        -0.9788712368739372
+      ]
+    ],
+    "5": [
+      [
+        -1.1269513497878942,
+        -1.049494059955978
+      ]
+    ],
+    "6": [
+      [
+        -1.2021304840365183,
+        -1.1269513497878942
+      ]
+    ],
+    "7": [
+      [
+        -1.2795877738684343,
+        -1.2021304840365183
+      ]
+    ],
+    "8": [
+      [
+        -Infinity,
+        -1.2795877738684343
+      ]
+    ],
+    "-1": [
+      [
+        -0.37060369613506783,
+        -0.3113716509694848
+      ]
+    ],
+    "-2": [
+      [
+        -0.3113716509694848,
+        -0.2339143611375687
+      ]
+    ],
+    "-3": [
+      [
+        -0.2339143611375687,
+        -0.11317211522311155
+      ]
+    ],
+    "-4": [
+      [
+        -0.11317211522311155,
+        Infinity
+      ]
+    ],
+    "-5": [],
+    "-6": [],
+    "-7": [],
+    "-8": []
+  },
+  "dataset": "BRCA1_Adamovich_2022_HDR_clinvar_2018",
+  "relax": 1,
+  "liberal_monotonicity": 1,
+  "n_c": "2c_avg",
+  "benign_method": "avg",
+  "clinvar_2018": 1,
+  "scoreset_flipped": 0,
+  "uncalibratable_reason": null,
+  "model_selected": null
+}

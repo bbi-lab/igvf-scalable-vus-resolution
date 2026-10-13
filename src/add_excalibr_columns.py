@@ -4,17 +4,21 @@
 Manual pipeline step, run *after* the main variant-annotation pipeline
 (`flag_variants`/`recalculate_clingen_classification` included) has produced
 `data/output/maves/integrated_variant_effect_dataset.tsv.gz` -- the ExCALIBR
-calibration output this script reads
-(`data/input/maves/dataframe_with_points.csv.gz`) isn't available until
-later, so this step can't be folded into that pipeline run.
+calibration run's own copy of that dataset (its *input*, checked in at
+`data/input/mave_calibration/integrated_variant_effect_dataset_with_excalibr.csv.gz`
+-- note the `.csv.gz`, distinct from this script's own `.tsv.gz` *output*
+path below, which shares the same stem) is only produced by the external
+ExCALIBR run after this repo's own annotation pipeline has already run, so
+this step can't be folded into that pipeline run itself. See
+`docs/add_excalibr_columns.md` for where this input file comes from.
 
-`dataframe_with_points.csv.gz` carries every column of the integrated
-dataset plus seven new `excalibr_*` columns (`excalibr_clinvar_release`,
-`excalibr_points`, `excalibr_acmg_evidence_code`, `excalibr_lr_plus`,
-`excalibr_prior`, `excalibr_posterior`, `excalibr_filter_reason`). This
-script joins just those seven columns onto the integrated dataset by
-(`Dataset`, `mavedb_variant_urn`, `hgvs_c`) -- the only combination of
-shared columns that is unique in both files -- and writes the result to
+That input file carries every column of the integrated dataset plus seven
+new `excalibr_*` columns (`excalibr_clinvar_release`, `excalibr_points`,
+`excalibr_acmg_evidence_code`, `excalibr_lr_plus`, `excalibr_prior`,
+`excalibr_posterior`, `excalibr_filter_reason`). This script joins just
+those seven columns onto the integrated dataset by (`Dataset`,
+`mavedb_variant_urn`, `hgvs_c`) -- the only combination of shared columns
+that is unique in both files -- and writes the result to
 `data/output/maves/integrated_variant_effect_dataset_with_excalibr.tsv.gz`.
 A copy is then written to
 `data/output/supplementary_data/Supplementary_Data_1.tsv.gz` (pass
@@ -38,7 +42,7 @@ import click
 import pandas as pd
 
 DEFAULT_INTEGRATED_INPUT = Path("data/output/maves/integrated_variant_effect_dataset.tsv.gz")
-DEFAULT_EXCALIBR_INPUT = Path("data/input/maves/dataframe_with_points.csv.gz")
+DEFAULT_EXCALIBR_INPUT = Path("data/input/mave_calibration/integrated_variant_effect_dataset_with_excalibr.csv.gz")
 DEFAULT_OUTPUT = Path("data/output/maves/integrated_variant_effect_dataset_with_excalibr.tsv.gz")
 DEFAULT_SUPPLEMENTARY_DATA_COPY = Path("data/output/supplementary_data/Supplementary_Data_1.tsv.gz")
 
@@ -124,9 +128,7 @@ def add_excalibr_columns(integrated_df, excalibr_df):
             f"integrated dataset, {only_excalibr} key(s) only in the ExCALIBR dataset"
         )
 
-    excalibr_to_merge = excalibr_join_df.assign(
-        **{col: excalibr_df[col] for col in EXCALIBR_COLUMNS}
-    )
+    excalibr_to_merge = excalibr_join_df.assign(**{col: excalibr_df[col] for col in EXCALIBR_COLUMNS})
     return (
         integrated_df.assign(_hgvs_c_key=integrated_join_df["_hgvs_c_key"])
         .merge(excalibr_to_merge, on=join_key_columns, how="left")

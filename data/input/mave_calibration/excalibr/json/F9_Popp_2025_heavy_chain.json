@@ -1,0 +1,58 @@
+{
+  "prior": 0.13028287542546257,
+  "prior_unstable": 0,
+  "pathomechanism_prior": null,
+  "pathomechanism_prior_unstable": 0,
+  "pathomechanism_method": null,
+  "PLP_frac_pathomechanism_measured": NaN,
+  "PLP_frac_pathomechanism_measured_unstable": 0,
+  "pct_bootstraps_kept": 1.0,
+  "pct_pathogenic_rows_kept": null,
+  "point_ranges": {
+    "1": [
+      [
+        0.624665116435701,
+        0.6534323275023018
+      ]
+    ],
+    "2": [
+      [
+        0.5978593061236411,
+        0.624665116435701
+      ]
+    ],
+    "3": [
+      [
+        0.563861693044931,
+        0.5978593061236411
+      ]
+    ],
+    "4": [
+      [
+        -Infinity,
+        0.563861693044931
+      ]
+    ],
+    "5": [],
+    "6": [],
+    "7": [],
+    "8": [],
+    "-1": [],
+    "-2": [],
+    "-3": [],
+    "-4": [],
+    "-5": [],
+    "-6": [],
+    "-7": [],
+    "-8": []
+  },
+  "dataset": "F9_Popp_2025_heavy_chain",
+  "relax": 1,
+  "liberal_monotonicity": 0,
+  "n_c": "2c_avg",
+  "benign_method": "avg",
+  "clinvar_2018": 0,
+  "scoreset_flipped": 0,
+  "uncalibratable_reason": null,
+  "model_selected": null
+}

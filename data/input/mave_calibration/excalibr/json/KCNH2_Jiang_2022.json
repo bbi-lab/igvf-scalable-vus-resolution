@@ -1,0 +1,73 @@
+{
+  "prior": 0.5489059319519609,
+  "prior_unstable": 0,
+  "pathomechanism_prior": null,
+  "pathomechanism_prior_unstable": 0,
+  "pathomechanism_method": null,
+  "PLP_frac_pathomechanism_measured": NaN,
+  "PLP_frac_pathomechanism_measured_unstable": 0,
+  "pct_bootstraps_kept": 1.0,
+  "pct_pathogenic_rows_kept": null,
+  "point_ranges": {
+    "1": [
+      [
+        0.45709354677338665,
+        0.4905852926463231
+      ]
+    ],
+    "2": [
+      [
+        0.39217108554277136,
+        0.45709354677338665
+      ]
+    ],
+    "3": [
+      [
+        0.2860280140070035,
+        0.39217108554277136
+      ]
+    ],
+    "4": [
+      [
+        0.24223111555777888,
+        0.2860280140070035
+      ]
+    ],
+    "5": [
+      [
+        0.20410205102551277,
+        0.24223111555777888
+      ]
+    ],
+    "6": [
+      [
+        -Infinity,
+        0.20410205102551277
+      ]
+    ],
+    "7": [],
+    "8": [],
+    "-1": [
+      [
+        0.8713606803401701,
+        Infinity
+      ]
+    ],
+    "-2": [],
+    "-3": [],
+    "-4": [],
+    "-5": [],
+    "-6": [],
+    "-7": [],
+    "-8": []
+  },
+  "dataset": "KCNH2_Jiang_2022",
+  "relax": 1,
+  "liberal_monotonicity": 1,
+  "n_c": "3c_avg",
+  "benign_method": "benign",
+  "clinvar_2018": 0,
+  "scoreset_flipped": 0,
+  "uncalibratable_reason": null,
+  "model_selected": null
+}

@@ -1,0 +1,78 @@
+{
+  "prior": 0.22324704360625308,
+  "prior_unstable": 0,
+  "pathomechanism_prior": null,
+  "pathomechanism_prior_unstable": 0,
+  "pathomechanism_method": null,
+  "PLP_frac_pathomechanism_measured": NaN,
+  "PLP_frac_pathomechanism_measured_unstable": 0,
+  "pct_bootstraps_kept": 0.995,
+  "pct_pathogenic_rows_kept": null,
+  "point_ranges": {
+    "1": [
+      [
+        0.30221416231615805,
+        0.39628812991495765
+      ]
+    ],
+    "2": [
+      [
+        -Infinity,
+        0.30221416231615805
+      ]
+    ],
+    "3": [],
+    "4": [],
+    "5": [],
+    "6": [],
+    "7": [],
+    "8": [],
+    "-1": [
+      [
+        0.8097760340120064,
+        0.8907234014807406
+      ]
+    ],
+    "-2": [
+      [
+        0.8907234014807406,
+        0.9760463023261634
+      ]
+    ],
+    "-3": [
+      [
+        0.9760463023261634,
+        1.190447437783892
+      ]
+    ],
+    "-4": [
+      [
+        1.190447437783892,
+        1.2298272381740873
+      ]
+    ],
+    "-5": [
+      [
+        1.2298272381740873,
+        1.2998357722011007
+      ]
+    ],
+    "-6": [
+      [
+        1.2998357722011007,
+        Infinity
+      ]
+    ],
+    "-7": [],
+    "-8": []
+  },
+  "dataset": "BRCA2_Sahu_2023_exon13_global_score",
+  "relax": 1,
+  "liberal_monotonicity": 1,
+  "n_c": "2c_avg",
+  "benign_method": "avg",
+  "clinvar_2018": 0,
+  "scoreset_flipped": 0,
+  "uncalibratable_reason": null,
+  "model_selected": null
+}

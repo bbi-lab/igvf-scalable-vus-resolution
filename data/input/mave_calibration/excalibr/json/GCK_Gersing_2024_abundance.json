@@ -1,0 +1,83 @@
+{
+  "prior": 0.36727801407570204,
+  "prior_unstable": 0,
+  "pathomechanism_prior": null,
+  "pathomechanism_prior_unstable": 0,
+  "pathomechanism_method": null,
+  "PLP_frac_pathomechanism_measured": NaN,
+  "PLP_frac_pathomechanism_measured_unstable": 0,
+  "pct_bootstraps_kept": 1.0,
+  "pct_pathogenic_rows_kept": null,
+  "point_ranges": {
+    "1": [
+      [
+        0.3707816126730329,
+        0.47196330001277553
+      ]
+    ],
+    "2": [
+      [
+        0.2968411488478363,
+        0.3707816126730329
+      ]
+    ],
+    "3": [
+      [
+        0.21900908166341904,
+        0.2968411488478363
+      ]
+    ],
+    "4": [
+      [
+        0.13987981335926125,
+        0.21900908166341904
+      ]
+    ],
+    "5": [
+      [
+        0.05556174057614249,
+        0.13987981335926125
+      ]
+    ],
+    "6": [
+      [
+        -0.02616192996749589,
+        0.05556174057614249
+      ]
+    ],
+    "7": [
+      [
+        -0.10788560051113416,
+        -0.02616192996749589
+      ]
+    ],
+    "8": [
+      [
+        -Infinity,
+        -0.10788560051113416
+      ]
+    ],
+    "-1": [
+      [
+        1.0090045635852558,
+        Infinity
+      ]
+    ],
+    "-2": [],
+    "-3": [],
+    "-4": [],
+    "-5": [],
+    "-6": [],
+    "-7": [],
+    "-8": []
+  },
+  "dataset": "GCK_Gersing_2024_abundance",
+  "relax": 1,
+  "liberal_monotonicity": 1,
+  "n_c": "3c_benign",
+  "benign_method": "benign",
+  "clinvar_2018": 0,
+  "scoreset_flipped": 0,
+  "uncalibratable_reason": null,
+  "model_selected": null
+}

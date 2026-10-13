@@ -1,0 +1,68 @@
+{
+  "prior": 0.12573123512319345,
+  "prior_unstable": 0,
+  "pathomechanism_prior": null,
+  "pathomechanism_prior_unstable": 0,
+  "pathomechanism_method": null,
+  "PLP_frac_pathomechanism_measured": NaN,
+  "PLP_frac_pathomechanism_measured_unstable": 0,
+  "pct_bootstraps_kept": 1.0,
+  "pct_pathogenic_rows_kept": null,
+  "point_ranges": {
+    "1": [
+      [
+        0.42340125206068197,
+        0.4637186606774328
+      ]
+    ],
+    "2": [
+      [
+        0.3962912704045909,
+        0.42340125206068197
+      ]
+    ],
+    "3": [
+      [
+        0.3670959055441851,
+        0.3962912704045909
+      ]
+    ],
+    "4": [
+      [
+        0.29480262112794225,
+        0.3670959055441851
+      ]
+    ],
+    "5": [
+      [
+        -Infinity,
+        0.29480262112794225
+      ]
+    ],
+    "6": [],
+    "7": [],
+    "8": [],
+    "-1": [
+      [
+        1.0017475273906247,
+        Infinity
+      ]
+    ],
+    "-2": [],
+    "-3": [],
+    "-4": [],
+    "-5": [],
+    "-6": [],
+    "-7": [],
+    "-8": []
+  },
+  "dataset": "F9_Popp_2025_carboxy_gla_motif",
+  "relax": 1,
+  "liberal_monotonicity": 1,
+  "n_c": "3c_avg",
+  "benign_method": "avg",
+  "clinvar_2018": 0,
+  "scoreset_flipped": 0,
+  "uncalibratable_reason": null,
+  "model_selected": null
+}

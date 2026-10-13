@@ -1,0 +1,68 @@
+{
+  "prior": 0.1322785766394486,
+  "prior_unstable": 0,
+  "pathomechanism_prior": null,
+  "pathomechanism_prior_unstable": 0,
+  "pathomechanism_method": null,
+  "PLP_frac_pathomechanism_measured": NaN,
+  "PLP_frac_pathomechanism_measured_unstable": 0,
+  "pct_bootstraps_kept": 1.0,
+  "pct_pathogenic_rows_kept": null,
+  "point_ranges": {
+    "1": [
+      [
+        -1.1256915527097835,
+        -0.9911445374967434
+      ]
+    ],
+    "2": [
+      [
+        -1.2714508191905773,
+        -1.1256915527097835
+      ]
+    ],
+    "3": [
+      [
+        -Infinity,
+        -1.2714508191905773
+      ]
+    ],
+    "4": [],
+    "5": [],
+    "6": [],
+    "7": [],
+    "8": [],
+    "-1": [
+      [
+        -0.5762912405898684,
+        -0.46977485354621074
+      ]
+    ],
+    "-2": [
+      [
+        -0.46977485354621074,
+        -0.2959849588960335
+      ]
+    ],
+    "-3": [
+      [
+        -0.2959849588960335,
+        Infinity
+      ]
+    ],
+    "-4": [],
+    "-5": [],
+    "-6": [],
+    "-7": [],
+    "-8": []
+  },
+  "dataset": "BRCA2_Sahu_2025_SGE",
+  "relax": 1,
+  "liberal_monotonicity": 1,
+  "n_c": "3c_avg",
+  "benign_method": "avg",
+  "clinvar_2018": 0,
+  "scoreset_flipped": 0,
+  "uncalibratable_reason": null,
+  "model_selected": null
+}

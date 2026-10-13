@@ -1,0 +1,98 @@
+{
+  "prior": 0.17859536679406435,
+  "prior_unstable": 0,
+  "pathomechanism_prior": null,
+  "pathomechanism_prior_unstable": 0,
+  "pathomechanism_method": null,
+  "PLP_frac_pathomechanism_measured": NaN,
+  "PLP_frac_pathomechanism_measured_unstable": 0,
+  "pct_bootstraps_kept": 1.0,
+  "pct_pathogenic_rows_kept": null,
+  "point_ranges": {
+    "1": [
+      [
+        -3.93408086714377,
+        -3.656005994545545
+      ]
+    ],
+    "2": [
+      [
+        -4.212155739742002,
+        -3.93408086714377
+      ]
+    ],
+    "3": [
+      [
+        -4.554401736785977,
+        -4.212155739742002
+      ]
+    ],
+    "4": [
+      [
+        -4.939428483460446,
+        -4.554401736785977
+      ]
+    ],
+    "5": [
+      [
+        -Infinity,
+        -4.939428483460446
+      ]
+    ],
+    "6": [],
+    "7": [],
+    "8": [],
+    "-1": [
+      [
+        -2.6506583782288686,
+        -2.3725835056306366
+      ]
+    ],
+    "-2": [
+      [
+        -2.3725835056306366,
+        -2.0517278834019095
+      ]
+    ],
+    "-3": [
+      [
+        -2.0517278834019095,
+        -1.7308722611731824
+      ]
+    ],
+    "-4": [
+      [
+        -1.7308722611731824,
+        -1.3244551396834652
+      ]
+    ],
+    "-5": [
+      [
+        -1.3244551396834652,
+        -0.8110861441174961
+      ]
+    ],
+    "-6": [
+      [
+        -0.8110861441174961,
+        0.4081652203516626
+      ]
+    ],
+    "-7": [
+      [
+        0.4081652203516626,
+        Infinity
+      ]
+    ],
+    "-8": []
+  },
+  "dataset": "RAD51C_Olvera-Le\u00f3n_2024",
+  "relax": 1,
+  "liberal_monotonicity": 1,
+  "n_c": "3c_avg",
+  "benign_method": "avg",
+  "clinvar_2018": 0,
+  "scoreset_flipped": 0,
+  "uncalibratable_reason": null,
+  "model_selected": null
+}

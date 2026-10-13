@@ -1,0 +1,93 @@
+{
+  "prior": 0.3066316536439909,
+  "prior_unstable": 0,
+  "pathomechanism_prior": null,
+  "pathomechanism_prior_unstable": 0,
+  "pathomechanism_method": null,
+  "PLP_frac_pathomechanism_measured": NaN,
+  "PLP_frac_pathomechanism_measured_unstable": 0,
+  "pct_bootstraps_kept": 1.0,
+  "pct_pathogenic_rows_kept": null,
+  "point_ranges": {
+    "1": [
+      [
+        -1.4738794205372687,
+        -1.4346732195467733
+      ]
+    ],
+    "2": [
+      [
+        -1.516649821617809,
+        -1.4738794205372687
+      ]
+    ],
+    "3": [
+      [
+        -1.5629844227883942,
+        -1.516649821617809
+      ]
+    ],
+    "4": [
+      [
+        -1.6164474241390696,
+        -1.5629844227883942
+      ]
+    ],
+    "5": [
+      [
+        -1.6734746255797899,
+        -1.6164474241390696
+      ]
+    ],
+    "6": [
+      [
+        -1.7269376269304653,
+        -1.6734746255797899
+      ]
+    ],
+    "7": [
+      [
+        -1.808914229001501,
+        -1.7269376269304653
+      ]
+    ],
+    "8": [
+      [
+        -Infinity,
+        -1.808914229001501
+      ]
+    ],
+    "-1": [
+      [
+        -0.18363898794097056,
+        -0.13730438677038537
+      ]
+    ],
+    "-2": [
+      [
+        -0.13730438677038537,
+        0.008827816921460396
+      ]
+    ],
+    "-3": [
+      [
+        0.008827816921460396,
+        Infinity
+      ]
+    ],
+    "-4": [],
+    "-5": [],
+    "-6": [],
+    "-7": [],
+    "-8": []
+  },
+  "dataset": "PAX6_McDonnell_2024_LE9_geneticin",
+  "relax": 1,
+  "liberal_monotonicity": 1,
+  "n_c": "3c_avg",
+  "benign_method": "benign",
+  "clinvar_2018": 0,
+  "scoreset_flipped": 0,
+  "uncalibratable_reason": null,
+  "model_selected": null
+}

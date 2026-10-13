@@ -45,7 +45,7 @@ In order:
 
 ## Inputs
 
-- `--points-input` (default `data/input/maves/dataframe_with_points.csv.gz`)
+- `--points-input` (default `data/input/mave_calibration/integrated_variant_effect_dataset_with_excalibr.csv.gz`)
   -- the ExCALIBR calibration run's output (see `docs/add_excalibr_columns.md`
   for its provenance).
 - `--supp4-input` -- `Supplementary_Data_4.xlsx` (typically
@@ -77,7 +77,7 @@ next, not the manuscript directly):
 
 ```bash
 poetry run python -m src.filter_pillar_data \
-    --points-input data/input/maves/dataframe_with_points.csv.gz \
+    --points-input data/input/mave_calibration/integrated_variant_effect_dataset_with_excalibr.csv.gz \
     --supp4-input data/output/supplementary_data/Supplementary_Data_4.xlsx \
     --supp3-input data/input/maves/Supplementary_Data_3.xlsx \
     --category VUS

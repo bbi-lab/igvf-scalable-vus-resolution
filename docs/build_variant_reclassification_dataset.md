@@ -50,6 +50,9 @@ poetry run jupyter nbconvert --to notebook --execute \
   surviving dataset/measurement -- a variant scored by more than one
   dataset keeps one row per dataset. This is the form collaborators use
   for downstream biobank analysis. 866,359 rows on the official checkpoint.
+  See [`docs/biobank_analysis.md`](biobank_analysis.md) for what happens to
+  this file next (the external All of Us Researcher Workbench analysis and
+  how its result makes its way back into this repo's figures).
 - **Deduplicated reclassification dataset** (`--dedup`): collapses to one
   row per DNA variant via `src.lib.dedup.dedup_by_max_abs_points` (greatest
   `abs(Combined_points)` wins, ties broken by `Dataset` name), and

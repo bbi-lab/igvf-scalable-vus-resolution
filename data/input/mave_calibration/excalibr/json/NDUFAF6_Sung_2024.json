@@ -1,0 +1,88 @@
+{
+  "prior": 0.25691969053004116,
+  "prior_unstable": 0,
+  "pathomechanism_prior": null,
+  "pathomechanism_prior_unstable": 0,
+  "pathomechanism_method": null,
+  "PLP_frac_pathomechanism_measured": NaN,
+  "PLP_frac_pathomechanism_measured_unstable": 0,
+  "pct_bootstraps_kept": 0.978,
+  "pct_pathogenic_rows_kept": null,
+  "point_ranges": {
+    "1": [
+      [
+        -0.9955249735942973,
+        -0.9298442172321162
+      ]
+    ],
+    "2": [
+      [
+        -1.0928732374882442,
+        -0.9955249735942973
+      ]
+    ],
+    "3": [
+      [
+        -1.152689640603802,
+        -1.0928732374882442
+      ]
+    ],
+    "4": [
+      [
+        -1.2383091980045022,
+        -1.152689640603802
+      ]
+    ],
+    "5": [
+      [
+        -1.312200048911956,
+        -1.2383091980045022
+      ]
+    ],
+    "6": [
+      [
+        -1.4189312780005003,
+        -1.312200048911956
+      ]
+    ],
+    "7": [
+      [
+        -1.4904763876093048,
+        -1.4189312780005003
+      ]
+    ],
+    "8": [
+      [
+        -Infinity,
+        -1.4904763876093048
+      ]
+    ],
+    "-1": [
+      [
+        -0.15926820062581304,
+        0.03308258586343138
+      ]
+    ],
+    "-2": [
+      [
+        0.03308258586343138,
+        Infinity
+      ]
+    ],
+    "-3": [],
+    "-4": [],
+    "-5": [],
+    "-6": [],
+    "-7": [],
+    "-8": []
+  },
+  "dataset": "NDUFAF6_Sung_2024",
+  "relax": 1,
+  "liberal_monotonicity": 1,
+  "n_c": "3c_avg",
+  "benign_method": "benign",
+  "clinvar_2018": 0,
+  "scoreset_flipped": 0,
+  "uncalibratable_reason": null,
+  "model_selected": null
+}

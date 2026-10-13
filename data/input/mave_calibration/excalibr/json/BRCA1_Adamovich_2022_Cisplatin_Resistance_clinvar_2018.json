@@ -1,0 +1,93 @@
+{
+  "prior": 0.17682661452543247,
+  "prior_unstable": 0,
+  "pathomechanism_prior": null,
+  "pathomechanism_prior_unstable": 0,
+  "pathomechanism_method": null,
+  "PLP_frac_pathomechanism_measured": NaN,
+  "PLP_frac_pathomechanism_measured_unstable": 0,
+  "pct_bootstraps_kept": 0.997,
+  "pct_pathogenic_rows_kept": null,
+  "point_ranges": {
+    "1": [
+      [
+        -0.9180302571773389,
+        -0.8476232283254128
+      ]
+    ],
+    "2": [
+      [
+        -1.0008620558266634,
+        -0.9180302571773389
+      ]
+    ],
+    "3": [
+      [
+        -1.0919770343409207,
+        -1.0008620558266634
+      ]
+    ],
+    "4": [
+      [
+        -1.1789504229227115,
+        -1.0919770343409207
+      ]
+    ],
+    "5": [
+      [
+        -1.2659238115045024,
+        -1.1789504229227115
+      ]
+    ],
+    "6": [
+      [
+        -1.3591095849849926,
+        -1.2659238115045024
+      ]
+    ],
+    "7": [
+      [
+        -1.473003308127814,
+        -1.3591095849849926
+      ]
+    ],
+    "8": [
+      [
+        -Infinity,
+        -1.473003308127814
+      ]
+    ],
+    "-1": [
+      [
+        -0.46659695453851935,
+        -0.37755277099049556
+      ]
+    ],
+    "-2": [
+      [
+        -0.37755277099049556,
+        -0.24295109818534266
+      ]
+    ],
+    "-3": [
+      [
+        -0.24295109818534266,
+        Infinity
+      ]
+    ],
+    "-4": [],
+    "-5": [],
+    "-6": [],
+    "-7": [],
+    "-8": []
+  },
+  "dataset": "BRCA1_Adamovich_2022_Cisplatin_Resistance_clinvar_2018",
+  "relax": 1,
+  "liberal_monotonicity": 1,
+  "n_c": "3c_avg",
+  "benign_method": "benign",
+  "clinvar_2018": 1,
+  "scoreset_flipped": 0,
+  "uncalibratable_reason": null,
+  "model_selected": null
+}

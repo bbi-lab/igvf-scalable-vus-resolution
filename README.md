@@ -108,8 +108,7 @@ Committed to this repo (no action needed):
 - `data/input/reference/MANE.GRCh38.v1.5.summary.txt.gz` — RefSeq/Ensembl
   transcript mapping.
 - `data/input/predictors/AlphaMissense_hg38.tsv.gz` (+ `.tbi`),
-  `data/input/predictors/revel_hg38.tsv.gz` (+ `.tbi`),
-  `data/input/predictors/data_frame_missense_variants_MP2_properties.csv.gz`
+  `data/input/predictors/revel_hg38.tsv.gz` (+ `.tbi`)
   — pinned predictor score files specific to this pipeline run.
 - `data/input/mave_calibration/excalibr/json/` — per-dataset exCALIBR JSON
   calibrations (see [Section 2](#2-data-analysis--variant-classification-and-table-preparation)).
@@ -674,10 +673,10 @@ several other third-party sources, each under its own license:
   (Weiva Sieh) directly. Attribution: Ioannidis et al., "REVEL: An Ensemble
   Method for Predicting the Pathogenicity of Rare Missense Variants," *AJHG*
   (2016).
-- **MutPred2** (`data/input/predictors/mp2_annotations.csv.gz`,
-  `data_frame_missense_variants_MP2_properties.csv.gz`) — no separate data
-  license is published by the MutPred2 team beyond the MIT license on their
-  source code; cite the source publication when using these scores.
+- **MutPred2** (`data/input/predictors/mp2_annotations.csv.gz`) — no
+  separate data license is published by the MutPred2 team beyond the MIT
+  license on their source code; cite the source publication when using
+  these scores.
   Attribution: Pejaver et al., "Inferring the molecular and phenotypic impact
   of amino acid variants with MutPred2," *Nature Communications* (2020).
 - **MANE** (`data/input/reference/MANE.GRCh38.v1.5.summary.txt.gz`) — a

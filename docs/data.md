@@ -43,15 +43,6 @@ for the exact commands to refresh them, and
 [`README.md`](../README.md#third-party-data--licenses) for the attribution
 their licenses require.
 
-`data/input/predictors/` also holds `data_frame_missense_variants_MP2_properties.csv.gz`,
-`mp2_annotated.tsv`, and `ddx3x_mutpred2_annotated.tsv` — the three raw
-sources `mp2_annotations.csv.gz` is assembled from (see [Where
-`mp2_annotations.csv.gz` comes from](#where-mp2_annotationscsvgz-comes-from)
-below) — plus `ddx3x_mutpred2_scores_hgvsp.tsv`, which isn't read by
-anything in the current pipeline or by `combine_mutpred2_annotations.py`
-(it looks like an upstream, pre-gene/AA-annotation predecessor of
-`ddx3x_mutpred2_annotated.tsv`) — see [Roadmap](#roadmap) below.
-
 ### Not bundled — you must add or download or provide these yourself
 
 Not committed to git, either because the file is too large or because it's
@@ -60,7 +51,7 @@ fetched/regenerated per checkout:
 | What | Where it goes | How to get it |
 |---|---|---|
 | `cvfg_variants.0.tsv` | `data/input/maves/` | Produced via `src/mavedb_scores.sql` (DB access) or `src/fetch_mavedb_scores.py` (public API) — see [Where `cvfg_variants.0.tsv` comes from](#where-cvfg_variants0tsv-comes-from) below. |
-| `AlphaMissense_hg38.tsv.gz` (+ `.tbi`), `revel_hg38.tsv.gz` (+ `.tbi`) | `data/input/predictors/` | Pinned predictor-score extracts specific to this pipeline run, read by Step 16. Hundreds of MB each — provide your own copies rather than committing them. AlphaMissense: [Zenodo record 10813168](https://zenodo.org/records/10813168) (concept DOI `10.5281/zenodo.8208688`), or the `gs://dm_alphamissense` Google Cloud Storage bucket. REVEL: the [official downloads page](https://sites.google.com/site/revelgenomics/downloads) (v1.3, all chromosomes), or its [Zenodo mirror](https://zenodo.org/records/7072866). Both need re-indexing (`tabix`) to produce the `.tbi` sidecar if the download doesn't already include one. |
+| `AlphaMissense_hg38.tsv.gz` (+ `.tbi`), `revel_hg38.tsv.gz` (+ `.tbi`) | `data/input/predictors/` | Pinned, pipeline-ready copies of each predictor's full genome-wide score file (not a row-subset of either dataset), read by Step 16. Hundreds of MB each — provide your own copies rather than committing them. AlphaMissense: [Zenodo record 10813168](https://zenodo.org/records/10813168) (concept DOI `10.5281/zenodo.8208688`), the `gs://dm_alphamissense` Google Cloud Storage bucket, or `storage.googleapis.com/dm_alphamissense/AlphaMissense_hg38.tsv.gz` directly — used as downloaded, just needs a tabix index. REVEL: the [official downloads page](https://sites.google.com/site/revelgenomics/downloads) (`revel_with_transcript_ids.csv.zip`, v1.3) or its [Zenodo mirror](https://zenodo.org/records/7072866) — unlike AlphaMissense, this needs reformatting (reheadered, sorted, bgzipped into the extended `aaref`/`aaalt`/`ensembl_transcriptid` layout Step 16's `--revel-mode aa` requires) before tabix-indexing, not just re-indexing. Exact commands for both, run manually (nothing in this repo automates them): see `vendor/variant-annotation/docs/annotate_predictors.md`'s "Data file preparation" section. |
 | MutPred2 training-variant source (`build_training_variant_files.py --mutpred2-source`) | `data/input/predictors/` | Recommended: the publicly-available training-variant data MutPred2 itself publishes, linked from the [vpejaver/mutpred2](https://github.com/vpejaver/mutpred2) README's "Additional Notes", at [`wo_exclusive_hgmd_mp2_training_data.txt`](https://mutpred.mutdb.org/wo_exclusive_hgmd_mp2_training_data.txt). If you separately have access to the full MutPred2 training dataset, you can provide that instead for more complete training-overlap coverage. See [`docs/build_training_variant_files.md`](build_training_variant_files.md#getting-the-mutpred2-training-variant-source). |
 | `data/input/mave_calibration/excalibr/png/` | `data/input/mave_calibration/excalibr/` | Per-dataset exCALIBR calibration plots, visual reference only (nothing reads these programmatically) — the functionally-necessary `json/` calibrations are bundled instead (see above). Gitignored (`data/input/mave_calibration/excalibr/*` in `.gitignore`), along with `before_tsc2_ldlr/`/`last/` (stale snapshots) and the raw bootstrap archive — only `.gitkeep`, `json/`, `fig4_data_oob.tar.gz`, and `figure4_data.seed.json.gz` are committed. |
 | Large, generic reference caches: SpliceAI VCFs, dbNSFP, `clinvar_cache/`, and the gnomAD Hail table cache | Inside your `variant-annotation` checkout (not this repo) | Follow `variant-annotation`'s own setup; point `VARIANT_ANNOTATION_DIR` at a checkout that already has them. Tens of GB — deliberately not duplicated here. Build/refresh the gnomAD cache once per checkout with `scripts/run_variant_annotation_pipeline.sh --prepare-gnomad-cache` (~6-7 hours). |
@@ -112,35 +103,11 @@ routes above.
 
 ### Where `mp2_annotations.csv.gz` comes from
 
-Assembled from three sources, each reduced to `gene_symbol`/`AA`/`MutPred2
-score` and concatenated row-wise (not joined): MaveDB's own per-variant
-MP2-properties export (`data_frame_missense_variants_MP2_properties.csv.gz`,
-1,120,798 rows), a small curated gene/amino-acid-change-keyed supplement
-(`mp2_annotated.tsv`, 985 rows), and a DDX3X-specific supplement
-(`ddx3x_mutpred2_annotated.tsv`, 3,867 rows -- DDX3X appears in neither of
-the other two sources, confirmed directly by grepping both).
-
-`src/combine_mutpred2_annotations.py` only accepts two positional arguments
-(`properties_file`, `annotated_file`), so it can reproduce the first two
-sources but not the DDX3X supplement baked into the committed
-`mp2_annotations.csv.gz` -- confirmed by row-count arithmetic (1,120,798 +
-985 + 3,867 matches the committed file's row count) and by the DDX3X gene
-check above. Regenerating `mp2_annotations.csv.gz` from scratch today needs
-an extra manual step to fold `ddx3x_mutpred2_annotated.tsv` in -- e.g. run
-the command below, then separately concatenate `ddx3x_mutpred2_annotated.tsv`
-(reduced to the same three columns, with its `MutPred2_score` column renamed
-to `MutPred2 score`) onto the result -- or extend the script to accept a
-third file. `mp2_annotations.csv.gz` and `mp2_gene_symbol_map.tsv` are
+Our team ran MutPred2 to obtain annotations for the coding variants in
+this dataset. `mp2_annotations.csv.gz` and `mp2_gene_symbol_map.tsv` are
 committed directly (see [Bundled](#bundled-in-this-repo-no-action-needed)
-above) rather than regenerated per run, so this only matters when refreshing
-them after a predictor-data update:
-
-```bash
-poetry run python -m src.combine_mutpred2_annotations \
-  data/input/predictors/data_frame_missense_variants_MP2_properties.csv.gz \
-  data/input/predictors/mp2_annotated.tsv \
-  data/input/predictors/mp2_annotations.csv.gz
-```
+above) rather than regenerated per run. A Zenodo-hosted copy may be made
+available later for convenience.
 
 ### Where the predictor training-variant sources come from
 
@@ -264,14 +231,7 @@ priority order:
    section), the same way `data/input/mave_calibration/excalibr/*` already
    is. Without matching `.gitignore` patterns, a future `git add -A` could
    commit them by accident.
-2. **Extend `combine_mutpred2_annotations.py` to also fold in
-   `ddx3x_mutpred2_annotated.tsv`** (see [Where `mp2_annotations.csv.gz`
-   comes from](#where-mp2_annotationscsvgz-comes-from) above), so
-   regenerating `mp2_annotations.csv.gz` after a predictor-data refresh is a
-   single command again instead of needing a manual extra concatenation
-   step. Also decide whether `ddx3x_mutpred2_scores_hgvsp.tsv` (not read by
-   anything) should be removed.
-3. **Update stale `data/raw_mave_data/` references now that it's gone.**
+2. **Update stale `data/raw_mave_data/` references now that it's gone.**
    `scripts/run_variant_annotation_pipeline.sh`'s header comment and data-flow
    diagram, `docs/variant_annotation_pipeline.md`'s "Data flow" section and
    several per-file exception notes, `README.md`'s Stage 1 description, and
@@ -284,28 +244,21 @@ priority order:
    `data/input/maves/`, `data/input/predictors/`, and `data/input/reference/`
    instead. The `.gitignore` comment above `data/intermediate/` ("Staging
    copy of `data/raw_mave_data/`...") should be corrected too.
-4. **Remove `data/figures/`.** It's an untracked, byte-for-byte duplicate of
+3. **Remove `data/figures/`.** It's an untracked, byte-for-byte duplicate of
    `data/output/figures/assets/extended_data_figures/Ext_Figure3_5/` and isn't
    referenced by any script, notebook, or doc — looks like a stray copy left
    over from a manual run.
-5. **Clean up `data/to organize/`.** Contains a stale `stats.txt` (referencing
+4. **Clean up `data/to organize/`.** Contains a stale `stats.txt` (referencing
    an old `data/mave_data/` output path that predates the `data/output/maves/`
    rename) and a duplicate `raw_mave_data/README.md`. Worth triaging and
    deleting now that the real `README.md` is gone.
-6. **Relocate the stray `data/input/mave_calibration/DDX3X_Radford_2023.json`.**
-   It sits directly under `data/input/mave_calibration/` rather than
-   `data/input/mave_calibration/excalibr/json/` alongside every other
-   calibration file, and its content is a slightly older revision of
-   `data/input/mave_calibration/excalibr/json/DDX3X_Radford_2023.json`
-   (fewer `point_ranges` entries) rather than an identical copy — worth
-   confirming which is current before deleting the other.
-7. **Consolidate the root-level `Supplementary_Data_*.v1.xlsx` files** (and
+5. **Consolidate the root-level `Supplementary_Data_*.v1.xlsx` files** (and
    the `data/output/supplementary_data/work/` scratch copies) into
    `data/output/supplementary_data/` or a dedicated `data/output/submission/`
    directory, rather than sitting at the repo root — keeps generated
    manuscript-submission artifacts out of the top-level listing alongside
    source files.
-8. **Refresh the per-notebook `README_*.md` files** under
+6. **Refresh the per-notebook `README_*.md` files** under
    `notebooks/analysis/` (`README_OddsPath_calculations.md`,
    `README_OddsPath_classifications.md`, `README_Variant_Classification_analysis.md`)
    — they still describe outputs landing in `outputs/`, `outputs/GeneSpecific_calibrations/`,
@@ -313,18 +266,18 @@ priority order:
    which predate the current `data/input/`/`data/output/` layout this page
    documents. `AGENTS.md`'s notebook-to-script conversion conventions already
    call for folding these into `docs/` — doing so would resolve the drift.
-9. **Fix the stale `exCALIBR/` entry in `AGENTS.md`'s repository map.** It
+7. **Fix the stale `exCALIBR/` entry in `AGENTS.md`'s repository map.** It
    describes a top-level `exCALIBR/` directory that no longer exists;
    calibration data now lives entirely under
    `data/input/mave_calibration/excalibr/`.
-10. ~~**Teach `build_training_variant_files.py --mutpred2-source` to accept
-    the publicly-downloadable MutPred2 training-variant source.**~~ Done —
-    `_iter_mutpred2_rows` now auto-detects and normalizes the public
-    substitute's column layout (leading `#`-comments, header row, extra
-    `DB_source_ID` column) alongside the full dataset's layout. See [Where
-    the predictor training-variant sources come
-    from](#where-the-predictor-training-variant-sources-come-from) above.
-11. **Track down and document `clustering_variants_revel_training_overlap.csv.gz`'s
-    actual origin.** Currently unverified — see [Where the predictor
-    training-variant sources come
-    from](#where-the-predictor-training-variant-sources-come-from) above.
+8. ~~**Teach `build_training_variant_files.py --mutpred2-source` to accept
+   the publicly-downloadable MutPred2 training-variant source.**~~ Done —
+   `_iter_mutpred2_rows` now auto-detects and normalizes the public
+   substitute's column layout (leading `#`-comments, header row, extra
+   `DB_source_ID` column) alongside the full dataset's layout. See [Where
+   the predictor training-variant sources come
+   from](#where-the-predictor-training-variant-sources-come-from) above.
+9. **Track down and document `clustering_variants_revel_training_overlap.csv.gz`'s
+   actual origin.** Currently unverified — see [Where the predictor
+   training-variant sources come
+   from](#where-the-predictor-training-variant-sources-come-from) above.

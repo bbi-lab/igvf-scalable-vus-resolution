@@ -274,12 +274,19 @@ condensed_assay_datasets <- c(
   'BRCA1_Findlay_2018',
   'BRCA2_Hu_2024',
   #'BRCA2_Sahu_2025_SGE',
+  'CHEK2_Gebbia_2024',
   #'GCK_Gersing_2023_complementation', # excluded -- no longer has any non-NA odds ratio
+  'KCNE1_Muhammad_2024_potassium_flux',
   'KCNH2_Jiang_2022',
   # 'KCNH2_O_Neill_2024_surface_expression',
   'KCNQ4_Zheng_2022_current_homozygous',
+  # LDLR_Tabet_2025_presence_VLDL excluded -- removed from the dataset
+  # entirely (see docs/variant_classification.md). LDLR_Tabet_2025_uptake
+  # excluded here too -- this version shows abundance only.
+  'LDLR_Tabet_2025_abundance',
   'MSH2_Jia_2021',
   'PALB2_IGVF',
+  'PTEN_Mighell_2018',
   'RAD51C_Olvera-León_2024',
   'RAD51D_IGVF',
   'SCN5A_Ma_2024',
@@ -506,7 +513,23 @@ condensed_assay_plot_df <-
     # See SHOW_LOW_CARRIER_STYLE above -- `Carrier cases`/`Carrier controls`
     # are never an exact nonzero count under 21 (AoU always reports those as
     # "<= 20"), so the censored flag already is the "<= 20" test.
-    low_carrier = `Carrier cases censored` | `Carrier controls censored`
+    low_carrier = `Carrier cases censored` | `Carrier controls censored`,
+    # Dataset names (e.g. "RAD51C_Olvera-León_2024") are too long to fit one
+    # panel-width strip at this font size and ran into neighboring panels
+    # unwrapped. str_wrap() only breaks at whitespace, and these names have
+    # none -- the underscore swap gives it break points (also reads better
+    # than a bare underscored identifier as a heading); done here, after
+    # every upstream Dataset %in%/join use above, so those keep matching the
+    # real identifier. Must match the same transform applied to Dataset in
+    # assay_count_annotations_df below, since facet routing for that layer
+    # is by exact string match.
+    # Width 20, not 18 -- at 18, KCNE1_Muhammad_2024_potassium_flux's name
+    # wrapped to 3 lines (every other dataset wraps to at most 2), and
+    # facet_nested_wrap shares one strip-row height across every panel row,
+    # not just this one's -- that single 3-line strip was eating into the
+    # panel-height budget for every row, squeezing the Classification axis's
+    # 18 tick labels into overlapping text even in rows with short headers.
+    Dataset = str_wrap(gsub('_', ' ', Dataset), width = 20)
   ) %>%
   left_join(gene_groups_df)
 
@@ -547,7 +570,7 @@ format_censored_count <- function(known, n_censored, upper) {
 assay_count_annotations_df <- bind_rows(
   assay_dataset_counts %>%
     transmute(
-      Gene,
+      Gene, Dataset,
       hjust = 0,
       text = sprintf(
         '%s cases',
@@ -556,7 +579,7 @@ assay_count_annotations_df <- bind_rows(
     ),
   assay_dataset_counts %>%
     transmute(
-      Gene,
+      Gene, Dataset,
       hjust = 1,
       text = sprintf(
         '%s controls',
@@ -564,10 +587,11 @@ assay_count_annotations_df <- bind_rows(
       )
     )
 ) %>%
-  # facet_nested_wrap facets on both Disease and Gene -- without Disease
+  # facet_nested_wrap facets on both Disease and Dataset -- without Disease
   # here too, ggplot can't route each row to its one matching panel and
   # broadcasts it into every panel instead (confirmed: this is exactly what
-  # happened before this join was added).
+  # happened before this join was added). Dataset itself already comes from
+  # assay_dataset_counts above, so only Disease (keyed by Gene) needs joining.
   left_join(gene_groups_df, by = 'Gene') %>%
   mutate(
     # condensed_assay_plot below plots pre-log10'd Odds Ratio/CI columns on
@@ -575,6 +599,9 @@ assay_count_annotations_df <- bind_rows(
     # which, unlike scale_x_log10(), handles -Inf/Inf natively, so both
     # ends of this annotation can sit exactly at their panel's true border.
     x = if_else(hjust == 0, -Inf, Inf),
+    # Must match the Dataset wrap applied in condensed_assay_plot_df above --
+    # this layer is routed to its panel by exact Dataset string match.
+    Dataset = str_wrap(gsub('_', ' ', Dataset), width = 20),
     # BAP1/MSH2/RAD51D's cases count is a range (e.g. "1,399-1,418"), and in
     # these narrower (5-across) panels that text is too wide for the
     # default 5pt without colliding with the controls text on the same
@@ -613,34 +640,44 @@ condensed_assay_plot <- ggplot(
   )
 ) +
   facet_nested_wrap(
-    facets = vars(Disease, Gene),
+    # Dataset, not Gene -- one panel per assay, so a gene with multiple
+    # assays (e.g. LDLR's uptake/abundance) gets one panel each instead of
+    # being collapsed/overlaid into a single gene-level panel.
+    facets = vars(Disease, Dataset),
     nrow = 3,
     scales = 'free_x',
+    # Dataset names (e.g. "RAD51C Olvera-León 2024") are much longer than
+    # the gene symbols the strip used to show. A labeller-based wrap
+    # (labeller(Dataset = label_wrap_gen(...))) left the text unwrapped and
+    # overrunning into neighboring panels -- confirmed this is specific to
+    # facet_nested_wrap/strip_nested, not a width problem, since the same
+    # labeller wraps fine on a plain facet_wrap(). Wrapping is done directly
+    # on the Dataset values instead (see condensed_assay_plot_df above),
+    # which renders correctly here.
     # Default solo_line = FALSE only draws the nest line under a Disease
     # header spanning 2+ genes (e.g. "Cancer"), not a single-gene one (e.g.
     # "Cardiovascular" above just KCNH2) -- that asymmetry misaligned the
     # single-gene headers (no line reserving/centering their text the same
     # way). Drawing it for every Disease header, solo or not, equalizes them.
     solo_line = TRUE,
-    # Disease keeps the default strip style; the per-gene strip gets extra
-    # bottom margin, reserving blank room below the gene name (within its
+    # Disease keeps the default strip style; the per-assay strip gets extra
+    # bottom margin, reserving blank room below the assay name (within its
     # own cell) for the Cases/Controls annotation below, so that content
-    # lands below the gene name and above the panel -- not above the
+    # lands below the assay name and above the panel -- not above the
     # Disease header, and not inside the panel either.
     strip = strip_nested(
       text_x = list(
         element_text(size = 7, face = 'bold'),
-        # bold.italic, not bold -- the Gene level only, since gene symbols
-        # are conventionally italicized and Disease (the other list element,
-        # above) isn't.
+        # Plain bold, not bold.italic -- the Dataset/assay level isn't a
+        # gene symbol, so it doesn't get the italic convention Gene used to.
         element_text(
-          size = 7, face = 'bold.italic',
+          size = 7, face = 'bold',
           margin = margin(t = 3, r = 3, b = if (SHOW_SAMPLE_SIZE_ANNOTATIONS) 9 else 3, l = 3)
         )
       ),
       # strip_nested()'s by_layer_x defaults to FALSE, which does NOT treat
       # the text_x list above as one element per nesting depth (Disease,
-      # then Gene) -- without this, the margin meant for just the Gene
+      # then Dataset) -- without this, the margin meant for just the Dataset
       # level was applied inconsistently, stretching the Disease level's
       # own cell and leaving dead space below "Cancer" etc. above its own
       # separator line.
@@ -664,12 +701,12 @@ condensed_assay_plot <- ggplot(
     aes(linewidth = low_carrier & SHOW_LOW_CARRIER_STYLE, linetype = low_carrier & SHOW_LOW_CARRIER_STYLE),
     position = position_dodge(width=0.5), fill='white'
   ) +
-  # Pin every per-Disease/Gene panel's x-axis (facet_nested_wrap scales =
+  # Pin every per-Disease/Dataset panel's x-axis (facet_nested_wrap scales =
   # 'free_x' above) to span at least Odds Ratio 0.9-3.0, same
   # broadcast-constant geom_blank trick as figure_predictor_plot uses for its
   # MSH2 panel above: a scalar aes(x=...) with no `data` argument inherits
   # condensed_assay_plot_df, so it's recycled across every row and lands one
-  # invisible point per existing Disease/Gene facet. x is log10'd here (see
+  # invisible point per existing Disease/Dataset facet. x is log10'd here (see
   # this plot's own x aes above) since scale_x_continuous(), not
   # scale_x_log10(), does the display work. A panel whose real OR_LI/OR_UI
   # already exceeds this range is unaffected; one narrower than it gets
@@ -771,10 +808,30 @@ print(fig_exd4)
 ggsave(
   '../../../data/output/figures/assets/extended_data_figure_2/extended_data_figure_2.pdf',
   fig_exd4,
-  width = 160, # Max 183
-  height = 247,
+  # Bumped from 160 towards the 183 max -- panel a now has enough assay
+  # panels (nrow = 3) to need up to 6 columns per row instead of the
+  # original 5, and the extra width gives each narrower panel's 2-line
+  # strip text room so neighboring panels' headings don't run into each
+  # other.
+  width = 183,
+  # Bumped from the original 247 in two steps. First to 270: panel a's
+  # assay-name strips now wrap onto 2 lines, which otherwise ate into the
+  # fixed design = area(1,1,6,6) panel region and squeezed the
+  # Classification axis's 18 levels into overlapping tick labels. Then to
+  # 340, switching to cairo_pdf below: the base pdf() device was silently
+  # substituting a narrow Hershey-vector approximation for the
+  # Classification axis's "≥"/"≤" labels (confirmed by comparing
+  # the two devices' output directly) rather than embedding the real
+  # Arial glyph, so tick labels fit at 270mm; cairo_pdf's correctly-sized
+  # (taller) glyphs need the extra room, confirmed with an isolated
+  # facet_wrap() repro that reproduced the overlap at 270mm-equivalent
+  # spacing and resolved it once each row had enough height.
+  height = 340,
   units = 'mm',
   family = 'Arial',
-  device = pdf, # JS 20260714
-  # device = cairo_pdf)
+  # cairo_pdf, not pdf -- the base pdf() device doesn't actually render
+  # the Classification axis's "≥"/"≤" tick labels as those
+  # Unicode glyphs at all; see the height comment above for how this was
+  # confirmed.
+  device = cairo_pdf,
   create.dir = TRUE)

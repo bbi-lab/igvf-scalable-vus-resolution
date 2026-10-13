@@ -1,6 +1,6 @@
 [project]
 name = "igvf-cvfg-pillar-project"
-version = "2.0.0-beta.1"
+version = "2.0.0"
 description = "Data processing pipeline for reclassifying variants of uncertain significance using functional and predictive evidence (IGVF CVFG)"
 authors = [
     { name = "Jeremy Stone", email = "74574922+jstone-uw@users.noreply.github.com" },

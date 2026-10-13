@@ -1,5 +1,75 @@
 # Changelog
 
+## v2.0.0 — 2026-10-13
+
+Everything since `v2.0.0-beta.1`. Promotes the beta to a final release:
+no breaking changes, but closes out several reproducibility gaps the beta
+left open (externally-produced inputs that weren't checked in or
+documented, a predictor/training-data provenance audit, and the manual
+figure-assembly step), plus a handful of MaveDB-fetching correctness
+fixes. 24 commits.
+
+### Reproducibility: externally-produced inputs now documented and checked in
+
+- **ExCALIBR calibration artifacts** (per-dataset JSON calibrations, the
+  Figure 4 out-of-bag export, the gene-specific predictor calibration seed
+  sheet, and ExCALIBR's own copy of the integrated dataset) are now checked
+  in and documented, correcting docs that previously claimed some of this
+  data had no source anywhere in the repo.
+- **Extended Data Figure 10** gained a full, reproducible pipeline
+  (`src/map_gnomad_ancestry.py`, `src/filter_pillar_data.py`) from raw
+  gnomAD v4.1 data through to the figure, replacing a checked-in snapshot
+  with no documented way to regenerate it.
+- **The biobank carrier odds-ratio workflow** is now documented end-to-end
+  (`docs/biobank_analysis.md`): this repo builds the input, a manual
+  All of Us Researcher Workbench hand-off computes the odds ratios, and the
+  result is checked back in. README's three-stage overview now shows both
+  this and the ExCALIBR hand-off as explicit "Interim" steps instead of
+  oddly-placed sub-items of Stages 1 and 2.
+- **Predictor and predictor-training-data provenance** was audited:
+  documented where AlphaMissense, REVEL, and the MutPred2 training-variant
+  source actually come from (including the REVEL reformatting step the
+  pipeline needs that wasn't documented anywhere), consolidated into a new
+  README "Preparation" section with working commands for every external
+  file the pipeline needs before a run. `build_training_variant_files.py`
+  now auto-detects and accepts MutPred2's publicly-downloadable
+  training-variant format directly. Added `.gitignore` entries for the
+  pinned AlphaMissense/REVEL files so they can't be committed by accident,
+  and removed stale documentation referencing raw MutPred2/DDX3X source
+  files that had since been deleted.
+
+### MaveDB data-fetching fixes
+
+- Synced the score-set URN list with `score_sets.tsv` (a stale TSC2_IGVF
+  URN was causing 404s; a dropped LDLR dataset's URN and a duplicate
+  BARD1_IGVF entry were cleaned up).
+- `fetch_mavedb_scores.py` now tolerates a 404 from MaveDB's
+  `/mapped-variants` endpoint instead of crashing, and its default output
+  path matches what the pipeline actually reads with no manual rename.
+- Documented the full validation of the API-based fetch route against the
+  SQL/DB version's output, and why each remaining difference doesn't
+  affect pipeline results.
+
+### Figure assembly (manual, Adobe Illustrator)
+
+- Documented and checked in the manual figure-assembly step for the first
+  time (`docs/figure_assembly.md`): the assembled Illustrator documents,
+  externally-sourced figure assets, and two reusable ExtendScript utilities
+  (`export_artboards.jsx`, `relink_extended_data_figures.jsx`).
+- Figure 4 gained a calibrated PDF export and was folded into the main
+  Illustrator assembly alongside Figures 2, 3, 5, and 6.
+- Extended Data Figure 2's panel a now facets by assay instead of gene
+  (so genes with multiple assays get one panel each), added
+  CHEK2/KCNE1/LDLR/PTEN datasets, and switched to `cairo_pdf` to fix
+  silently-substituted tick-label glyphs.
+
+### Other
+
+- Added `CITATION.cff` and a script to submit updated Supplementary Data 1
+  to the IGVF data portal.
+- Corrected README's MAVE dataset count (91 → 90), Zenodo citation, and
+  third-party data license/attribution coverage.
+
 ## v2.0.0-beta.1 — 2026-10-12
 
 Everything since the `v1.0` tag (the state behind the original bioRxiv

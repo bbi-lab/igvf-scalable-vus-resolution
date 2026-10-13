@@ -23,10 +23,8 @@ authors:
     family-names: Abderrazzaq
 repository-code: "https://github.com/bbi-lab/igvf-scalable-vus-resolution"
 license: BSD-3-Clause
-# CHANGEME: set version and date-released to match the git tag you release,
-# then re-run `cffconvert --validate` (or just re-check by eye) before tagging.
-version: "1.0.0"
-date-released: "2026-10-12"
+version: "2.0.0"
+date-released: "2026-10-13"
 references:
   - type: software
     title: "variant-annotation"

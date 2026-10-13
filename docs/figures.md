@@ -278,9 +278,16 @@ subsections below.
 
 ### Extended Data Figure 2
 
-`Extended_Data_Figure_2.R` -- odds-ratio forest plots for gene-specific vs.
-genome-wide predictor calibration (top) and per-assay ExCALIBR classification
-(bottom), faceted by gene/disease group. Plain `Rscript`, not an `.Rmd` --
+`Extended_Data_Figure_2.R` -- odds-ratio forest plots for per-assay ExCALIBR
+classification (panel a, top) and gene-specific vs. genome-wide predictor
+calibration (panel b, bottom). Panel a facets by Disease group then Dataset
+(one panel per assay, plain-bold heading, not italicized -- so a gene with
+more than one assay in `condensed_assay_datasets`, e.g. if LDLR's uptake
+assay were added back alongside abundance, gets one panel each rather than
+being overlaid into a single gene-level panel); panel b facets by Disease
+group then Gene (italicized heading), and is restricted to genes with an
+actual gene-specific calibration (BRCA1/BRCA2/MSH2/TP53, plus TSC2 if
+`INCLUDE_TSC2` is flipped on). Plain `Rscript`, not an `.Rmd` --
 same `tidyverse`/`patchwork`/`ggh4x`/`extrafont` dependencies and `r-figures`
 Docker service as `Figure_6b.R` (see Figure 5/6 above). Reads
 `data/input/biobank/IGVFFI3804AVJR.csv.gz`, downloaded separately from
@@ -672,9 +679,12 @@ Data Figure 6/7 above. It reads
 `data/input/gnomAD/gnomad_with_ancestry_af.csv` directly (gnomAD
 ancestry-group allele frequencies joined onto this project's REVEL
 classification, one row per variant) rather than `Supplementary_Data_5.xlsx`
--- these two files are produced upstream by `map_gnomad_ancestry_af_v2.py`
-(not part of this repo) and checked into `data/input/gnomAD/` directly, not
-rebuilt by anything in this pipeline.
+-- these two files are checked into `data/input/gnomAD/` directly rather
+than rebuilt by this script itself, but are reproducible from committed
+inputs via `src/filter_pillar_data.py` (category selection + REVEL
+classification) followed by `src/map_gnomad_ancestry.py` (gnomAD v4.1
+ancestry-AF annotation); see `docs/gnomad_ancestry_resolution.md`
+for the full obtain-gnomAD-data-through-generate-the-figure workflow.
 
 ```bash
 src/scripts/run_make_extended_data_figure_10.sh

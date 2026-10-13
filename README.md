@@ -457,6 +457,15 @@ src/scripts/run_ablation_variant_reclassification.sh \
 
 #### Extended Data Figure 10 (classification resolution rate by gnomAD ancestry group)
 
+Reads `data/input/gnomAD/vus_with_ancestry_af.csv` and
+`gnomad_with_ancestry_af.csv` directly -- if these aren't already present (a
+fresh checkout won't have them; they aren't produced by any other step
+above), prepare them first per
+[`docs/gnomad_ancestry_resolution.md`](docs/gnomad_ancestry_resolution.md).
+That requires a GRCh38 reference FASTA and gnomAD v4.1 sites VCFs, which
+aren't included in this repo and must be downloaded separately (see that doc
+for sources).
+
 ```bash
 src/scripts/run_make_extended_data_figure_10.sh
 ```

@@ -1,6 +1,6 @@
 [project]
 name = "igvf-cvfg-pillar-project"
-version = "0.1.0"
+version = "2.0.0-beta.1"
 description = "Data processing pipeline for reclassifying variants of uncertain significance using functional and predictive evidence (IGVF CVFG)"
 authors = [
     { name = "Jeremy Stone", email = "74574922+jstone-uw@users.noreply.github.com" },
@@ -17,6 +17,7 @@ dependencies = [
     "openpyxl>=3.1",
     "pandas>=2.2,<3.0",
     "pyliftover>=0.4",
+    "pysam>=0.22",
     "requests>=2.34",
     "scipy>=1.13",
     "statsmodels>=0.14",

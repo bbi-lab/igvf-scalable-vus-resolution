@@ -70,6 +70,17 @@ data/input/mave_calibration/excalibr/*
 data/input/biobank/*
 !data/input/biobank/.gitkeep
 
+# User-downloaded GRCh38 reference FASTA + gnomAD v4.1 sites VCFs for
+# src/map_gnomad_ancestry.py -- hundreds of GB, never committed. The small,
+# checked-in data/input/gnomAD/*.csv ancestry-mapped files (consumed by
+# src/make_extended_data_figure_10.py) live directly under data/input/gnomAD/
+# and are unaffected by these two patterns.
+data/input/gnomAD/reference/*
+!data/input/gnomAD/reference/.gitkeep
+
+data/input/gnomAD/vcf/*
+!data/input/gnomAD/vcf/.gitkeep
+
 data/output/*
 !data/output/supplementary_data/
 data/output/supplementary_data/*

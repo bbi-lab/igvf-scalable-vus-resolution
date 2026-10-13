@@ -48,11 +48,12 @@ import pandas as pd
 from matplotlib.patches import Patch
 from scipy.stats import norm
 
+from src.lib.gnomad import GROUPS
+
 DEFAULT_VUS_INPUT = Path("data/input/gnomAD/vus_with_ancestry_af.csv")
 DEFAULT_GNOMAD_INPUT = Path("data/input/gnomAD/gnomad_with_ancestry_af.csv")
 DEFAULT_OUTDIR = Path("data/output/figures/assets/extended_data_figure_10")
 
-GROUPS = ["afr", "amr", "asj", "eas", "fin", "mid", "nfe", "remaining", "sas"]
 REF_GROUP = "nfe"
 N_COMP = len(GROUPS) - 1
 NAMES = {

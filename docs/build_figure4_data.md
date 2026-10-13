@@ -1,10 +1,11 @@
 # build_figure4_data
 
-Rebuilds `notebooks/figures/figure_4/figure4_data.json.gz`, the cache
-`notebooks/figures/figure_4/figure4.ipynb` loads before calling `plot_figure4()`.
-Nothing in the repo previously generated that cache — it was committed
-pre-built. This script reconstructs the parts a current pipeline run can
-support, and carries the rest forward unchanged from a prior cache.
+Rebuilds `data/intermediate/figures/figure_4/figure4_data.json.gz`, the
+cache `notebooks/figures/figure_4/figure4.ipynb` loads before calling
+`plot_figure4()` -- today, only for panel d and part of panel e; see the
+note below. Nothing in the repo previously generated that cache — it was
+committed pre-built. This script reconstructs the parts a current pipeline
+run can support, and carries the rest forward unchanged from a prior cache.
 
 ## What gets rebuilt from scratch
 
@@ -17,9 +18,10 @@ support, and carries the rest forward unchanged from a prior cache.
 
 ## What can't be rebuilt by this script (must be carried forward)
 
-Pass `--cached-json` pointing at a prior `figure4_data.json.gz` (e.g.
-`notebooks/figures/figure_4/old_figure4_data.json.gz`) to carry these fields
-forward unchanged -- **this script** has no other source for them:
+Pass `--cached-json` pointing at a prior `figure4_data.json.gz` -- the
+checked-in `data/input/mave_calibration/excalibr/figure4_data.seed.json.gz`
+works -- to carry these fields forward unchanged. **This script** has no
+other source for them (see the note below for two of these three, though):
 
 - **Panel a's density-band fit** — `fits`, and `indv_summary`'s
   `priors`/`log_lr_plus`/`score_range`/`C`, plus the top-level `score_range`.
@@ -47,14 +49,28 @@ JSON calibration files above; see
 directly, which carries the raw bootstrap fits (`bootstrap_fits.json.gz`)
 and the out-of-bag confusion matrices (`panel_c.json`'s `danz_agg`/`auth_agg`)
 that this script can't reconstruct, plus the MSH2 scoreset and REVEL data
-this script *can*. Only panel d's cartoon and part of panel e's legacy
-genome-wide REVEL thresholds (`genome_wide_thresholds_4e`) still come from
-`--cached-json`'s blob -- see `figure4.ipynb`'s first cell. This script's
-own output (`figure4_data.json.gz`) is therefore mostly superseded for this
-notebook already; it's kept for the fields `fig4_data_oob.tar.gz` doesn't
-carry, and as a `--cached-json` source for anyone who wants to reconstruct
-`danzs_oob`/`auths_oob` into *this script's* schema rather than reading the
-tarball directly.
+this script *can*. Confirmed by inspecting the archive directly: it has no
+equivalent of panel d's `prior`/`Post_p`/`Post_b`/`p_data`/`b_data`, so that
+panel (and, by the notebook's own choice, part of panel e's legacy
+genome-wide REVEL thresholds, `genome_wide_thresholds_4e`) still comes from
+`--cached-json`'s blob -- see `figure4.ipynb`'s first cell. This script's own
+output is therefore mostly superseded for this notebook already; it's kept
+for the fields `fig4_data_oob.tar.gz` doesn't carry, and as a `--cached-json`
+source for anyone who wants `danzs_oob`/`auths_oob` in *this script's*
+schema rather than reading the tarball directly.
+
+`figure4_data.seed.json.gz` (the checked-in `--cached-json` source above) is
+a byte-identical backup of the cache originally committed directly to this
+repo, before this script existed. Its exact relationship to
+`fig4_data_oob.tar.gz` (same ExCALIBR analysis run or a separate one) isn't
+documented anywhere and wasn't verified here -- treat them as two
+independent externally-sourced artifacts that happen to cover overlapping
+ground, not as one confirmed to be derived from the other. It lives under
+`data/input/mave_calibration/excalibr/` alongside the other ExCALIBR
+artifacts for that reason (externally sourced, Figure-4-specific), even
+though it's consumed differently -- as a `--cached-json` seed, not read
+directly by any script or notebook the way the JSON calibrations and
+`fig4_data_oob.tar.gz` are.
 
 ## Known discrepancies vs. the original figure
 
@@ -86,9 +102,11 @@ tarball directly.
 
 ```bash
 src/scripts/run_build_figure4_data.sh \
-    --cached-json notebooks/figures/figure_4/old_figure4_data.json.gz
+    --cached-json data/input/mave_calibration/excalibr/figure4_data.seed.json.gz
 ```
 
 Optional flags: `--integrated-dataset`, `--excalibr-json-dir`,
 `--supplementary-data-4`, `--output` (defaults to
-`notebooks/figures/figure_4/figure4_data.json.gz`).
+`data/intermediate/figures/figure_4/figure4_data.json.gz`, a gitignored
+staging location -- `figure4.ipynb` reads it via a relative path, so run
+this before the notebook).

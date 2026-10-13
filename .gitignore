@@ -64,17 +64,19 @@ data/intermediate/
 # Generated/large data directories -- kept as empty folders in git via a
 # .gitkeep placeholder so the expected paths exist on a fresh clone, but their
 # actual contents (regenerated or hand-supplied locally) aren't tracked.
-# Two exceptions, checked in despite the blanket ignore: json/ (the small,
+# Three exceptions, checked in despite the blanket ignore: json/ (the small,
 # aggregated per-dataset ExCALIBR calibration summaries -- see
-# docs/load_excalibr_calibrations.md) and fig4_data_oob.tar.gz (the
-# out-of-bag export Figure 4 reads directly -- see docs/build_figure4_data.md).
-# Everything else here (png/, before_tsc2_ldlr/, last/, the raw bootstrap
-# archive) stays gitignored: either large, visual-reference-only, or a stale
-# snapshot.
+# docs/load_excalibr_calibrations.md), fig4_data_oob.tar.gz (the out-of-bag
+# export Figure 4 reads directly), and figure4_data.seed.json.gz (the seed
+# cache for the handful of Figure 4 fields that aren't in either of those --
+# see docs/build_figure4_data.md). Everything else here (png/,
+# before_tsc2_ldlr/, last/, the raw bootstrap archive) stays gitignored:
+# either large, visual-reference-only, or a stale snapshot.
 data/input/mave_calibration/excalibr/*
 !data/input/mave_calibration/excalibr/.gitkeep
 !data/input/mave_calibration/excalibr/json/
 !data/input/mave_calibration/excalibr/fig4_data_oob.tar.gz
+!data/input/mave_calibration/excalibr/figure4_data.seed.json.gz
 
 # Checked in despite the blanket ignore: the current All of Us stand-in for
 # the biobank carrier odds-ratio table (see docs/biobank_analysis.md).

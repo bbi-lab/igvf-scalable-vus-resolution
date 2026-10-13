@@ -114,6 +114,10 @@ Committed to this repo (no action needed):
 - `data/input/mave_calibration/excalibr/fig4_data_oob.tar.gz` — exCALIBR's
   out-of-bag export, read directly by Figure 4 (see
   [Section 3](#3-figure-preparation)).
+- `data/input/mave_calibration/excalibr/figure4_data.seed.json.gz` — the
+  `--cached-json` seed `src/build_figure4_data.py` needs for the one Figure
+  4 field (panel d's cartoon) that isn't in the out-of-bag export either
+  (see [`docs/build_figure4_data.md`](docs/build_figure4_data.md)).
 - `data/input/biobank/AoU-OR-estimates_2026-10-07.tsv.gz` — the current
   stand-in biobank carrier odds-ratio table (see
   [`docs/biobank_analysis.md`](docs/biobank_analysis.md)).
@@ -383,7 +387,7 @@ pipeline behind it.
 # 1. Rebuild figure4_data.json.gz, carrying forward fields that can't be
 #    regenerated (see docs/build_figure4_data.md)
 src/scripts/run_build_figure4_data.sh \
-  --cached-json notebooks/figures/figure_4/old_figure4_data.json.gz
+  --cached-json data/input/mave_calibration/excalibr/figure4_data.seed.json.gz
 
 # 2. Execute the notebook to produce data/output/figures/assets/figure_4.png
 src/scripts/run_notebook.sh --to notebook --execute \

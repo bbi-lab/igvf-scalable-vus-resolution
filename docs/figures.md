@@ -144,9 +144,9 @@ docker compose run --rm -w /usr/src/app/notebooks/figures/figure_3 \
 Directory: `notebooks/figures/figure_4/`. `figure4.ipynb` only *loads* a cached
 `figure4_data.json.gz` and calls `plot_figure4()` (in `plot_utils.py`); it
 does not compute anything itself. That cache used to be committed directly,
-pre-built, with no in-repo script that produced it. It isn't tracked in git
-at all right now -- it's moving to an intermediate data directory shortly --
-so regenerate it locally with step 1 below before running the notebook.
+pre-built, with no in-repo script that produced it. It's a gitignored
+intermediate now (`data/intermediate/figures/figure_4/figure4_data.json.gz`)
+-- regenerate it locally with step 1 below before running the notebook.
 
 `src/build_figure4_data.py` rebuilds part of that cache from current
 pipeline outputs, but `figure4.ipynb` itself actually sources panels a, b,
@@ -166,7 +166,7 @@ see `docs/build_figure4_data.md` for exactly which fields and why.
 # 1. Rebuild figure4_data.json.gz, carrying forward the fields that can't be
 #    regenerated (see docs/build_figure4_data.md)
 src/scripts/run_build_figure4_data.sh \
-  --cached-json notebooks/figures/figure_4/old_figure4_data.json.gz
+  --cached-json data/input/mave_calibration/excalibr/figure4_data.seed.json.gz
 
 # 2. Execute the notebook to produce data/output/figures/assets/figure_4.png
 src/scripts/run_notebook.sh --to notebook --execute \
@@ -176,16 +176,19 @@ src/scripts/run_notebook.sh --to notebook --execute \
   notebooks/figures/figure_4/figure4.ipynb
 ```
 
-Step 1 writes to `notebooks/figures/figure_4/figure4_data.json.gz` by default
-(override with `--output`); step 2 reads that same path. Step 2 writes
+Step 1 writes to `data/intermediate/figures/figure_4/figure4_data.json.gz`
+by default (override with `--output`); step 2 reads that same path (plus
+`data/input/mave_calibration/excalibr/fig4_data_oob.tar.gz` directly, for
+everything except panel d and part of panel e). Step 2 writes
 `data/output/figures/assets/figure_4.png` and a side-effect `executed_figure4.ipynb`
 (nbconvert's copy of the notebook with outputs attached, left in
 `notebooks/figures/figure_4/`) -- gitignored, so no need to delete it.
 
 `--cached-json` must point at a `figure4_data.json.gz`-shaped file;
-`old_figure4_data.json.gz` (a byte-identical backup of the originally
-committed cache) works. Without `--cached-json`, step 1 raises immediately
-and names the fields it can't source rather than guessing.
+`data/input/mave_calibration/excalibr/figure4_data.seed.json.gz` (a
+byte-identical backup of the originally committed cache) works. Without
+`--cached-json`, step 1 raises immediately and names the fields it can't
+source rather than guessing.
 
 See `docs/build_figure4_data.md` for what's actually reconstructed vs.
 carried forward, and the known discrepancies (ClinVar/gnomAD drift since the

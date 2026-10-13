@@ -6,16 +6,16 @@ Usage: src/scripts/run_build_figure4_data.sh --cached-json path [flags]
 
 Examples:
   src/scripts/run_build_figure4_data.sh \
-    --cached-json notebooks/figures/figure_4/old_figure4_data.json.gz
+    --cached-json data/input/mave_calibration/excalibr/figure4_data.seed.json.gz
 
 Notes:
-  - --cached-json has no usable default: three sub-panels can't be
+  - --cached-json has no usable default: panel d's cartoon can't be
     regenerated from scratch, only carried forward from a prior run (see
     docs/build_figure4_data.md), so it must be supplied explicitly.
   - Paths are interpreted relative to /usr/src/app in the container
     (bind-mounted there since this service only reads/writes this repo's
     own tree, unlike flag-variants).
-  - Writes notebooks/figures/figure_4/figure4_data.json.gz by default.
+  - Writes data/intermediate/figures/figure_4/figure4_data.json.gz by default.
   - Add --rebuild-image to force rebuilding the image.
   - Add --no-build-cache with --rebuild-image for a clean rebuild.
 EOF

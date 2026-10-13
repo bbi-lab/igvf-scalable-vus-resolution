@@ -1,9 +1,11 @@
-"""Rebuild notebooks/figures/figure_4/figure4_data.json.gz from current pipeline outputs.
+"""Rebuild data/intermediate/figures/figure_4/figure4_data.json.gz from current pipeline outputs.
 
-`figure4.ipynb` only *loads* that cache; nothing in the repo previously built it.
-This script reconstructs the parts that a current pipeline run can actually
-support, and carries the rest forward unchanged from a prior cache via
-``--cached-json``.
+`figure4.ipynb` only *loads* that cache (for panel d and part of panel e --
+every other panel now reads `fig4_data_oob.tar.gz` directly, see
+`docs/figures.md`'s Figure 4 section); nothing in the repo previously built
+it. This script reconstructs the parts that a current pipeline run can
+actually support, and carries the rest forward unchanged from a prior cache
+via ``--cached-json``.
 
 Reconstructed from scratch (panels a/b/e/f):
     - `scoreset_2018` / `scoreset`: `Scoreset` objects for the MSH2_Jia_2021
@@ -18,26 +20,29 @@ Reconstructed from scratch (panels a/b/e/f):
       calibration, built from the integrated dataset plus the
       `REVEL_gene_specific_calibration` sheet of `Supplementary_Data_4.xlsx`.
 
-NOT reconstructible from anything currently in this repo -- must be carried
-forward from a prior `figure4_data.json.gz` via `--cached-json`:
+NOT reconstructible by *this script* from anything currently in this repo --
+must be carried forward from a prior `figure4_data.json.gz` via
+`--cached-json`:
     - `fits`, and `indv_summary`'s `priors`/`log_lr_plus`/`score_range`/`C`,
-      and the top-level `score_range` (panel a): the smoothed density-band fit
-      requires exCALIBR's raw per-bootstrap fit output. The only exCALIBR
-      artifact checked into `data/input/mave_calibration/` is the *aggregated*
-      per-dataset summary (prior/point_ranges/etc.) -- the same fields
-      `src/load_excalibr_calibrations.py` reads. The 1000-entry raw bootstrap
-      ensemble isn't retained anywhere on disk.
-    - `danzs_oob`, `auths_oob`, `datasets` (panel c): out-of-bag confusion
-      matrices per MAVE dataset. This requires exCALIBR's out-of-bag
-      evidence-direction predictions, which aren't in any current pipeline
-      output either.
+      and the top-level `score_range` (panel a), and `danzs_oob`/`auths_oob`/
+      `datasets` (panel c): this script doesn't read exCALIBR's raw
+      per-bootstrap fit output or out-of-bag confusion matrices from
+      anywhere. Both are actually available in
+      `data/input/mave_calibration/excalibr/fig4_data_oob.tar.gz`
+      (`bootstrap_fits.json.gz` and `panel_c.json` respectively) -- but
+      `figure4.ipynb` now reads that archive directly for these panels
+      instead of going through this script's cache, so it has never been
+      worth teaching this script to read it too. Carried forward here only
+      for anyone who wants these fields in *this script's* JSON schema
+      specifically.
     - `prior`, `Post_p`, `Post_b`, `p_data`, `b_data` (panel d): this panel is
       an illustrative cartoon (the posterior curves it plots,
       `1 - x**2` and `exp(3x)/exp(3)`, are hardcoded directly in
       `plot_utils.plot_panel_d`, not derived from `p_data`/`b_data`). There is
       no recorded recipe for how the original synthetic `p_data`/`b_data`/
-      `Post_p`/`Post_b` values were generated, so they can only be carried
-      forward, not regenerated.
+      `Post_p`/`Post_b` values were generated, and they aren't in the
+      ExCALIBR export either, so they can only be carried forward, not
+      regenerated. This is the one genuinely irreplaceable carryover.
 
 Two notes on drift from the original figure:
     - The integrated dataset no longer has a plain `ID` column (variant
@@ -53,7 +58,8 @@ Two notes on drift from the original figure:
       and confirm with the paper authors before changing it.
 
 Usage:
-    python -m src.build_figure4_data --cached-json notebooks/figures/figure_4/old_figure4_data.json.gz \\
+    python -m src.build_figure4_data \\
+        --cached-json data/input/mave_calibration/excalibr/figure4_data.seed.json.gz \\
         [--integrated-dataset PATH] [--excalibr-json-dir PATH] [--supplementary-data-4 PATH] \\
         [--output PATH]
 
@@ -78,7 +84,7 @@ from plot_utils import fig_json_encoder, fig_json_hook
 DEFAULT_INTEGRATED_DATASET = Path("data/output/maves/integrated_variant_effect_dataset.tsv.gz")
 DEFAULT_EXCALIBR_JSON_DIR = Path("data/input/mave_calibration/excalibr/json")
 DEFAULT_SUPPLEMENTARY_DATA_4 = Path("data/output/supplementary_data/Supplementary_Data_4.xlsx")
-DEFAULT_OUTPUT = FIGURE_4_DIR / "figure4_data.json.gz"
+DEFAULT_OUTPUT = Path("data/intermediate/figures/figure_4/figure4_data.json.gz")
 
 MSH2_GENE = "MSH2"
 MSH2_DATASET = "MSH2_Jia_2021"
@@ -319,8 +325,9 @@ def build_figure4_data(
             "matrices (danzs_oob/auths_oob/datasets), and panel d's cartoon "
             "(prior/Post_p/Post_b/p_data/b_data) have no source anywhere in the "
             "current pipeline outputs -- see this module's docstring. Pass "
-            "--cached-json pointing at a prior figure4_data.json.gz (or "
-            "old_figure4_data.json.gz) to carry those fields forward unchanged."
+            "--cached-json pointing at a prior figure4_data.json.gz (or the checked-in "
+            "data/input/mave_calibration/excalibr/figure4_data.seed.json.gz) to carry "
+            "those fields forward unchanged."
         )
 
     integrated_df = load_integrated_dataset(integrated_dataset_path)

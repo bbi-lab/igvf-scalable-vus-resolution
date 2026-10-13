@@ -69,8 +69,9 @@ write directly to `data/input/maves/cvfg_variants.0.tsv` (Step 1's input;
 see [`docs/variant_annotation_pipeline.md`](variant_annotation_pipeline.md)):
 
 - **`src/mavedb_scores.sql`** — the source of truth. Run directly against a
-  local Postgres mirror of the MaveDB database. Requires DB access most
-  contributors won't have. Also holds the score-set URN list and five
+  local Postgres mirror of the MaveDB database. Requires direct access to
+  the MaveDB database, internal to our team — most contributors won't have
+  this. Also holds the score-set URN list and five
   dataset-specific manual overrides (CHEK2 preferred transcript, BRCA1_Findlay
   MANE Select version lift, NDUFAF6/PTEN `raw_hgvs_nt` blanking, and
   JAG1/TARDBP/SCN5A/KCNH2 target-sequence corrections).
@@ -224,13 +225,13 @@ Gitignored except per-directory `.gitkeep` placeholders (see `.gitignore`).
 Suggestions for keeping the data layout internally consistent, in rough
 priority order:
 
-1. **Add explicit `.gitignore` entries for the "never commit" predictor/MAVE
-   inputs.** `cvfg_variants.0.tsv`, `AlphaMissense_hg38.tsv.gz`/`.tbi`, and
-   `revel_hg38.tsv.gz`/`.tbi` are now a deliberate policy of "provide
-   locally, don't commit" (this page's [Not bundled](#not-bundled--you-must-add-or-download-or-provide-these-yourself)
-   section), the same way `data/input/mave_calibration/excalibr/*` already
-   is. Without matching `.gitignore` patterns, a future `git add -A` could
-   commit them by accident.
+1. **Add explicit `.gitignore` entries for `cvfg_variants.0.tsv`.** Done for
+   `AlphaMissense_hg38.tsv.gz`/`.tbi`, `revel_hg38.tsv.gz`/`.tbi`, and
+   `revel_with_transcript_ids.csv` (REVEL's raw, pre-reformat download) --
+   `cvfg_variants.0.tsv` is the one "never commit" file from this page's
+   [Not bundled](#not-bundled--you-must-add-or-download-or-provide-these-yourself)
+   section that still has no matching `.gitignore` pattern, so a future
+   `git add -A` could still commit it by accident.
 2. **Update stale `data/raw_mave_data/` references now that it's gone.**
    `scripts/run_variant_annotation_pipeline.sh`'s header comment and data-flow
    diagram, `docs/variant_annotation_pipeline.md`'s "Data flow" section and

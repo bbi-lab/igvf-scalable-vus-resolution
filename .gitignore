@@ -84,6 +84,16 @@ data/input/biobank/*
 !data/input/biobank/.gitkeep
 !data/input/biobank/AoU-OR-estimates_2026-10-07.tsv.gz
 
+# Pinned AlphaMissense/REVEL predictor-score files -- hundreds of MB each,
+# deliberately never committed; provide your own copies locally (see
+# README.md's Preparation section and docs/data.md). revel_with_transcript_ids.csv
+# is REVEL's raw download, before it's reformatted into revel_hg38.tsv.gz.
+data/input/predictors/AlphaMissense_hg38.tsv.gz
+data/input/predictors/AlphaMissense_hg38.tsv.gz.tbi
+data/input/predictors/revel_hg38.tsv.gz
+data/input/predictors/revel_hg38.tsv.gz.tbi
+data/input/predictors/revel_with_transcript_ids.csv
+
 # User-downloaded GRCh38 reference FASTA + gnomAD v4.1 sites VCFs for
 # src/map_gnomad_ancestry.py -- hundreds of GB, never committed. The small,
 # checked-in data/input/gnomAD/*.csv ancestry-mapped files (consumed by

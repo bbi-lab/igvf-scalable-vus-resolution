@@ -12,6 +12,9 @@ generates the manuscript's main and extended data figures.
 > significance.* bioRxiv (2026).
 > https://www.biorxiv.org/content/10.64898/2026.02.14.705848
 
+Before any of that, see [Preparation](#preparation) for the tools and data
+files every stage depends on.
+
 The pipeline runs in three stages, each covered in its own section below --
 with two external interim hand-offs in between, where data leaves this
 repository for a process this codebase can't run itself, and the result
@@ -42,6 +45,148 @@ multi-hour, multi-GB full run. See
 directly rather than through the pipeline) -- faster and narrower in scope
 than the smoke tests above, and intended for use during development rather
 than as an environment check.
+
+---
+
+## Preparation
+
+Do this once, before running any of the three numbered stages below.
+
+### Environmental prerequisites
+
+- **Docker and Docker Compose** — both `variant-annotation`'s steps and this
+  project's own annotation steps run as Docker containers, not directly on
+  the host.
+- **`tabix` and `bgzip`** (both from htslib) — needed on the host itself,
+  not in Docker, to prepare the AlphaMissense/REVEL predictor-score files
+  below (`tabix` to index both; `bgzip` as part of REVEL's reformatting
+  step). Install via your package manager (e.g. `apt install tabix`,
+  `brew install htslib`) or alongside `samtools`.
+- **A `variant-annotation` checkout** (Stage 1) — either the vendored
+  submodule (`git submodule update --init vendor/variant-annotation`) or
+  your own existing checkout that already has the large reference caches
+  downloaded (see below), pointed to via
+  `export VARIANT_ANNOTATION_DIR=/path/to/checkout`. See
+  [`docs/variant_annotation_pipeline.md`](docs/variant_annotation_pipeline.md)
+  for the full architecture and the submodule/override convention.
+- **Poetry** (see [Software requirements](#software-requirements) below) —
+  needed to build this project's own Docker image (`Dockerfile`/`compose.yaml`)
+  for the steps it contributes to the pipeline.
+- **A gnomAD Hail table cache** (Stage 1), built once per
+  `variant-annotation` checkout via
+  `scripts/run_variant_annotation_pipeline.sh --prepare-gnomad-cache` (can
+  take 6-7 hours) — not needed if `VARIANT_ANNOTATION_DIR` already points
+  at a checkout where this has been done.
+
+### Data-file prerequisites
+
+Committed to this repo (no action needed):
+
+- `data/input/maves/score_sets.tsv`, `Supplementary_Data_3.xlsx`,
+  `Supp_Data1_column_description.xlsx` — this project's own dataset-name
+  mapping, curation metadata, and column documentation.
+- `data/input/reference/MANE.GRCh38.v1.5.summary.txt.gz` — RefSeq/Ensembl
+  transcript mapping.
+- `data/input/predictors/mp2_annotations.csv.gz`,
+  `data/input/predictors/mp2_gene_symbol_map.tsv` — MutPred2 scores; our
+  team ran MutPred2 to obtain annotations for this dataset's coding
+  variants (see [`docs/data.md`](docs/data.md#where-mp2_annotationscsvgz-comes-from)).
+- `data/input/predictors/clustering_variants_revel_training_overlap.csv.gz`,
+  `data/input/predictors/supplementary_data_3_gene_entrez_ids.tsv` —
+  upstream sources `build_training_variant_files` consumes to build the
+  REVEL side of the predictor training-overlap flags (see
+  [`docs/build_training_variant_files.md`](docs/build_training_variant_files.md)).
+
+(The exCALIBR calibration files and the biobank carrier odds-ratio table
+are also already committed, but aren't needed until after Stage 1 and
+Stage 2 respectively — see their own sections,
+[Interim: ExCALIBR calibration](#interim-excalibr-calibration-external) and
+[Interim: Biobank carrier odds-ratio analysis](#interim-biobank-carrier-odds-ratio-analysis-external),
+for what each file is.)
+
+Not committed — you must populate, download, or build these yourself, all
+for Stage 1:
+
+1. **`data/input/maves/cvfg_variants.0.tsv`** — this project's own variant
+   list, Step 1's input. Without access to a local MaveDB Postgres mirror,
+   use the public-API script, which writes directly to
+   `data/input/maves/cvfg_variants.0.tsv` by default:
+
+   ```bash
+   poetry run python -m src.fetch_mavedb_scores
+   ```
+
+   With direct access to the MaveDB database (internal to our team — most
+   end users won't have this, but it's documented here for completeness),
+   `src/mavedb_scores.sql` is the source of truth instead (run with
+   `psql -f src/mavedb_scores.sql your_mavedb_db`, then export the final
+   `SELECT` to `data/input/maves/cvfg_variants.0.tsv`).
+
+   Either way, once the file is at `data/input/maves/cvfg_variants.0.tsv`,
+   `scripts/run_variant_annotation_pipeline.sh` stages it into
+   `data/intermediate/variant_annotation/data/` automatically — no manual
+   copy step needed. See
+   [Where `cvfg_variants.0.tsv` comes from](docs/data.md#where-cvfg_variants0tsv-comes-from)
+   in `docs/data.md` for full details, known differences between the two
+   routes, and why the API version isn't yet validated against the SQL
+   version's output. (A Zenodo-hosted copy may be made available later for
+   convenience; none exists yet.)
+
+2. **AlphaMissense predictor scores** (`data/input/predictors/AlphaMissense_hg38.tsv.gz`
+   + `.tbi`) — download and tabix-index as-is, no reformatting needed:
+
+   ```bash
+   curl -o data/input/predictors/AlphaMissense_hg38.tsv.gz \
+     https://storage.googleapis.com/dm_alphamissense/AlphaMissense_hg38.tsv.gz
+   tabix -s 1 -b 2 -e 2 data/input/predictors/AlphaMissense_hg38.tsv.gz
+   ```
+
+3. **REVEL predictor scores** (`data/input/predictors/revel_hg38.tsv.gz` +
+   `.tbi`) — unlike AlphaMissense, REVEL's own download needs reformatting
+   first: this pipeline's `--revel-mode aa` needs `aaref`/`aaalt`/
+   `ensembl_transcriptid` columns laid out in a specific order, which the
+   raw REVEL distribution doesn't do directly:
+
+   ```bash
+   # Download revel_with_transcript_ids.csv.zip from
+   # https://sites.google.com/site/revelgenomics/downloads, then:
+   unzip revel_with_transcript_ids.csv.zip
+   tail -n +2 revel_with_transcript_ids.csv \
+     | awk -F',' 'NF>=9 && $3!="" && $3!="." \
+                  {print $1"\t"$3"\t"$4"\t"$5"\t"$8"\t"$6"\t"$7"\t"$9}' \
+     | (printf '#chr\tpos\tref\talt\trevel_score\taaref\taaalt\tensembl_transcriptid\n'; sort -k1,1V -k2,2n) \
+     | bgzip > data/input/predictors/revel_hg38.tsv.gz
+   tabix -s 1 -b 2 -e 2 -S 1 data/input/predictors/revel_hg38.tsv.gz
+   ```
+
+   See `vendor/variant-annotation/docs/annotate_predictors.md`'s "Data file
+   preparation" and "REVEL disambiguation modes" sections for why, and for
+   the other `--revel-mode` options.
+
+4. **MutPred2 training-variant source**
+   (`data/input/predictors/mp2_actual_training_data.txt.gz`) — feeds
+   `build_training_variant_files`, which Step 16 runs automatically with no
+   path override, so the file must land at exactly this path. The source
+   itself isn't gzip-compressed, so pipe it through `gzip` on the way in:
+
+   ```bash
+   curl -s https://mutpred.mutdb.org/wo_exclusive_hgmd_mp2_training_data.txt \
+     | gzip > data/input/predictors/mp2_actual_training_data.txt.gz
+   ```
+
+   This is a publicly-shareable subset of MutPred2's own training set (it
+   omits some variants MutPred2 can't redistribute due to a third-party
+   license). If you separately have access to the full training dataset,
+   use that instead, at the same destination path — see
+   [`docs/build_training_variant_files.md`](docs/build_training_variant_files.md#getting-the-mutpred2-training-variant-source)
+   for details and for what the substitute above is missing.
+
+5. **A `variant-annotation` checkout with the large, generic reference
+   caches already downloaded**: SpliceAI VCFs, dbNSFP, `clinvar_cache/`,
+   and the gnomAD Hail table cache above. These are tens of GB and are
+   deliberately not duplicated into this repo — follow `variant-annotation`'s
+   own setup to populate them in whichever checkout `VARIANT_ANNOTATION_DIR`
+   points at.
 
 ---
 
@@ -81,85 +226,8 @@ Full architecture, the submodule/override convention, and a non-obvious
 — read that before touching `scripts/variant_annotation_pipeline.sh` or its
 wrapper scripts.
 
-### Environmental prerequisites
-
-- **Docker and Docker Compose** — both `variant-annotation`'s steps and this
-  project's own annotation steps run as Docker containers, not directly on
-  the host.
-- **A `variant-annotation` checkout** — either the vendored submodule
-  (`git submodule update --init vendor/variant-annotation`) or your own
-  existing checkout that already has the large reference caches downloaded
-  (see below), pointed to via `export VARIANT_ANNOTATION_DIR=/path/to/checkout`.
-- **Poetry** (see [Software requirements](#software-requirements) below) —
-  needed to build this project's own Docker image (`Dockerfile`/`compose.yaml`)
-  for the steps it contributes to the pipeline.
-- **A gnomAD Hail table cache**, built once per `variant-annotation`
-  checkout via `scripts/run_variant_annotation_pipeline.sh --prepare-gnomad-cache`
-  (can take 6-7 hours) — not needed if `VARIANT_ANNOTATION_DIR` already
-  points at a checkout where this has been done.
-
-### Data-file prerequisites
-
-Committed to this repo (no action needed):
-
-- `data/input/maves/score_sets.tsv`,
-  `data/input/maves/Supp_Data1_column_description.xlsx` — this project's own
-  dataset-name mapping and column documentation.
-- `data/input/reference/MANE.GRCh38.v1.5.summary.txt.gz` — RefSeq/Ensembl
-  transcript mapping.
-- `data/input/predictors/AlphaMissense_hg38.tsv.gz` (+ `.tbi`),
-  `data/input/predictors/revel_hg38.tsv.gz` (+ `.tbi`)
-  — pinned predictor score files specific to this pipeline run.
-- `data/input/mave_calibration/excalibr/json/` — per-dataset exCALIBR JSON
-  calibrations (see [Section 2](#2-data-analysis--variant-classification-and-table-preparation)).
-- `data/input/mave_calibration/integrated_variant_effect_dataset_with_excalibr.csv.gz`
-  — the exCALIBR calibration run's own copy of the integrated dataset (see
-  [Adding ExCALIBR evidence columns](#adding-excalibr-evidence-columns-supplementary-data-1)
-  below).
-- `data/input/mave_calibration/Supplementary_Data_4.seed.xlsx` — a seed
-  workbook with the externally-sourced, gene-specific predictor calibration
-  sheets pre-populated (see
-  [`docs/load_excalibr_calibrations.md`](docs/load_excalibr_calibrations.md#where-the-gene-specific-calibration-sheets-come-from)).
-- `data/input/mave_calibration/excalibr/fig4_data_oob.tar.gz` — exCALIBR's
-  out-of-bag export, read directly by Figure 4 (see
-  [Section 3](#3-figure-preparation)).
-- `data/input/mave_calibration/excalibr/figure4_data.seed.json.gz` — the
-  `--cached-json` seed `src/build_figure4_data.py` needs for the one Figure
-  4 field (panel d's cartoon) that isn't in the out-of-bag export either
-  (see [`docs/build_figure4_data.md`](docs/build_figure4_data.md)).
-- `data/input/biobank/AoU-OR-estimates_2026-10-07.tsv.gz` — the current
-  stand-in biobank carrier odds-ratio table (see
-  [`docs/biobank_analysis.md`](docs/biobank_analysis.md)).
-
-Not committed — you must populate or point at these yourself:
-
-- `data/input/maves/cvfg_variants.0.tsv` — this project's own variant list,
-  Step 1's input. Generate it locally before a full run (or before
-  `--step 1`). Without access to a local MaveDB Postgres mirror, use the
-  public-API script, which writes directly to
-  `data/input/maves/cvfg_variants.0.tsv` by default:
-
-  ```bash
-  poetry run python -m src.fetch_mavedb_scores
-  ```
-
-  With DB access, `src/mavedb_scores.sql` is the source of truth instead
-  (run with `psql -f src/mavedb_scores.sql your_mavedb_db`, then export the
-  final `SELECT` to `data/input/maves/cvfg_variants.0.tsv`).
-
-  Either way, once the file is at `data/input/maves/cvfg_variants.0.tsv`,
-  `scripts/run_variant_annotation_pipeline.sh` stages it into
-  `data/intermediate/variant_annotation/data/` automatically — no manual
-  copy step needed. See
-  [Where `cvfg_variants.0.tsv` comes from](docs/data.md#where-cvfg_variants0tsv-comes-from)
-  in `docs/data.md` for full details, known differences between the two
-  routes, and why the API version isn't yet validated against the SQL
-  version's output. (A Zenodo-hosted copy may be made available later for
-  convenience; none exists yet.)
-- A `variant-annotation` checkout with the large, generic reference caches
-  already downloaded: SpliceAI VCFs, dbNSFP, `clinvar_cache/`, and the
-  gnomAD Hail table cache above. These are tens of GB and are deliberately
-  not duplicated into this repo.
+Environmental and data-file prerequisites for this stage are covered in
+[Preparation](#preparation) above.
 
 ### Running it
 

@@ -23,7 +23,7 @@ manual.
 | `data/input/maves/CHEK2_Gebbia_2024.xlsx` | CHEK2 variant filtering annotations, referenced by the OddsPath notebooks. |
 | `data/input/reference/MANE.GRCh38.v1.5.summary.txt.gz` | RefSeq/Ensembl transcript accession mapping. Small enough to commit despite being generic reference data; read by variant-annotation pipeline Step 2. |
 | `data/input/reference/extended_ensembl_consequence.csv.gz` | CVFG-specific VEP-term-to-SO-summary-term mapping, read by `annotate_simplified_consequence` (Step 17). |
-| `data/input/predictors/clustering_variants_revel_training_overlap.csv.gz`, `data/input/predictors/mp2_actual_training_data.txt.gz`, `data/input/predictors/supplementary_data_3_gene_entrez_ids.tsv` | Upstream training-variant sources consumed by `build_training_variant_files` (a preparatory step Step 13 runs automatically) — see [`docs/build_training_variant_files.md`](build_training_variant_files.md). |
+| `data/input/predictors/clustering_variants_revel_training_overlap.csv.gz`, `data/input/predictors/supplementary_data_3_gene_entrez_ids.tsv` | Upstream training-variant sources consumed by `build_training_variant_files` (a preparatory step Step 16 runs automatically) — see [`docs/build_training_variant_files.md`](build_training_variant_files.md). The MutPred2 training-variant source itself isn't bundled — see [Not bundled](#not-bundled--you-must-add-or-download-or-provide-these-yourself) below. |
 | `data/input/predictors/mp2_annotations.csv.gz`, `data/input/predictors/mp2_gene_symbol_map.tsv` | MutPred2 scores (`gene_symbol`/`AA`/`MutPred2 score`) and the `CALM1, CALM2, CALM3` → `CALM1` gene-symbol remap, read directly by Step 16 (`--mutpred2-properties-file`/`--mutpred2-gene-symbol-map-file`). Small enough to commit, unlike the AlphaMissense/REVEL files below. See [Where `mp2_annotations.csv.gz` comes from](#where-mp2_annotationscsvgz-comes-from) below. |
 | `data/filtering/*.tsv` | Per-dataset variant-filtering annotations (`BAP1_Waters_2024.tsv`, `CHEK2_Gebbia_2024.tsv`, `DDX3X_Radford_2023.tsv`, `OTC_Lo_2023.tsv`, `RAD51C_Olvera-León_2024.tsv`), read by `flag_variants` (`--filtering-dir`, default `data/filtering`). |
 | `data/input/mave_calibration/excalibr/json/` | Per-dataset exCALIBR point-value calibrations, read by `load_excalibr_calibrations` into `Supplementary_Data_4.xlsx`'s `ExCALIBR_calibrations` sheet. Produced by an external ExCALIBR calibration run that itself consumes this repo's own integrated dataset — see [`docs/load_excalibr_calibrations.md`](load_excalibr_calibrations.md#where-the-calibration-json-files-come-from). |
@@ -60,7 +60,8 @@ fetched/regenerated per checkout:
 | What | Where it goes | How to get it |
 |---|---|---|
 | `cvfg_variants.0.tsv` | `data/input/maves/` | Produced via `src/mavedb_scores.sql` (DB access) or `src/fetch_mavedb_scores.py` (public API) — see [Where `cvfg_variants.0.tsv` comes from](#where-cvfg_variants0tsv-comes-from) below. |
-| `AlphaMissense_hg38.tsv.gz` (+ `.tbi`), `revel_hg38.tsv.gz` (+ `.tbi`) | `data/input/predictors/` | Pinned predictor-score extracts specific to this pipeline run, read by Step 16. Hundreds of MB each — provide your own copies rather than committing them. |
+| `AlphaMissense_hg38.tsv.gz` (+ `.tbi`), `revel_hg38.tsv.gz` (+ `.tbi`) | `data/input/predictors/` | Pinned predictor-score extracts specific to this pipeline run, read by Step 16. Hundreds of MB each — provide your own copies rather than committing them. AlphaMissense: [Zenodo record 10813168](https://zenodo.org/records/10813168) (concept DOI `10.5281/zenodo.8208688`), or the `gs://dm_alphamissense` Google Cloud Storage bucket. REVEL: the [official downloads page](https://sites.google.com/site/revelgenomics/downloads) (v1.3, all chromosomes), or its [Zenodo mirror](https://zenodo.org/records/7072866). Both need re-indexing (`tabix`) to produce the `.tbi` sidecar if the download doesn't already include one. |
+| MutPred2 training-variant source (`build_training_variant_files.py --mutpred2-source`) | `data/input/predictors/` | Recommended: the publicly-available training-variant data MutPred2 itself publishes, linked from the [vpejaver/mutpred2](https://github.com/vpejaver/mutpred2) README's "Additional Notes", at [`wo_exclusive_hgmd_mp2_training_data.txt`](https://mutpred.mutdb.org/wo_exclusive_hgmd_mp2_training_data.txt). If you separately have access to the full MutPred2 training dataset, you can provide that instead for more complete training-overlap coverage. See [`docs/build_training_variant_files.md`](build_training_variant_files.md#getting-the-mutpred2-training-variant-source). |
 | `data/input/mave_calibration/excalibr/png/` | `data/input/mave_calibration/excalibr/` | Per-dataset exCALIBR calibration plots, visual reference only (nothing reads these programmatically) — the functionally-necessary `json/` calibrations are bundled instead (see above). Gitignored (`data/input/mave_calibration/excalibr/*` in `.gitignore`), along with `before_tsc2_ldlr/`/`last/` (stale snapshots) and the raw bootstrap archive — only `.gitkeep`, `json/`, `fig4_data_oob.tar.gz`, and `figure4_data.seed.json.gz` are committed. |
 | Large, generic reference caches: SpliceAI VCFs, dbNSFP, `clinvar_cache/`, and the gnomAD Hail table cache | Inside your `variant-annotation` checkout (not this repo) | Follow `variant-annotation`'s own setup; point `VARIANT_ANNOTATION_DIR` at a checkout that already has them. Tens of GB — deliberately not duplicated here. Build/refresh the gnomAD cache once per checkout with `scripts/run_variant_annotation_pipeline.sh --prepare-gnomad-cache` (~6-7 hours). |
 | `IGVFFI3804AVJR.csv.gz` | `data/input/biobank/` | The long-term, citable source for the biobank carrier odds-ratio table used by a subset of figures — currently unavailable pending a re-export from Zenodo (no working download URL as of this writing; a download link will be added here once one exists). A stand-in produced in All of Us's Researcher Workbench is bundled instead — see [`docs/biobank_analysis.md`](biobank_analysis.md). |
@@ -141,6 +142,46 @@ poetry run python -m src.combine_mutpred2_annotations \
   data/input/predictors/mp2_annotations.csv.gz
 ```
 
+### Where the predictor training-variant sources come from
+
+The files `build_training_variant_files` consumes (see [Bundled](#bundled-in-this-repo-no-action-needed)
+and [Not bundled](#not-bundled--you-must-add-or-download-or-provide-these-yourself)
+above, and [`docs/build_training_variant_files.md`](build_training_variant_files.md))
+have different origin stories:
+
+- **The MutPred2 training-variant source is a public download, not a
+  committed file.** Download the training-variant data MutPred2 itself
+  publishes — linked from the
+  [vpejaver/mutpred2](https://github.com/vpejaver/mutpred2) README's
+  "Additional Notes" — at
+  [`wo_exclusive_hgmd_mp2_training_data.txt`](https://mutpred.mutdb.org/wo_exclusive_hgmd_mp2_training_data.txt).
+  Pass it to `build_training_variant_files.py --mutpred2-source`, which
+  auto-detects its column layout. If you separately have access to the
+  full MutPred2 training dataset, you can provide that instead via the
+  same flag — the script auto-detects the format difference and handles
+  it — for more complete training-overlap coverage. See
+  [`docs/build_training_variant_files.md`](build_training_variant_files.md#getting-the-mutpred2-training-variant-source)
+  for details.
+
+- **`clustering_variants_revel_training_overlap.csv.gz`'s origin is
+  unconfirmed.** REVEL's own [downloads page](https://sites.google.com/site/revelgenomics/downloads)
+  publishes only genome-wide scores, not a separate training-variant list,
+  so this file wasn't pulled from there as-is. Its columns
+  (`CHROM,POS,REF,ALT,protein_variant,short_id,gene_symbol,ensembl_prot_id`)
+  look like an in-house join between some REVEL training-variant list and
+  Ensembl transcript/protein IDs, most plausibly built from the REVEL paper's
+  own supplementary data (Ioannidis et al. 2016, *AJHG*, supplementary file
+  `mmc1` on [sciencedirect.com](https://www.sciencedirect.com/science/article/pii/S0002929716303706))
+  — but that supplement returned HTTP 403 when fetched directly, so this
+  remains unverified rather than confirmed.
+
+- **`supplementary_data_3_gene_entrez_ids.tsv` is authored in-house, not
+  sourced externally.** It's a static `gene_symbol` → `entrez_gene_id`
+  lookup generated from `Supplementary_Data_3.xlsx`'s own gene list (e.g.
+  via mygene.info), not something downloaded from a predictor's own site —
+  see "Why the MutPred2 source needs a gene-ID lookup" in
+  [`docs/build_training_variant_files.md`](build_training_variant_files.md).
+
 ### Variant-annotation pipeline: data dependencies / prerequisites
 
 Everything the Dockerized variant-annotation pipeline
@@ -181,7 +222,7 @@ data/intermediate/
 │       │                                   # Staged from data/input/predictors/ for Step 16
 │       └── revel_training_variants.tsv, mutpred2_training_variants.tsv
 │                                           # Written by build_training_variant_files
-│                                           # ahead of Step 13
+│                                           # ahead of Step 16
 └── figures/
     └── figure_2/                          # PP_ProcessBigDataFrame.ipynb's split-out
         ├── SGEsubset.xlsx                 # subsets for Figure 2's panel notebooks
@@ -276,3 +317,14 @@ priority order:
    describes a top-level `exCALIBR/` directory that no longer exists;
    calibration data now lives entirely under
    `data/input/mave_calibration/excalibr/`.
+10. ~~**Teach `build_training_variant_files.py --mutpred2-source` to accept
+    the publicly-downloadable MutPred2 training-variant source.**~~ Done —
+    `_iter_mutpred2_rows` now auto-detects and normalizes the public
+    substitute's column layout (leading `#`-comments, header row, extra
+    `DB_source_ID` column) alongside the full dataset's layout. See [Where
+    the predictor training-variant sources come
+    from](#where-the-predictor-training-variant-sources-come-from) above.
+11. **Track down and document `clustering_variants_revel_training_overlap.csv.gz`'s
+    actual origin.** Currently unverified — see [Where the predictor
+    training-variant sources come
+    from](#where-the-predictor-training-variant-sources-come-from) above.

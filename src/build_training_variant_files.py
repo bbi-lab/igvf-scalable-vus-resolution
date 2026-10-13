@@ -2,11 +2,12 @@
 from richer upstream training-variant sources, for use with annotate_predictors.py's
 --revel-training-file and --mutpred2-training-file.
 
-This is a preparatory step for the variant-annotation pipeline's Step 12
-(REVEL and AlphaMissense annotation; see docs/variant_annotation_pipeline.md
-and docs/build_training_variant_files.md) -- run it beforehand so Step 12 can
-pick up its output. `scripts/variant_annotation_pipeline.sh`'s `step_12` does
-this automatically.
+This is a preparatory step for the variant-annotation pipeline's Step 16
+(predictors: AlphaMissense, MutPred2, REVEL; see
+docs/variant_annotation_pipeline.md and docs/build_training_variant_files.md)
+-- run it beforehand so Step 16 can pick up its output.
+`scripts/variant_annotation_pipeline.sh`'s `step_16` does this
+automatically.
 
 Reads from data/input/predictors/ (this project's own committed source data,
 overridable with --input-dir) and writes into
@@ -22,7 +23,8 @@ REVEL: <input-dir>/clustering_variants_revel_training_overlap.csv.gz
   Genome-wide REVEL-training-overlap list with genomic coordinates and a
   1-letter protein_variant column (e.g. "Q416K"). All rows are SNVs.
 
-MutPred2: <input-dir>/mp2_actual_training_data.txt.gz
+MutPred2: <input-dir>/mp2_actual_training_data.txt.gz (default; override with
+--mutpred2-source)
   One row per gene: column 1 is an opaque accession id, column 2 is a
   comma-separated list of 1-letter protein variants (e.g. "N697S"), column
   3 is a comma-separated list of "1"/"0" flags aligned positionally with
@@ -31,6 +33,19 @@ MutPred2: <input-dir>/mp2_actual_training_data.txt.gz
   NCBI/Entrez Gene ID -- *not* an HGNC ID, confirmed by cross-checking known
   genes (e.g. BRCA1 -> 672, BRCA2 -> 675, BAP1 -> 8314). There is no header
   row.
+
+  Download the training-variant data MutPred2 itself publishes -- linked
+  from the vpejaver/mutpred2 GitHub README's "Additional Notes" -- at
+  https://mutpred.mutdb.org/wo_exclusive_hgmd_mp2_training_data.txt. Pass it
+  via --mutpred2-source; its shape differs (8 leading "#"-comment lines, a
+  header row starting "Internal_ID", and an extra DB_source_ID column that
+  shifts Entrez_gene/Cluster_50 one column later), and `_iter_mutpred2_rows`
+  below detects and normalizes both shapes. If you separately have access
+  to the full MutPred2 training dataset, you can provide that instead via
+  --mutpred2-source -- the auto-detection above handles that format
+  difference too -- for more complete training-overlap coverage. See
+  docs/build_training_variant_files.md's "Getting the MutPred2
+  training-variant source".
 
   This file covers many more genes than this project cares about, so rows
   are first filtered down to the Entrez Gene IDs of the genes curated in
@@ -76,6 +91,7 @@ import argparse
 import csv
 import gzip
 import re
+from collections.abc import Iterator
 from pathlib import Path
 
 import pandas as pd
@@ -159,6 +175,35 @@ def _entrez_id_to_gene_symbol(entrez_map_path: Path, gene_list_source: Path) -> 
     return {symbol_to_entrez_id[symbol]: symbol for symbol in curated_symbols}
 
 
+def _iter_mutpred2_rows(fh) -> Iterator[tuple[str, str, str]]:
+    """Yield (variants, training_flags, entrez_gene_id) per gene row.
+
+    Handles both the committed mp2_actual_training_data.txt.gz shape (no
+    header, 6 columns: accession, variants, flags, protein_seq, entrez_id,
+    cluster) and the publicly-downloadable wo_exclusive_hgmd_mp2_training_data.txt
+    substitute's shape (8 leading "#"-comment lines, a header row, 7 columns:
+    Internal_ID, DB_source_ID, variants, flags, protein_seq, entrez_id,
+    cluster) -- see docs/data.md's "Where the predictor training-variant
+    sources come from".
+    """
+    rows = csv.reader(fh, delimiter="\t")
+    row = next(rows, None)
+    while row is not None and row[0].startswith("#"):
+        row = next(rows, None)
+    if row is None:
+        return
+    if row[0] == "Internal_ID":
+        variants_idx = row.index("Amino_acid_substitutions")
+        flags_idx = row.index("Class_label")
+        entrez_idx = row.index("Entrez_gene")
+        row = next(rows, None)
+    else:
+        variants_idx, flags_idx, entrez_idx = 1, 2, 4
+    while row is not None:
+        yield row[variants_idx], row[flags_idx], row[entrez_idx]
+        row = next(rows, None)
+
+
 def build_mutpred2_training_file(
     src_path: Path, entrez_map_path: Path, gene_list_source: Path, dest_path: Path
 ) -> None:
@@ -166,13 +211,13 @@ def build_mutpred2_training_file(
 
     keys: set[tuple[str, str]] = set()
     with _open_text(src_path) as fh:
-        for row in csv.reader(fh, delimiter="\t"):
-            gene_symbol = entrez_id_to_gene_symbol.get(row[4].strip())
+        for variants_field, flags_field, entrez_field in _iter_mutpred2_rows(fh):
+            gene_symbol = entrez_id_to_gene_symbol.get(entrez_field.strip())
             if gene_symbol is None:
                 continue
             gene_symbol = CALM_GENE_ALIASES.get(gene_symbol, gene_symbol)
-            variants = row[1].split(",")
-            training_flags = row[2].split(",")
+            variants = variants_field.split(",")
+            training_flags = flags_field.split(",")
             for variant, is_training in zip(variants, training_flags):
                 if is_training.strip() != "1":
                     continue

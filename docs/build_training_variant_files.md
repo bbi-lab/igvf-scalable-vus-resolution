@@ -14,9 +14,9 @@ REVEL and AlphaMissense; see `docs/variant_annotation_pipeline.md`). It is a
 
 | | Path | Contents |
 |---|---|---|
-| Input | `data/input/predictors/clustering_variants_revel_training_overlap.csv.gz` | Genome-wide REVEL-training-overlap list with genomic coordinates and a 1-letter `protein_variant` column (e.g. `Q416K`). All rows are SNVs. |
-| Input | `data/input/predictors/mp2_actual_training_data.txt.gz` | One row per gene: an opaque accession id, a comma-separated list of 1-letter protein variants, a comma-separated list of `1`/`0` training flags aligned with the variant list, the gene's protein sequence, and the gene's NCBI/Entrez Gene ID. No header row. |
-| Input | `data/input/predictors/supplementary_data_3_gene_entrez_ids.tsv` | Static `gene_symbol` -> `entrez_gene_id` lookup for every gene in `Supplementary_Data_3.xlsx`'s Curation sheet, used to filter `mp2_actual_training_data.txt.gz` down to genes this project cares about. |
+| Input | `data/input/predictors/clustering_variants_revel_training_overlap.csv.gz` | Genome-wide REVEL-training-overlap list with genomic coordinates and a 1-letter `protein_variant` column (e.g. `Q416K`). All rows are SNVs. Origin unconfirmed — see [`docs/data.md`](data.md#where-the-predictor-training-variant-sources-come-from). |
+| Input | MutPred2 training-variant source (`--mutpred2-source`) | One row per gene: an opaque accession id, a comma-separated list of 1-letter protein variants, a comma-separated list of `1`/`0` training flags aligned with the variant list, the gene's protein sequence, and the gene's NCBI/Entrez Gene ID. See [Getting the MutPred2 training-variant source](#getting-the-mutpred2-training-variant-source) below for where to get it. |
+| Input | `data/input/predictors/supplementary_data_3_gene_entrez_ids.tsv` | Static `gene_symbol` -> `entrez_gene_id` lookup for every gene in `Supplementary_Data_3.xlsx`'s Curation sheet, used to filter the MutPred2 training-variant source down to genes this project cares about. |
 | Input | `data/input/maves/Supplementary_Data_3.xlsx` (`--gene-list-source`) | Curation sheet's `Gene` column supplies the set of genes to keep. |
 | Output | `data/intermediate/variant_annotation/data/revel_training_variants.tsv` | REVEL training-variant list, keyed on hg38 genomic coordinates. |
 | Output | `data/intermediate/variant_annotation/data/mutpred2_training_variants.tsv` | MutPred2 training-variant list, keyed on `(gene_symbol, unqualified_hgvs_p)`. |
@@ -33,9 +33,9 @@ Both `.csv.gz`/`.txt.gz` sources are read transparently (no need to decompress f
 
 ## Why the MutPred2 source needs a gene-ID lookup
 
-`mp2_actual_training_data.txt.gz`'s gene-ID column is an NCBI/Entrez Gene ID
-(confirmed by cross-checking known genes: BRCA1 -> 672, BRCA2 -> 675, BAP1
--> 8314), not an HGNC ID, and the file covers far more genes than this
+The MutPred2 training-variant source's gene-ID column is an NCBI/Entrez Gene
+ID (confirmed by cross-checking known genes: BRCA1 -> 672, BRCA2 -> 675,
+BAP1 -> 8314), not an HGNC ID, and the file covers far more genes than this
 project's curated set. `supplementary_data_3_gene_entrez_ids.tsv` maps each
 Curation-sheet gene symbol to its Entrez Gene ID so rows can be filtered
 down before flattening.
@@ -52,6 +52,21 @@ up the new symbol's Entrez Gene ID, e.g. via mygene.info) when that happens.
 
 Only variants flagged `1` (actually used in MutPred2 training) in the
 per-gene training-flag column are kept.
+
+## Getting the MutPred2 training-variant source
+
+Download the training-variant data MutPred2 makes publicly available —
+linked from the [vpejaver/mutpred2](https://github.com/vpejaver/mutpred2)
+README's "Additional Notes" — at
+`https://mutpred.mutdb.org/wo_exclusive_hgmd_mp2_training_data.txt`. Pass it
+via `--mutpred2-source`; the script auto-detects its shape (8 leading
+`#`-comment lines, a header row, and an extra `DB_source_ID` column) and
+normalizes it to the columns it needs.
+
+If you separately have access to the full MutPred2 training dataset, you
+can provide that instead via `--mutpred2-source` -- the script auto-detects
+the format difference and handles it -- for more complete
+training-overlap coverage.
 
 ## CALM1/CALM2/CALM3
 

@@ -168,7 +168,7 @@ see `docs/build_figure4_data.md` for exactly which fields and why.
 src/scripts/run_build_figure4_data.sh \
   --cached-json data/input/mave_calibration/excalibr/figure4_data.seed.json.gz
 
-# 2. Execute the notebook to produce data/output/figures/assets/figure_4.png
+# 2. Execute the notebook to produce data/output/figures/assets/figure_4/
 src/scripts/run_notebook.sh --to notebook --execute \
   --ExecutePreprocessor.kernel_name=python3 \
   --ExecutePreprocessor.timeout=600 \
@@ -180,9 +180,13 @@ Step 1 writes to `data/intermediate/figures/figure_4/figure4_data.json.gz`
 by default (override with `--output`); step 2 reads that same path (plus
 `data/input/mave_calibration/excalibr/fig4_data_oob.tar.gz` directly, for
 everything except panel d and part of panel e). Step 2 writes
-`data/output/figures/assets/figure_4.png` and a side-effect `executed_figure4.ipynb`
-(nbconvert's copy of the notebook with outputs attached, left in
-`notebooks/figures/figure_4/`) -- gitignored, so no need to delete it.
+`figure_4.png`, a full-size `figure_4.pdf`, and a `figure_4_calibrated.pdf`
+scaled to 6.5in wide (the version placed into `figures_2-6.ai` -- see
+[`docs/figure_assembly.md`](figure_assembly.md)), all under
+`data/output/figures/assets/figure_4/`, plus a side-effect
+`executed_figure4.ipynb` (nbconvert's copy of the notebook with outputs
+attached, left in `notebooks/figures/figure_4/`) -- gitignored, so no need
+to delete it.
 
 `--cached-json` must point at a `figure4_data.json.gz`-shaped file;
 `data/input/mave_calibration/excalibr/figure4_data.seed.json.gz` (a

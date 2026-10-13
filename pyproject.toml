@@ -25,6 +25,7 @@ dependencies = [
     "seaborn (>=0.13.2,<0.14.0)",
     "vl-convert-python (>=1.9.0.post1,<2.0.0)",
     "tabulate (>=0.10.0,<0.11.0)",
+    "pypdf (>=6.20.1,<7.0.0)",
 ]
 
 [project.optional-dependencies]

@@ -475,7 +475,9 @@ pipeline behind it.
 src/scripts/run_build_figure4_data.sh \
   --cached-json data/input/mave_calibration/excalibr/figure4_data.seed.json.gz
 
-# 2. Execute the notebook to produce data/output/figures/assets/figure_4.png
+# 2. Execute the notebook to produce data/output/figures/assets/figure_4/
+#    (figure_4.png, figure_4.pdf, and the 6.5in-wide figure_4_calibrated.pdf
+#    placed into figures_2-6.ai)
 src/scripts/run_notebook.sh --to notebook --execute \
   --ExecutePreprocessor.kernel_name=python3 \
   --ExecutePreprocessor.timeout=600 \
@@ -593,7 +595,7 @@ directories that aren't created automatically).
 Only needed by the project team when preparing a paper submission -- not
 part of a normal pipeline run, and the only step in this repo that isn't
 Dockerized or Poetry-managed. Two checked-in Illustrator documents,
-`data/output/figures/illustrator/figures_2_3_5_6.ai` and
+`data/output/figures/illustrator/figures_2-6.ai` and
 `extended_data_figures.ai`, assemble every figure Stage 3 generates assets
 for, by placing those assets onto per-figure artboards;
 `export_artboards.jsx` in the same directory then exports each artboard to

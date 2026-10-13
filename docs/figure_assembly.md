@@ -9,7 +9,7 @@ that needs neither Docker nor Poetry -- just a local Illustrator install.
 
 ## What's checked in
 
-- `data/output/figures/illustrator/figures_2_3_5_6.ai` and
+- `data/output/figures/illustrator/figures_2-6.ai` and
   `extended_data_figures.ai` -- the two Illustrator documents that assemble
   every figure this repo generates assets for, by placing the panel files
   under `data/output/figures/assets/` (and, for `extended_data_figures.ai`,
@@ -90,7 +90,7 @@ two groups are handled differently:
 
 - **Figure 1 and Figure 7** are each their own standalone Illustrator
   document (`figure_1.ai`, `figure_7.ai`) -- neither is placed into
-  `figures_2_3_5_6.ai` or `extended_data_figures.ai`. Open each one directly
+  `figures_2-6.ai` or `extended_data_figures.ai`. Open each one directly
   and export it the same way as the two main documents above, with
   `export_artboards.jsx` (PNG and PDF), into
   `data/output/figures/assembled/`.

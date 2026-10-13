@@ -317,9 +317,9 @@ which never matched a single row -- confirmed against real data, 0 matches
 out of the several thousand CHEK2 rows in this dataset -- so
 `Filter_CI == 1` variants were never actually excluded from Supplementary
 Data 5 (or 6, which inherits `Variant_Classification_analysis.ipynb`'s
-checkpoint). `integrated_variant_effect_dataset.v1.tsv` has unqualified
-`hgvs_p` for these same rows, so this exclusion did work under `v1` -- it
-broke silently at some point after, when the upstream dataset build
+checkpoint). `integrated_variant_effect_dataset.preprint.tsv` has unqualified
+`hgvs_p` for these same rows, so this exclusion did work under the preprint
+dataset -- it broke silently at some point after, when the upstream dataset build
 started qualifying `hgvs_p` with the transcript accession without a
 corresponding update to this merge. Fixed by stripping the prefix before
 matching.
@@ -993,8 +993,8 @@ protein resolution -- e.g. `BRCA1_Findlay_2018` (nt) and
 `BRCA1_Adamovich_2022_HDR` (aa) both surviving for the same BRCA1 variant.
 `Variant_Classification_analysis.ipynb`/`Supplementary_Data_5.xlsx` never
 has this problem, since its whole-dataframe cast predates the nt/aa split
-entirely. The preprint's root-level `Supplementary_Data_5.v1.xlsx`/
-`Supplementary_Data_6.v1.xlsx` show the same asymmetry: 28 duplicate
+entirely. The preprint's `Supplementary_Data_5.preprint.xlsx`/
+`Supplementary_Data_6.preprint.xlsx` show the same asymmetry: 28 duplicate
 `(hgvs_c, hgvs_p, Gene)` rows in Data 5's `controls_REVEL_GeneSpecific`
 vs. 242 in Data 6's `controls_REVEL_OP`. In the current dataset (before
 this fix), Data 5 has 0 duplicates while Data 6 has 502 (251 nt/aa pairs)

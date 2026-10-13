@@ -18,7 +18,7 @@ band (0-5 total points) instead of resolving to a Benign or Pathogenic
 bucket. Lower is better -- more of the gene's VUS got reclassified.
 `Overall` is the mean of REVEL/AM/MP2 for that gene. "Original" and
 "current" are both computed the same way, directly from
-`Supplementary_Data_5.v1.xlsx` (as-submitted) and the current
+`Supplementary_Data_5.preprint.xlsx` (as-submitted) and the current
 `Supplementary_Data_5.xlsx`, so the columns are directly comparable.
 
 Ranks are out of the same 39 genes in both columns (1 = best reclassification

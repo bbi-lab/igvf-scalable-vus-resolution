@@ -119,3 +119,10 @@ data/output/predictor_calibration/gene_specific/*
 !data/output/reclassification/
 data/output/reclassification/*
 !data/output/reclassification/.gitkeep
+
+# Illustrator sources (.ai) and the export scripts that drive them are
+# checked in like any other source -- unlike the rest of data/output/figures/
+# (rendered assets/, combined_assets/, etc.), which stay generated-only.
+!data/output/figures/
+data/output/figures/*
+!data/output/figures/illustrator/

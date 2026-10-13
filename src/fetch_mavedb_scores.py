@@ -282,8 +282,20 @@ def fetch_mapped_variants(session, urn, *, timeout=180):
 
     Only `current=True` records are kept, matching the SQL's
     `mv."current"=TRUE` join condition.
+
+    Some score sets have no mapped-variants data in MaveDB, and the API
+    returns a 404 for those rather than an empty list. The pipeline doesn't
+    use these columns (see docs/fetch_mavedb_scores.md), so a 404 here is
+    treated as "no mapped variants" rather than a fatal error.
     """
-    records = _get(session, f"{API_BASE}/score-sets/{urn}/mapped-variants", timeout=timeout).json()
+    try:
+        records = _get(session, f"{API_BASE}/score-sets/{urn}/mapped-variants", timeout=timeout).json()
+    except requests.HTTPError as error:
+        if error.response is not None and error.response.status_code == 404:
+            click.echo(f"\n{urn}: no mapped variants available (404); skipping.", err=True)
+            records = []
+        else:
+            raise
     return mapped_variants_from_records(records)
 
 

@@ -2,9 +2,11 @@ import json
 
 import pandas as pd
 import pytest
+import requests
 
 from src.fetch_mavedb_scores import (
     apply_manual_overrides,
+    fetch_mapped_variants,
     finalize_output,
     mapped_variants_from_records,
     parse_calm_urn,
@@ -204,6 +206,46 @@ def test_mapped_variants_from_records_empty():
         "mavedb_mapping_error",
     ]
     assert len(df) == 0
+
+
+class _FakeResponse:
+    def __init__(self, status_code):
+        self.status_code = status_code
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            error = requests.HTTPError(f"{self.status_code} error")
+            error.response = self
+            raise error
+
+    def json(self):
+        return []
+
+
+class _FakeSession:
+    def __init__(self, status_code):
+        self.status_code = status_code
+
+    def get(self, url, params=None, timeout=None):
+        return _FakeResponse(self.status_code)
+
+
+def test_fetch_mapped_variants_treats_404_as_no_mapped_variants():
+    df = fetch_mapped_variants(_FakeSession(404), "urn:mavedb:00000000-a-1")
+    assert len(df) == 0
+    assert list(df.columns) == [
+        "variant_urn",
+        "mavedb_mapped_hgvs_g",
+        "mavedb_mapped_hgvs_c",
+        "mavedb_mapped_hgvs_p",
+        "clingen_allele_id",
+        "mavedb_mapping_error",
+    ]
+
+
+def test_fetch_mapped_variants_reraises_other_errors():
+    with pytest.raises(requests.HTTPError):
+        fetch_mapped_variants(_FakeSession(500), "urn:mavedb:00000000-a-1")
 
 
 def test_finalize_output_orders_columns_and_stringifies_reference_based():

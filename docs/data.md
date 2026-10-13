@@ -93,10 +93,13 @@ see [`docs/variant_annotation_pipeline.md`](variant_annotation_pipeline.md)):
   without DB access. Hits MaveDB's public API (`https://api.mavedb.org`)
   instead of a DB mirror, parsing the same score-set list and manual overrides
   directly out of `src/mavedb_scores.sql` at run time so the two can't drift
-  apart. **Not yet validated against the SQL version's output** — this
-  equivalence is in progress and will be tested soon. Known differences
-  (no internal `variant_id`, at most one of `hgvs_g`/`_c`/`_p` populated per
-  row) are documented in [`docs/fetch_mavedb_scores.md`](fetch_mavedb_scores.md).
+  apart. Validated against a full SQL/DB export covering the same ~90 score
+  sets: row counts and `variant_urn` sets match exactly except for score sets
+  this script couldn't reach, and the remaining differences (no internal
+  `variant_id`, partial `hgvs_c`/`_p` coverage, a CALM1 dedup tie-break
+  quirk, and floating-point/JSON-formatting noise) don't affect pipeline
+  results — see [`docs/fetch_mavedb_scores.md`](fetch_mavedb_scores.md#known-differences-from-the-sqldb-version)
+  for the full comparison and why each difference doesn't matter.
 
   ```bash
   poetry run python -m src.fetch_mavedb_scores

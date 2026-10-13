@@ -8,7 +8,12 @@ available -- it hits https://api.mavedb.org directly.
 
 CLI usage:
 
-    python -m src.fetch_mavedb_scores --output data/input/maves/cvfg_variants.0.api.tsv
+    python -m src.fetch_mavedb_scores
+
+This writes directly to `data/input/maves/cvfg_variants.0.tsv` (Step 1's
+input to the variant-annotation pipeline) by default; pass `--output` to
+write elsewhere instead, e.g. when comparing against the SQL/DB version's
+output.
 
 Pass one or more `--score-set-urn` options to fetch a subset instead of the
 full ~90-dataset list (useful for testing against the flaky live API).
@@ -49,7 +54,7 @@ from urllib3.util.retry import Retry
 
 API_BASE = "https://api.mavedb.org/api/v1"
 DEFAULT_SQL_SOURCE = Path(__file__).resolve().parent / "mavedb_scores.sql"
-DEFAULT_OUTPUT = Path("data/input/maves/cvfg_variants.0.api.tsv")
+DEFAULT_OUTPUT = Path("data/input/maves/cvfg_variants.0.tsv")
 
 FIXED_SCORE_COLUMNS = {"variant_urn", "raw_hgvs_nt", "hgvs_splice", "raw_hgvs_pro"}
 

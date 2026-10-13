@@ -70,7 +70,11 @@ fetched/regenerated per checkout:
 ### Where `cvfg_variants.0.tsv` comes from
 
 `data/input/maves/cvfg_variants.0.tsv` is *not* committed to the repo — it's
-regenerated locally from one of two different data sources:
+regenerated locally from one of two different data sources, both of which
+write directly to `data/input/maves/cvfg_variants.0.tsv` (Step 1's input;
+`scripts/run_variant_annotation_pipeline.sh` stages it from there into
+`data/intermediate/variant_annotation/data/` automatically when Step 1 runs —
+see [`docs/variant_annotation_pipeline.md`](variant_annotation_pipeline.md)):
 
 - **`src/mavedb_scores.sql`** — the source of truth. Run directly against a
   local Postgres mirror of the MaveDB database. Requires DB access most
@@ -78,6 +82,13 @@ regenerated locally from one of two different data sources:
   dataset-specific manual overrides (CHEK2 preferred transcript, BRCA1_Findlay
   MANE Select version lift, NDUFAF6/PTEN `raw_hgvs_nt` blanking, and
   JAG1/TARDBP/SCN5A/KCNH2 target-sequence corrections).
+
+  Run with `psql -f src/mavedb_scores.sql your_mavedb_db`, then export the
+  final `SELECT`'s result to `data/input/maves/cvfg_variants.0.tsv` (e.g. via
+  psql's `\copy (...) to 'data/input/maves/cvfg_variants.0.tsv' with (format
+  csv, delimiter E'\t', header)`) — see the script's header comment for
+  details.
+
 - **`src/fetch_mavedb_scores.py`** — an API-based equivalent, for contributors
   without DB access. Hits MaveDB's public API (`https://api.mavedb.org`)
   instead of a DB mirror, parsing the same score-set list and manual overrides
@@ -88,9 +99,12 @@ regenerated locally from one of two different data sources:
   row) are documented in [`docs/fetch_mavedb_scores.md`](fetch_mavedb_scores.md).
 
   ```bash
-  poetry run python -m src.fetch_mavedb_scores \
-    --output data/input/maves/cvfg_variants.0.api.tsv
+  poetry run python -m src.fetch_mavedb_scores
   ```
+
+A Zenodo-hosted copy of `cvfg_variants.0.tsv` may be made available later for
+convenience; none exists yet, so regenerate it locally via one of the two
+routes above.
 
 ### Where `mp2_annotations.csv.gz` comes from
 

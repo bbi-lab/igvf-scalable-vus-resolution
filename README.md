@@ -98,9 +98,9 @@ wrapper scripts.
 
 Committed to this repo (no action needed):
 
-- `data/input/maves/cvfg_variants.0.tsv`, `data/input/maves/score_sets.tsv`,
+- `data/input/maves/score_sets.tsv`,
   `data/input/maves/Supp_Data1_column_description.xlsx` — this project's own
-  variant list, dataset-name mapping, and column documentation.
+  dataset-name mapping and column documentation.
 - `data/input/reference/MANE.GRCh38.v1.5.summary.txt.gz` — RefSeq/Ensembl
   transcript mapping.
 - `data/input/predictors/AlphaMissense_hg38.tsv.gz` (+ `.tbi`),
@@ -130,6 +130,29 @@ Committed to this repo (no action needed):
 
 Not committed — you must populate or point at these yourself:
 
+- `data/input/maves/cvfg_variants.0.tsv` — this project's own variant list,
+  Step 1's input. Generate it locally before a full run (or before
+  `--step 1`). Without access to a local MaveDB Postgres mirror, use the
+  public-API script, which writes directly to
+  `data/input/maves/cvfg_variants.0.tsv` by default:
+
+  ```bash
+  poetry run python -m src.fetch_mavedb_scores
+  ```
+
+  With DB access, `src/mavedb_scores.sql` is the source of truth instead
+  (run with `psql -f src/mavedb_scores.sql your_mavedb_db`, then export the
+  final `SELECT` to `data/input/maves/cvfg_variants.0.tsv`).
+
+  Either way, once the file is at `data/input/maves/cvfg_variants.0.tsv`,
+  `scripts/run_variant_annotation_pipeline.sh` stages it into
+  `data/intermediate/variant_annotation/data/` automatically — no manual
+  copy step needed. See
+  [Where `cvfg_variants.0.tsv` comes from](docs/data.md#where-cvfg_variants0tsv-comes-from)
+  in `docs/data.md` for full details, known differences between the two
+  routes, and why the API version isn't yet validated against the SQL
+  version's output. (A Zenodo-hosted copy may be made available later for
+  convenience; none exists yet.)
 - A `variant-annotation` checkout with the large, generic reference caches
   already downloaded: SpliceAI VCFs, dbNSFP, `clinvar_cache/`, and the
   gnomAD Hail table cache above. These are tens of GB and are deliberately

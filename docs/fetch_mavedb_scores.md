@@ -49,9 +49,13 @@ need to override this.
 ## Usage
 
 ```bash
-poetry run python -m src.fetch_mavedb_scores \
-  --output data/input/maves/cvfg_variants.0.api.tsv
+poetry run python -m src.fetch_mavedb_scores
 ```
+
+This writes directly to `data/input/maves/cvfg_variants.0.tsv` by default --
+see [Where `cvfg_variants.0.tsv` comes from](data.md#where-cvfg_variants0tsv-comes-from)
+in `docs/data.md`. Pass `--output` to write elsewhere instead, e.g. when
+comparing against the SQL/DB version's output.
 
 Fetch a subset instead of the full ~90-dataset list (useful for testing
 against the flaky live API), by repeating `--score-set-urn`:
@@ -67,7 +71,7 @@ poetry run python -m src.fetch_mavedb_scores \
 
 | Option | Default | Description |
 |---|---|---|
-| `--output` | `data/input/maves/cvfg_variants.0.api.tsv` | Where to write the resulting TSV |
+| `--output` | `data/input/maves/cvfg_variants.0.tsv` | Where to write the resulting TSV |
 | `--score-set-urn` | (full list from `src/mavedb_scores.sql`) | Fetch only this score-set URN; repeatable |
 | `--sql-source` | `src/mavedb_scores.sql` | Source of the score-set list and manual overrides |
 | `--retries` | `8` | HTTP retries per request on 5xx responses |

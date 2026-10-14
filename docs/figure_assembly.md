@@ -14,7 +14,8 @@ that needs neither Docker nor Poetry -- just a local Illustrator install.
   every figure this repo generates assets for, by placing the panel files
   under `data/output/figures/assets/` (and, for `extended_data_figures.ai`,
   the three externally-sourced Extended Data Figures below) onto per-figure
-  artboards.
+  artboards. **Figure 2 is the exception** -- see
+  [Figure 2: no placed assets](#figure-2-no-placed-assets) below.
 - `data/output/figures/illustrator/export_artboards.jsx` -- exports every
   artboard of the active document to its own file; see
   [Exporting](#exporting) below.
@@ -28,11 +29,28 @@ that needs neither Docker nor Poetry -- just a local Illustrator install.
   [Externally-sourced figures](#externally-sourced-figures-figures-1-7-and-extended-data-figures-1-11-12)
   below.
 
+## Figure 2: no placed assets
+
+Every other figure's panels are placed/linked into their `.ai` document, so
+regenerating a panel's asset and relinking (see below) picks up the change
+automatically. Figure 2 doesn't work this way: its panel generators (see
+[`docs/figures.md`](figures.md)) produce SVGs, and Illustrator has no
+mechanism to place or link an SVG file (only PDF, PNG, and similar raster/
+vector formats it can import). Figure 2's panels are therefore embedded
+directly in `figures_2-6.ai` rather than placed -- they don't appear in the
+Links panel and need no relinking.
+
+The consequence: regenerating a Figure 2 panel's SVG does **not** propagate
+into `figures_2-6.ai` automatically. After rerunning the panel's generator,
+the new SVG has to be manually copied in (or re-embedded) over the old
+artwork on Figure 2's artboard in Illustrator.
+
 ## Updating links before exporting
 
 Illustrator has no relative-link mechanism, so every placed PDF/linked PNG
-in both `.ai` files records an absolute path from whatever machine prepared
-the submission (e.g. `/Users/.../data/output/figures/assets/extended_data_figure_3/...`).
+in both `.ai` files (i.e. everything except Figure 2's panels, see above)
+records an absolute path from whatever machine prepared the submission
+(e.g. `/Users/.../data/output/figures/assets/extended_data_figure_3/...`).
 Before exporting from a different checkout:
 
 1. Open both `.ai` files in Illustrator.

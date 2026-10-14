@@ -18,6 +18,11 @@ source('../../../src/lib/figures/load_biobank_or_table.R')
 # Font setup
 loadfonts(device = 'all')
 
+# Some magic numbers:
+# y-placements of the horizontal lines separating the "pathogenic" and "benign" zones,
+VEP_PATH_BENIGN_BOUNDARY <- 4.5
+ASSAY_PATH_BENIGN_BOUNDARY <- 8.5
+
 # Figure theme
 point_in_mm = 0.3527778
 nature_theme <- theme_linedraw() +
@@ -38,6 +43,7 @@ nature_theme <- theme_linedraw() +
     strip.background = element_blank(),
     legend.title = element_blank(),
     legend.text = element_text(size = 6),
+    legend.background = element_blank(),
     # Half the default vertical gaps around a bottom-positioned legend:
     # legend.box.spacing (panel-to-legend, default 11pt) and legend.margin's
     # top/bottom (default 5.5pt each, left/right left unchanged).
@@ -50,7 +56,7 @@ nature_theme <- theme_linedraw() +
 # Load main table -- keep_consequence = TRUE so panel a (condensed_assay_plot)
 # can overlay a Missense-only series on the aggregate ("All") one; every
 # other use below restricts back to Consequence == 'All' to stay unaffected.
-or_df <- load_biobank_or_table(
+or_source_df <- load_biobank_or_table(
   "../../../data/input/biobank/AoU-OR-estimates_2026-10-07.tsv.gz",
   keep_consequence = TRUE
 )
@@ -92,6 +98,19 @@ gene_groups_df <- tribble(
 ) %>%
   filter(INCLUDE_TSC2 | Gene != "TSC2")
 
+# Transformations that are common to both the predictor plot (panel b) and the assay plot (panel a)
+or_df <- or_source_df %>%
+  mutate(
+    `Odds Ratio` = exp(LogOR),
+    OR_LI = exp(LogOR_LI),
+    OR_UI = exp(LogOR_UI),
+    significance = case_when(
+      `p-value (Holm adjusted)` < 0.01 ~ 'Significant at 99% (Holm adjusted)',
+      `p-value (Holm adjusted)` < 0.05 ~ 'Significant at 95% (Holm adjusted)',
+      TRUE ~ 'Not significant at 95%'
+    )
+  )
+
 # Predictor plot component
 
 # Order levels
@@ -104,8 +123,7 @@ vep_levels = c(
 # Select predictor results
 predictor_plot_df <- or_df %>%
   filter(
-    Consequence == 'All',
-    `Cases with variants` > 0,
+    Consequence == 'Missense',
     Classifier %in% c(
       'Gene-specific',
       'Genome-wide aggregation'
@@ -113,14 +131,6 @@ predictor_plot_df <- or_df %>%
     Classification %in% vep_levels
   ) %>%
   mutate(
-    `Odds Ratio` = exp(LogOR),
-    OR_LI = exp(LogOR_LI),
-    OR_UI = exp(LogOR_UI),
-    significance = if_else(
-      (LogOR_LI > 0) | (LogOR_UI < 0),
-      'Significant at 95%',
-      'Not significant at 95%'
-    ),
     Classification = factor(
       Classification,
       levels = vep_levels
@@ -190,11 +200,13 @@ make_predictor_plot <- function(
   scale_shape_manual(
     values = c(
       'Not significant at 95%' = 21,
-      'Significant at 95%' = 16),
-    breaks = c('Significant at 95%'),
+      'Significant at 95% (Holm adjusted)' = 16,
+      'Significant at 99% (Holm adjusted)' = 18),
+    breaks = c('Significant at 95% (Holm adjusted)', 'Significant at 99% (Holm adjusted)'),
     guide = guide_legend(position = legend_position)
   ) +
   geom_vline(xintercept = 1, linetype = 'dashed') +
+  geom_hline(yintercept = VEP_PATH_BENIGN_BOUNDARY, linetype = 'dotted') +
   scale_color_manual(
     values = color_mapping,
     guide = guide_legend(
@@ -252,14 +264,6 @@ assay_plot_df <-
     Classification %in% assay_classification_levels
   ) %>%
   mutate(
-    `Odds Ratio` = exp(LogOR),
-    OR_LI = exp(LogOR_LI),
-    OR_UI = exp(LogOR_UI),
-    significance = if_else(
-      (LogOR_LI > 0) | (LogOR_UI < 0),
-      'Significant at 95%',
-      'Not significant at 95%'
-    ),
     Classification = factor(
       Classification,
       levels = assay_classification_levels
@@ -756,8 +760,9 @@ condensed_assay_plot <- ggplot(
   scale_shape_manual(
     values = c(
       'Not significant at 95%' = 21,
-      'Significant at 95%' = 16),
-    breaks = c('Significant at 95%'),
+      'Significant at 95% (Holm adjusted)' = 16,
+      'Significant at 99% (Holm adjusted)' = 18),
+    breaks = c('Significant at 95% (Holm adjusted)', 'Significant at 99% (Holm adjusted)'),
     guide = guide_legend(position = 'bottom')
   ) +
   scale_color_manual(
@@ -781,7 +786,8 @@ condensed_assay_plot <- ggplot(
   # legend.
   scale_linetype_manual(values = c('FALSE' = 'solid', 'TRUE' = '22'), guide = 'none') +
   scale_linewidth_manual(values = c('FALSE' = 1*point_in_mm, 'TRUE' = 0.6*point_in_mm), guide = 'none') +
-  geom_vline(xintercept = log10(1), linetype = 'dashed')
+  geom_vline(xintercept = log10(1), linetype = 'dashed') +
+  geom_hline(yintercept = ASSAY_PATH_BENIGN_BOUNDARY, linetype = 'dotted')
 
 # Compose figure together
 fig_exd4 <- (condensed_assay_plot + nature_theme +

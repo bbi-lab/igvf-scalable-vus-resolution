@@ -38,12 +38,16 @@ nature_theme <- theme_linedraw() +
     strip.background = element_blank(),
     legend.title = element_blank(),
     legend.text = element_text(size = 6),
+    legend.background = element_blank(),
     ggh4x.facet.nestline = element_line(linewidth = 1*point_in_mm, color="black"),
     plot.tag = element_text(face = 'bold')
   )
 
 # Load main table
 or_df <- load_biobank_or_table("../../../data/input/biobank/AoU-OR-estimates_2026-10-07.tsv.gz")
+
+# Magic number: y-placement of the horizontal line separating the "pathogenic" and "benign" zones in this plot
+PATH_BENIGN_BOUNDARY <- 11.5
 
 # Broad gene-phenotype classes
 
@@ -100,10 +104,10 @@ combined_points_plot_df <-
     `Odds Ratio` = exp(LogOR),
     OR_LI = exp(LogOR_LI),
     OR_UI = exp(LogOR_UI),
-    significance = if_else(
-      (LogOR_LI > 0) | (LogOR_UI < 0),
-      'Significant at 95%',
-      'Not significant at 95%'
+    significance = case_when(
+      `p-value (Holm adjusted)` < 0.01 ~ 'Significant at 99% (Holm adjusted)',
+      `p-value (Holm adjusted)` < 0.05 ~ 'Significant at 95% (Holm adjusted)',
+      TRUE ~ 'Not significant at 95%'
     ),
     Classification = factor(
       Classification,
@@ -116,7 +120,7 @@ combined_points_condensed_plot_df <-
   inner_join(
     combined_points_plot_df %>%
       group_by(Gene) %>%
-      summarize(keep = any(significance == 'Significant at 95%')) %>%
+      summarize(keep = any(significance != 'Not significant at 95%')) %>%
       filter(keep) %>%
       select(Gene)
   ) %>%
@@ -129,7 +133,7 @@ combined_points_condensed_plot <- ggplot(
     xmin = OR_LI,
     xmax = OR_UI,
     y = Classification,
-    fill = significance
+    shape = significance
   )
 ) +
   facet_nested(
@@ -150,19 +154,21 @@ combined_points_condensed_plot <- ggplot(
     )
   ) +
   geom_errorbar(width = 0.5, position = position_dodge(width=0.5)) +
-  geom_pointrange(position = position_dodge(width=0.5), shape=21) +
+  geom_pointrange(position = position_dodge(width=0.5), fill = 'white') +
   scale_x_log10(
     labels = scales::label_number(drop0trailing=TRUE),
     minor_breaks = NULL,
     guide = "axis_logticks",
   ) +
-  scale_fill_manual(
+  scale_shape_manual(
     values = c(
-      'Not significant at 95%' = 'white',
-      'Significant at 95%' = 'black'),
-    breaks = c('Significant at 95%')
+      'Not significant at 95%' = 21,
+      'Significant at 95% (Holm adjusted)' = 16,
+      'Significant at 99% (Holm adjusted)' = 18),
+    breaks = c('Significant at 95% (Holm adjusted)', 'Significant at 99% (Holm adjusted)')
   ) +
   geom_vline(xintercept = 1, linetype = 'dashed') +
+  geom_hline(yintercept = PATH_BENIGN_BOUNDARY, linetype = 'dotted') +
   geom_blank(aes(x = 6))
 
 # Theme adjustments
@@ -177,7 +183,7 @@ cfig_theme <- nature_theme +
     ),
     strip.clip = 'off',
     panel.spacing = unit(2, 'pt'),
-    axis.title.x = element_text(margin = margin(t = 6, 0, 0, 0), hjust = 0.3),
+    axis.title.x = element_text(hjust = 0.2),
     legend.position = 'bottom',
     legend.justification = 0.65,
     legend.box.spacing = unit(-18, 'pt')

@@ -77,6 +77,7 @@ load_biobank_or_table <- function(path, keep_consequence = FALSE) {
       LogOR = LogOR,
       LogOR_LI = LogOR_LI,
       LogOR_UI = LogOR_UI,
+      `p-value (Holm adjusted)` = `p-value (Holm adjusted)`,
       # `Carrier cases` is privacy-censored to the string "<= 20" whenever
       # the true count is 1-20 (real zeros are left as "0", unambiguous and
       # not privacy-sensitive). Every script that reads this table only

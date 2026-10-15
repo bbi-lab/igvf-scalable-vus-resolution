@@ -57,19 +57,20 @@ gene_groups_df <- tribble(
   "BARD1", "Cancer", "Cancer", "Cancer",
   "BRCA1", "Cancer", "Cancer", "Cancer",
   "BRCA2", "Cancer", "Cancer", "Cancer",
-  "CALM3", "Cardiovascular", "Cardio- vascular", "Cardiovascular",
+  "CALM3", "Cardiovascular", "Cardio- vascular", "Cardio- vascular",
   "CHEK2", "Cancer", "Cancer", "Cancer",
   # D3's Metabolic rows are left as the plain "Metabolic" (not pre-split
   # like "Meta- bolic" below) -- str_wrap()'s default whitespace_only = TRUE
   # (confirmed against the installed stringr) only ever breaks at an
   # existing space, so a single word with no internal space, like this one,
-  # is never wrapped regardless of panel width; strip.clip = 'off' in
-  # cfig_theme below already permits it to overflow its narrow column
-  # rather than being clipped.
+  # is never wrapped regardless of panel width. Unlike Cardiovascular (see
+  # "Cardio- vascular" below), this never needed splitting: Metabolic's
+  # header spans two gene panels (GCK, LDLR), wide enough for "Metabolic"
+  # unwrapped.
   "G6PD", "Metabolic", "Meta- bolic", "Metabolic",
   "GCK", "Metabolic", "Meta- bolic", "Metabolic",
-  "KCNE1", "Cardiovascular", "Cardio- vascular", "Cardiovascular",
-  "KCNH2", "Cardiovascular", "Cardio- vascular", "Cardiovascular",
+  "KCNE1", "Cardiovascular", "Cardio- vascular", "Cardio- vascular",
+  "KCNH2", "Cardiovascular", "Cardio- vascular", "Cardio- vascular",
   "KCNQ4", "Hearing loss", "Hearing loss", "Hearing loss", #Rare disease",
   "LDLR", "Metabolic", "Meta- bolic", "Metabolic",
   "MSH2", "Cancer", "Cancer", "Cancer",
@@ -78,7 +79,7 @@ gene_groups_df <- tribble(
   "PTEN", "Cancer", "Cancer", "Cancer",
   "RAD51C", "Cancer", "Cancer", "Cancer",
   "RAD51D", "Cancer", "Cancer", "Cancer",
-  "SCN5A", "Cardiovascular", "Cardio- vascular", "Cardiovascular",
+  "SCN5A", "Cardiovascular", "Cardio- vascular", "Cardio- vascular",
   "TARDBP", "Rare disease", "Rare disease", "Rare disease",
   "TP53", "Cancer", "Cancer", "Cancer",
   "TSC2", "Cancer", "Cancer", "Cancer"

@@ -133,7 +133,7 @@ combined_points_condensed_plot <- ggplot(
     xmin = OR_LI,
     xmax = OR_UI,
     y = Classification,
-    shape = significance
+    fill = significance
   )
 ) +
   facet_nested(
@@ -154,17 +154,17 @@ combined_points_condensed_plot <- ggplot(
     )
   ) +
   geom_errorbar(width = 0.5, position = position_dodge(width=0.5)) +
-  geom_pointrange(position = position_dodge(width=0.5), fill = 'white') +
+  geom_pointrange(position = position_dodge(width=0.5), shape = 21) +
   scale_x_log10(
     labels = scales::label_number(drop0trailing=TRUE),
     minor_breaks = NULL,
     guide = "axis_logticks",
   ) +
-  scale_shape_manual(
+  scale_fill_manual(
     values = c(
-      'Not significant at 95%' = 21,
-      'Significant at 95% (Holm adjusted)' = 16,
-      'Significant at 99% (Holm adjusted)' = 18),
+      'Not significant at 95%' = 'white',
+      'Significant at 95% (Holm adjusted)' = 'grey',
+      'Significant at 99% (Holm adjusted)' = 'black'),
     breaks = c('Significant at 95% (Holm adjusted)', 'Significant at 99% (Holm adjusted)')
   ) +
   geom_vline(xintercept = 1, linetype = 'dashed') +

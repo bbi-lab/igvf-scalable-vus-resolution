@@ -649,10 +649,9 @@ def plot_panel_d(gs_spec, prior, Post_p, Post_b, p_data_sim, b_data_sim, fig):
     ax_benign.plot(x, y_para, linewidth=3.5, color='#13506b')
     
     linestyles_post = ['dotted', 'dashed', 'dashdot', (5, (10, 3)), 'solid']
-    for i in range(5):
+    for i in range(4):
         ax_benign.axhline(Post_b[(4-i)], linestyle=linestyles_post[i], color=BENIGN_THRESHOLD_COLOR, linewidth=2.5)
-        # if i < 3:
-        ax_benign.text(0.95, Post_b[(4-i)] - 0.0003, f'-{i+1}' if i < 4 else "-8", ha='center', va='top',
+        ax_benign.text(0.95, Post_b[(4-i)] - 0.0003, f'-{i+1}', ha='center', va='top',
                           color=BENIGN_THRESHOLD_COLOR, fontsize=FONTSIZE_ANNOTATION, fontweight='bold')
     
     ax_benign.set_ylim(0.8, 1.0)
@@ -664,9 +663,9 @@ def plot_panel_d(gs_spec, prior, Post_p, Post_b, p_data_sim, b_data_sim, fig):
     ax_path = plt.subplot(gs[3])
     ax_path.plot(x, y_exp, linewidth=3.5, color='#7a2f37')
     
-    for i in range(5):
+    for i in range(4):
         ax_path.axhline(Post_p[(4-i)], linestyle=linestyles_post[i], color=PATHOGENIC_THRESHOLD_COLOR, linewidth=2.5)
-        label = f'+{i+1}' if i < 3 else ('+4' if i == 3 else '+8')
+        label = f'+{i+1}' if i < 3 else '+4'
         ax_path.text(0.05, Post_p[(4-i)] - 0.005, label, ha='center', va='top',
                     color=PATHOGENIC_THRESHOLD_COLOR, fontsize=FONTSIZE_ANNOTATION, fontweight='bold')
     

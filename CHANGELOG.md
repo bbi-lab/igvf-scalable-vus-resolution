@@ -1,5 +1,32 @@
 # Changelog
 
+## v2.0.1 — 2026-10-16
+
+Small fixes and figure polish since v2.0.0. 7 commits.
+
+- **Figure 2g**: fixed a VAMP-seq codon substitution count inflated by 2
+  (29,725 instead of 29,723) — `len(set(...))` collapsed all NaN
+  `amino_acid_change` values (from in-frame deletions with no single codon
+  substitution) into one spurious "unique" entry per TSC2 domain subset;
+  switched to `.nunique()`, which excludes NaN by default and matches the
+  SGE side's existing counting method.
+- **Figure 4 panel d**: dropped a spurious "±8" threshold line/label — the
+  panel drew 5 evidence-strength threshold lines per side but only ±1
+  through ±4 are meaningful; the 5th jumped straight to a "+8"/"-8" label
+  with no such tier.
+- **Biobank OR plots (Extended Data Figure 2, Figure 6b)**: significance
+  indicators now use Holm-adjusted p-values; added a pathogenic/benign
+  divider; the VEP plot now uses missense groups; Figure 6b reverted to
+  fill-mapped (white/grey/black) significance points instead of varying
+  point shape, per feedback that the color-coded circles read better; and
+  its D3 "Cardiovascular" facet header is now hyphenated ("Cardio-
+  vascular") to match D2 so it doesn't overflow when only KCNH2 remains
+  under that category after filtering.
+- **docs(figure-assembly)**: noted that Figure 2's panels are embedded
+  directly in `figures_2-6.ai` rather than linked, since Illustrator can't
+  place or link SVG files; the assembled Illustrator documents were
+  re-exported to pick up all of the above.
+
 ## v2.0.0 — 2026-10-13
 
 Everything since `v2.0.0-beta.1`. Promotes the beta to a final release:

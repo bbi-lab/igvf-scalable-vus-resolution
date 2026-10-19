@@ -19,9 +19,22 @@ missing).
 Sources
 -------
 
-REVEL: <input-dir>/clustering_variants_revel_training_overlap.csv.gz
+REVEL: <input-dir>/clustering_variants_revel_training_overlap.csv.gz (optional;
+override with --revel-source)
   Genome-wide REVEL-training-overlap list with genomic coordinates and a
   1-letter protein_variant column (e.g. "Q416K"). All rows are SNVs.
+
+  This source's provenance isn't fully confirmed (see docs/data.md), so it
+  isn't distributed -- this project's own checkout keeps a local copy for
+  convenience, but a fresh checkout won't have one. If the source file is
+  absent, build_revel_training_file writes an empty (header-only)
+  revel_training_variants.tsv and prints a warning instead of failing --
+  annotate_predictors.py's --revel-training-file then simply flags zero
+  variants as REVEL-training overlaps, which only disables that one
+  circularity check (REVEL scores/other circularity checks are unaffected).
+  See "Supplying your own REVEL training-overlap file" in
+  docs/build_training_variant_files.md if you have a suitable source and
+  want this check re-enabled.
 
 MutPred2: <input-dir>/mp2_actual_training_data.txt.gz (default; override with
 --mutpred2-source)
@@ -123,6 +136,33 @@ def aa1_to_unqualified_hgvs_p(code: str) -> str:
 
 
 def build_revel_training_file(src_path: Path, dest_path: Path) -> None:
+    """Write `dest_path` from the REVEL training-overlap source at `src_path`.
+
+    `src_path` is optional: this source isn't distributed (see this
+    module's docstring), so a fresh checkout won't have it. If it's
+    missing, this writes an empty (header-only) `dest_path` and prints a
+    warning instead of raising -- `annotate_predictors.py`'s
+    `--revel-training-file` tolerates an empty training set (it just flags
+    zero variants as REVEL-training overlaps), so the pipeline can still
+    run end to end without this file, with that one circularity check
+    effectively disabled.
+    """
+    if not src_path.exists():
+        print(f"REVEL training-overlap source not found at {src_path} -- skipping (writing an empty {dest_path}).")
+        with dest_path.open("w", newline="", encoding="utf-8") as fh:
+            csv.writer(fh, delimiter="\t", lineterminator="\n").writerow(
+                [
+                    "gene_symbol",
+                    "unqualified_hgvs_p",
+                    "chromosome",
+                    "hg38_start",
+                    "hg38_end",
+                    "ref_allele",
+                    "alt_allele",
+                ]
+            )
+        return
+
     # Keyed on genomic coordinates only (gene_symbol is informational, per
     # the loader's contract), so overlapping transcripts/genes at the same
     # locus collapse to one row.
@@ -247,7 +287,10 @@ def main(argv: list[str] | None = None) -> None:
         "--revel-source",
         default=None,
         type=Path,
-        help="Default: <input-dir>/clustering_variants_revel_training_overlap.csv.gz",
+        help=(
+            "Default: <input-dir>/clustering_variants_revel_training_overlap.csv.gz. Optional -- if "
+            "missing, writes an empty revel_training_variants.tsv instead of failing."
+        ),
     )
     p.add_argument(
         "--mutpred2-source", default=None, type=Path, help="Default: <input-dir>/mp2_actual_training_data.txt.gz"

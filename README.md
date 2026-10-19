@@ -183,7 +183,17 @@ for Stage 1:
    [`docs/build_training_variant_files.md`](docs/build_training_variant_files.md#getting-the-mutpred2-training-variant-source)
    for details and for what the substitute above is missing.
 
-5. **A `variant-annotation` checkout with the large, generic reference
+5. **A REVEL training-overlap source** (`build_training_variant_files.py
+   --revel-source`) — *optional.* This project's own copy has unconfirmed
+   provenance (see [`docs/data.md`](docs/data.md#where-the-predictor-training-variant-sources-come-from)),
+   so it isn't distributed. If you don't provide one, the pipeline skips
+   this one circularity check (zero variants get flagged as REVEL-training
+   overlaps) rather than failing — see
+   [`docs/build_training_variant_files.md`](docs/build_training_variant_files.md#running-without-a-revel-training-overlap-source)
+   for what to provide if you have a suitable source and want the check
+   re-enabled.
+
+6. **A `variant-annotation` checkout with the large, generic reference
    caches already downloaded**: SpliceAI VCFs, dbNSFP, `clinvar_cache/`,
    and the gnomAD Hail table cache above. These are tens of GB and are
    deliberately not duplicated into this repo — follow `variant-annotation`'s

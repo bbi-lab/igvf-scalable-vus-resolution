@@ -14,7 +14,7 @@ REVEL and AlphaMissense; see `docs/variant_annotation_pipeline.md`). It is a
 
 | | Path | Contents |
 |---|---|---|
-| Input | `data/input/predictors/clustering_variants_revel_training_overlap.csv.gz` | Genome-wide REVEL-training-overlap list with genomic coordinates and a 1-letter `protein_variant` column (e.g. `Q416K`). All rows are SNVs. Origin unconfirmed — see [`docs/data.md`](data.md#where-the-predictor-training-variant-sources-come-from). |
+| Input (optional) | `data/input/predictors/clustering_variants_revel_training_overlap.csv.gz` (`--revel-source`) | Genome-wide REVEL-training-overlap list with genomic coordinates and a 1-letter `protein_variant` column (e.g. `Q416K`). All rows are SNVs. Origin unconfirmed and not distributed — see [`docs/data.md`](data.md#where-the-predictor-training-variant-sources-come-from) and [Running without a REVEL training-overlap source](#running-without-a-revel-training-overlap-source) below. |
 | Input | MutPred2 training-variant source (`--mutpred2-source`) | One row per gene: an opaque accession id, a comma-separated list of 1-letter protein variants, a comma-separated list of `1`/`0` training flags aligned with the variant list, the gene's protein sequence, and the gene's NCBI/Entrez Gene ID. See [Getting the MutPred2 training-variant source](#getting-the-mutpred2-training-variant-source) below for where to get it. |
 | Input | `data/input/predictors/supplementary_data_3_gene_entrez_ids.tsv` | Static `gene_symbol` -> `entrez_gene_id` lookup for every gene in `Supplementary_Data_3.xlsx`'s Curation sheet, used to filter the MutPred2 training-variant source down to genes this project cares about. |
 | Input | `data/input/maves/Supplementary_Data_3.xlsx` (`--gene-list-source`) | Curation sheet's `Gene` column supplies the set of genes to keep. |
@@ -30,6 +30,39 @@ automatically, from `data/input/predictors/` -- see
 `docs/variant_annotation_pipeline.md`).
 
 Both `.csv.gz`/`.txt.gz` sources are read transparently (no need to decompress first).
+
+## Running without a REVEL training-overlap source
+
+The REVEL training-overlap source isn't distributed with this project (its
+provenance isn't fully confirmed -- see
+[`docs/data.md`](data.md#where-the-predictor-training-variant-sources-come-from)),
+so a fresh checkout won't have one at the default path. This is fine:
+`build_revel_training_file` treats it as optional. If nothing is found at
+`--revel-source`'s path, it prints a warning and writes an empty
+(header-only) `revel_training_variants.tsv` instead of failing.
+`annotate_predictors.py`'s `--revel-training-file` accepts that -- an empty
+training set just means zero variants get flagged as REVEL-training
+overlaps, which disables *only* that one circularity check (REVEL's own
+scores, and the separate MutPred2-training/dbNSFP circularity checks, are
+unaffected). The pipeline runs to completion either way.
+
+### Supplying your own source
+
+If you have access to a suitable training-overlap list and want this check
+re-enabled, pass it via `--revel-source`. It should be a CSV (optionally
+gzipped) with a header row and, at minimum, these columns:
+
+| Column | Contents |
+|---|---|
+| `#CHROM` | Chromosome, with or without a `chr` prefix (both are accepted) |
+| `POS` | hg38 genomic position |
+| `REF` / `ALT` | Reference/alternate allele (SNVs only) |
+| `protein_variant` | 1-letter amino-acid change, e.g. `Q416K` |
+| `gene_symbol` | Gene symbol (informational only -- matching is by genomic coordinate, not gene symbol) |
+
+One row per REVEL training variant. `build_revel_training_file` keys
+exclusively on genomic coordinates, so extra columns (e.g. a transcript or
+protein accession) are tolerated but ignored.
 
 ## Why the MutPred2 source needs a gene-ID lookup
 
@@ -108,7 +141,7 @@ the same as `run_mave_dataset_stats.sh`/`run_load_excalibr_calibrations.sh`.
 |---|---|---|
 | `--input-dir` | `data/input/predictors` | Directory containing the upstream source files |
 | `--output-dir` | `data/intermediate/variant_annotation/data` | Directory to write the training-variant TSVs into (created if missing) |
-| `--revel-source` | `<input-dir>/clustering_variants_revel_training_overlap.csv.gz` | REVEL training-overlap source file |
+| `--revel-source` | `<input-dir>/clustering_variants_revel_training_overlap.csv.gz` | REVEL training-overlap source file. Optional -- see [Running without a REVEL training-overlap source](#running-without-a-revel-training-overlap-source) below. |
 | `--mutpred2-source` | `<input-dir>/mp2_actual_training_data.txt.gz` | MutPred2 per-gene training-variant export |
 | `--mutpred2-gene-entrez-map` | `<input-dir>/supplementary_data_3_gene_entrez_ids.tsv` | Gene symbol -> Entrez Gene ID lookup used to filter the MutPred2 source |
 | `--gene-list-source` | `data/input/maves/Supplementary_Data_3.xlsx` | Curation sheet supplying the set of genes to keep |

@@ -65,10 +65,9 @@ gene_groups_df <- tribble(
   # existing space, so a single word with no internal space, like this one,
   # is never wrapped regardless of panel width. Unlike Cardiovascular (see
   # "Cardio- vascular" below), this never needed splitting: Metabolic's
-  # header spans two gene panels (GCK, LDLR), wide enough for "Metabolic"
-  # unwrapped.
+  # header is wide enough for "Metabolic" unwrapped regardless of how many
+  # gene panels it spans.
   "G6PD", "Metabolic", "Meta- bolic", "Metabolic",
-  "GCK", "Metabolic", "Meta- bolic", "Metabolic",
   "KCNE1", "Cardiovascular", "Cardio- vascular", "Cardio- vascular",
   "KCNH2", "Cardiovascular", "Cardio- vascular", "Cardio- vascular",
   "KCNQ4", "Hearing loss", "Hearing loss", "Hearing loss", #Rare disease",
@@ -76,13 +75,10 @@ gene_groups_df <- tribble(
   "MSH2", "Cancer", "Cancer", "Cancer",
   "OTC", "Metabolic", "Meta- bolic", "Metabolic",
   "PALB2", "Cancer", "Cancer", "Cancer",
-  "PTEN", "Cancer", "Cancer", "Cancer",
   "RAD51C", "Cancer", "Cancer", "Cancer",
-  "RAD51D", "Cancer", "Cancer", "Cancer",
   "SCN5A", "Cardiovascular", "Cardio- vascular", "Cardio- vascular",
   "TARDBP", "Rare disease", "Rare disease", "Rare disease",
-  "TP53", "Cancer", "Cancer", "Cancer",
-  "TSC2", "Cancer", "Cancer", "Cancer"
+  "TP53", "Cancer", "Cancer", "Cancer"
 )
 
 
@@ -99,7 +95,8 @@ combined_points_plot_df <-
   filter(
     Dataset == 'Total points',
     `Cases with variants` > 0,
-    Classification %in% points_levels
+    Classification %in% points_levels,
+    !Gene %in% c("TSC2", "GCK", "PTEN", "RAD51D")
   ) %>%
   mutate(
     `Odds Ratio` = exp(LogOR),

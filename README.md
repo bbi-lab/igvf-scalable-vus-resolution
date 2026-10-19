@@ -83,18 +83,20 @@ Do this once, before running any of the three numbered stages below.
 Committed to this repo (no action needed):
 
 - `data/input/maves/score_sets.tsv`, `Supplementary_Data_3.xlsx`,
-  `Supp_Data1_column_description.xlsx` — this project's own dataset-name
-  mapping, curation metadata, and column documentation.
+  `Supplementary_Data_1_schema.xlsx` — this project's own dataset-name
+  mapping, curation metadata, and Supplementary Data 1 column
+  documentation (copy the latter to
+  `data/output/supplementary_data/Supplementary_Data_1_schema.xlsx` before
+  running `submit_supplementary_data_1_to_igvf.py`).
 - `data/input/reference/MANE.GRCh38.v1.5.summary.txt.gz` — RefSeq/Ensembl
   transcript mapping.
 - `data/input/predictors/mp2_annotations.csv.gz`,
   `data/input/predictors/mp2_gene_symbol_map.tsv` — MutPred2 scores; our
   team ran MutPred2 to obtain annotations for this dataset's coding
   variants (see [`docs/data.md`](docs/data.md#where-mp2_annotationscsvgz-comes-from)).
-- `data/input/predictors/clustering_variants_revel_training_overlap.csv.gz`,
-  `data/input/predictors/supplementary_data_3_gene_entrez_ids.tsv` —
-  upstream sources `build_training_variant_files` consumes to build the
-  REVEL side of the predictor training-overlap flags (see
+- `data/input/predictors/supplementary_data_3_gene_entrez_ids.tsv` —
+  upstream source `build_training_variant_files` consumes to build the
+  MutPred2 side of the predictor training-overlap flags (see
   [`docs/build_training_variant_files.md`](docs/build_training_variant_files.md)).
 
 (The exCALIBR calibration files and the biobank carrier odds-ratio table

@@ -1,0 +1,565 @@
+#!/usr/bin/env python3
+"""Create/update the "Data prerequisites" Zenodo deposit as a new version.
+
+Publishes the pipeline's not-checked-into-GitHub input data as a new version
+of the existing "A scalable approach to resolving variants of uncertain
+significance (supplementary data and supporting files)" Zenodo record
+(identified by its concept recid, DEFAULT_DEPOSITION_ID below -- stable
+across versions, so this never needs updating as new versions get
+published), retitled to "Data prerequisites for ...".
+See docs/data_prerequisites_zenodo_manifest.md for the full per-file
+license/citation rationale this script's file manifest and metadata are
+built from -- that document is itself uploaded alongside the data as
+LICENSE_AND_CITATIONS.md.
+
+## What this does NOT do
+
+- It does not decide which files belong in the archive -- that's
+  `build_file_manifest()` below, which encodes the decisions recorded in
+  docs/data_prerequisites_zenodo_manifest.md. Update both together if the
+  file list changes.
+- It does not fabricate deposit metadata (creators, affiliations, etc.).
+  New-version mode inherits that automatically from the existing record
+  (Zenodo copies the latest version's metadata into the new draft); `--new`
+  mode (for sandbox testing, since sandbox has no copy of the production
+  record) fetches the production record's *public* metadata via an
+  unauthenticated GET and reuses it, rather than guessing.
+- It never publishes by itself. `--execute` only creates/updates a draft,
+  which you can review in the Zenodo web UI. Publishing a Zenodo version is
+  irreversible (the DOI is permanent; a published file can't be edited or
+  removed, only superseded by a further new version) -- a second, explicit
+  `--publish` flag is required on top of `--execute` to do that, and it
+  still asks for interactive confirmation against --host prod.
+
+## Usage
+
+Dry run (default -- no network calls; lists every file the manifest would
+upload, with its size and whether it's flagged as under a non-commercial
+restriction):
+
+    poetry run python -m src.submit_data_prerequisites_to_zenodo
+
+Real run against the sandbox first (a brand-new sandbox deposition, since
+sandbox.zenodo.org doesn't have a copy of the production record):
+
+    export ZENODO_TOKEN=...   # a sandbox.zenodo.org personal access token
+    poetry run python -m src.submit_data_prerequisites_to_zenodo \\
+      --host sandbox --new --execute
+
+Once the sandbox draft looks right (check it in the sandbox web UI), create
+a new version of the real production record:
+
+    export ZENODO_TOKEN=...   # a zenodo.org personal access token (different from sandbox's)
+    poetry run python -m src.submit_data_prerequisites_to_zenodo --host prod --execute
+
+That leaves a draft for you to review at the printed URL. Only once you're
+satisfied, publish it:
+
+    poetry run python -m src.submit_data_prerequisites_to_zenodo --host prod --execute --publish
+
+The MutPred2 public training-variant source isn't fetched automatically
+(dry runs make no network calls, on principle) -- fetch it yourself first:
+
+    curl -s https://mutpred.mutdb.org/wo_exclusive_hgmd_mp2_training_data.txt \\
+      | gzip > data/input/predictors/mp2_training_data.public.txt.gz
+"""
+
+import os
+import subprocess
+import tempfile
+import zipfile
+from pathlib import Path
+
+import click
+import requests
+
+ZENODO_HOSTS = {
+    "sandbox": "https://sandbox.zenodo.org/api/",
+    "prod": "https://zenodo.org/api/",
+}
+
+# The existing "...supplementary data and supporting files" record this script
+# creates a new, retitled version of. This is its *concept* recid (stable across
+# every version -- unlike a specific version's own id, which changes each time a
+# new version is published, so hardcoding one would go stale). The concept DOI is
+# 10.5281/zenodo.18637473; a concept recid is always the numeric suffix of its
+# concept DOI. Zenodo's public records API resolves any id in a version chain
+# (concept or a specific version) to the *current* latest version -- confirmed via
+# GET https://zenodo.org/api/records/18637473, which returned the latest version's
+# own id (18637474 as of this writing) -- see resolve_latest_record_id(). Only
+# meaningful on --host prod -- sandbox has no copy of this record, so --new is
+# required there.
+DEFAULT_DEPOSITION_ID = "18637473"
+
+PREPRINT_DOI = "10.64898/2026.02.14.705848"
+PREPRINT_URL = "https://www.biorxiv.org/content/10.64898/2026.02.14.705848"
+FALLBACK_GITHUB_URL = "https://github.com/bbi-lab/igvf-scalable-vus-resolution"
+
+NEW_TITLE = 'Data prerequisites for "A scalable approach to resolving variants of uncertain significance"'
+NEW_DESCRIPTION = f"""
+<p>Input data files the pipeline in
+<a href="{FALLBACK_GITHUB_URL}">bbi-lab/igvf-scalable-vus-resolution</a>
+needs but doesn't check into GitHub (too large, or redistributed from a
+third-party source), plus the project's own figure/table source files not
+otherwise generated by that pipeline. Companion data to the integrated
+variant effect dataset (Supplementary Data 1) archived separately.</p>
+<p>Associated preprint: <a href="{PREPRINT_URL}">"A scalable approach to
+resolving variants of uncertain significance,"</a> bioRxiv (2026).</p>
+<p><strong>Where each file goes:</strong> take a filename in this deposit,
+replace every <code>__</code> with <code>/</code>, and that's the path it
+occupies under <code>data/input/</code> in a checkout of the repository
+above -- e.g. <code>predictors__revel_hg38.tsv.gz</code> goes at
+<code>data/input/predictors/revel_hg38.tsv.gz</code>. (Zenodo's legacy
+upload API doesn't support literal "/" in a filename, hence <code>__</code>
+standing in for the path separator.) The one exception is
+<code>mave_calibration__excalibr__json.zip</code>, which isn't a single
+file: unzip its contents into
+<code>data/input/mave_calibration/excalibr/json/</code> (one file per MAVE
+dataset). <code>LICENSE_AND_CITATIONS.md</code> itself is reference
+documentation, not a pipeline input.</p>
+<p><strong>Not everything here is CC BY 4.0.</strong> Two groups of files carry
+a non-commercial use restriction inherited from their upstream source (REVEL;
+and the gnomAD-ancestry files, which also embed REVEL and SpliceAI scores).
+See <code>LICENSE_AND_CITATIONS.md</code> in this deposit's files for the
+complete per-file license and citation breakdown -- don't assume this
+record's blanket CC BY 4.0 license applies to every file in it.</p>
+""".strip()
+LICENSE = "cc-by-4.0"
+UPLOAD_TYPE = "dataset"
+
+# (local path relative to repo root, destination key in the deposit, restricted?)
+# Keys use "__" rather than "/" as the path separator: Zenodo's legacy deposit-API
+# bucket upload (unlike the newer records API) doesn't support literal "/" in a
+# filename -- a key with one 404s, since the request path never matches a route
+# past the first segment. "__" preserves the data/input/ subdirectory structure
+# in the filename without tripping that. Keep in sync with
+# docs/data_prerequisites_zenodo_manifest.md.
+_STATIC_FILES = [
+    ("data/input/maves/score_sets.tsv", "maves__score_sets.tsv", False),
+    ("data/input/maves/Supplementary_Data_3.xlsx", "maves__Supplementary_Data_3.xlsx", False),
+    ("data/input/maves/Supplementary_Data_1_schema.xlsx", "maves__Supplementary_Data_1_schema.xlsx", False),
+    ("data/input/maves/CHEK2_Gebbia_2024.xlsx", "maves__CHEK2_Gebbia_2024.xlsx", False),
+    # The API-pulled version is the one we distribute (reproducible without
+    # MaveDB DB access), not the SQL-exported one (locally staged alongside
+    # it as cvfg_variants.0.db.tsv).
+    ("data/input/maves/cvfg_variants.0.tsv", "maves__cvfg_variants.0.tsv", False),
+    ("data/input/reference/MANE.GRCh38.v1.5.summary.txt.gz", "reference__MANE.GRCh38.v1.5.summary.txt.gz", False),
+    (
+        "data/input/reference/extended_ensembl_consequence.csv.gz",
+        "reference__extended_ensembl_consequence.csv.gz",
+        False,
+    ),
+    ("data/input/genes/gencc-submissions.csv.gz", "genes__gencc-submissions.csv.gz", False),
+    ("data/input/genes/uniprotkb_9606_reviewed.tsv.gz", "genes__uniprotkb_9606_reviewed.tsv.gz", False),
+    ("data/input/genes/test_condition_gene.txt.gz", "genes__test_condition_gene.txt.gz", False),
+    ("data/input/predictors/AlphaMissense_hg38.tsv.gz", "predictors__AlphaMissense_hg38.tsv.gz", False),
+    ("data/input/predictors/AlphaMissense_hg38.tsv.gz.tbi", "predictors__AlphaMissense_hg38.tsv.gz.tbi", False),
+    ("data/input/predictors/revel_hg38.tsv.gz", "predictors__revel_hg38.tsv.gz", True),
+    ("data/input/predictors/revel_hg38.tsv.gz.tbi", "predictors__revel_hg38.tsv.gz.tbi", True),
+    ("data/input/predictors/mp2_annotations.csv.gz", "predictors__mp2_annotations.csv.gz", False),
+    ("data/input/predictors/mp2_gene_symbol_map.tsv", "predictors__mp2_gene_symbol_map.tsv", False),
+    (
+        "data/input/predictors/supplementary_data_3_gene_entrez_ids.tsv",
+        "predictors__supplementary_data_3_gene_entrez_ids.tsv",
+        False,
+    ),
+    ("data/input/biobank/AoU-OR-estimates_2026-10-07.tsv.gz", "biobank__AoU-OR-estimates_2026-10-07.tsv.gz", False),
+    ("data/input/gnomAD/gnomad_with_ancestry_af.csv", "gnomAD__gnomad_with_ancestry_af.csv", True),
+    ("data/input/gnomAD/vus_with_ancestry_af.csv", "gnomAD__vus_with_ancestry_af.csv", True),
+    (
+        "data/input/mave_calibration/Supplementary_Data_4.seed.xlsx",
+        "mave_calibration__Supplementary_Data_4.seed.xlsx",
+        False,
+    ),
+    (
+        "data/input/mave_calibration/integrated_variant_effect_dataset_with_excalibr.csv.gz",
+        "mave_calibration__integrated_variant_effect_dataset_with_excalibr.csv.gz",
+        False,
+    ),
+    (
+        "data/input/mave_calibration/excalibr/fig4_data_oob.tar.gz",
+        "mave_calibration__excalibr__fig4_data_oob.tar.gz",
+        False,
+    ),
+    (
+        "data/input/mave_calibration/excalibr/figure4_data.seed.json.gz",
+        "mave_calibration__excalibr__figure4_data.seed.json.gz",
+        False,
+    ),
+    ("docs/data_prerequisites_zenodo_manifest.md", "LICENSE_AND_CITATIONS.md", False),
+]
+
+# Directories whose contents are uploaded individually (one Zenodo file per entry),
+# flattened under the given destination prefix (joined with "__", not "/" -- see above).
+# .DS_Store and other dotfiles skipped.
+_GLOB_DIRS = [
+    ("data/input/external_data_supplements", "external_data_supplements"),
+    ("data/input/external_figure_assets", "external_figure_assets"),
+]
+
+# Too many small files to upload individually (one per MAVE dataset) -- zipped instead.
+# Unlike every other key here, this one isn't a direct data/input/<key> destination path --
+# it unzips to data/input/mave_calibration/excalibr/json/ -- see the "Where files go" note
+# in docs/data_prerequisites_zenodo_manifest.md and NEW_DESCRIPTION below.
+_EXCALIBR_JSON_DIR = "data/input/mave_calibration/excalibr/json"
+_EXCALIBR_JSON_ZIP_KEY = "mave_calibration__excalibr__json.zip"
+
+DEFAULT_MP2_PUBLIC_SOURCE = "data/input/predictors/mp2_training_data.public.txt.gz"
+MP2_PUBLIC_SOURCE_KEY = "predictors__mp2_training_data.public.txt.gz"
+MP2_PUBLIC_SOURCE_URL = "https://mutpred.mutdb.org/wo_exclusive_hgmd_mp2_training_data.txt"
+
+
+class FileEntry:
+    def __init__(self, local_path, key, restricted):
+        self.local_path = Path(local_path)
+        self.key = key
+        self.restricted = restricted
+
+
+def build_file_manifest(repo_root, mp2_public_source, work_dir):
+    """Return the list of `FileEntry` this deposit should contain.
+
+    Raises `ValueError` (wrapped as `click.ClickException` in `main`) if any
+    expected input file is missing -- better to fail loudly before touching
+    the network than to silently publish a partial archive.
+    """
+    repo_root = Path(repo_root)
+    entries = []
+    missing = []
+
+    def add(local_rel, key, restricted):
+        path = repo_root / local_rel
+        if not path.exists():
+            missing.append(str(path))
+            return
+        entries.append(FileEntry(path, key, restricted))
+
+    for local_rel, key, restricted in _STATIC_FILES:
+        add(local_rel, key, restricted)
+
+    for dir_rel, prefix in _GLOB_DIRS:
+        dir_path = repo_root / dir_rel
+        if not dir_path.is_dir():
+            missing.append(str(dir_path))
+            continue
+        for child in sorted(dir_path.iterdir()):
+            if child.name.startswith("."):
+                continue
+            entries.append(FileEntry(child, f"{prefix}__{child.name}", False))
+
+    json_dir = repo_root / _EXCALIBR_JSON_DIR
+    if not json_dir.is_dir():
+        missing.append(str(json_dir))
+    else:
+        zip_path = Path(work_dir) / "excalibr_json.zip"
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            for child in sorted(json_dir.glob("*.json")):
+                zf.write(child, arcname=child.name)
+        entries.append(FileEntry(zip_path, _EXCALIBR_JSON_ZIP_KEY, False))
+
+    mp2_path = repo_root / mp2_public_source
+    if not mp2_path.exists():
+        missing.append(f"{mp2_path} (fetch first: curl -s {MP2_PUBLIC_SOURCE_URL} | gzip > {mp2_path})")
+    else:
+        entries.append(FileEntry(mp2_path, MP2_PUBLIC_SOURCE_KEY, False))
+
+    if missing:
+        raise ValueError("Missing expected input file(s):\n  " + "\n  ".join(missing))
+
+    # Zenodo's legacy deposit-API bucket upload 404s on a key containing "/" (it uses
+    # "__" as the path-separator stand-in instead -- see the comment above _STATIC_FILES).
+    slashed = [entry.key for entry in entries if "/" in entry.key]
+    if slashed:
+        raise ValueError(f"Manifest key(s) contain '/', which Zenodo's bucket upload rejects: {slashed}")
+
+    return entries
+
+
+def github_https_url(repo_root):
+    """Best-effort `https://github.com/...` URL for this checkout's `origin` remote.
+
+    Returns None (rather than guessing) if `git remote get-url origin` fails
+    or isn't a recognizable GitHub remote.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(repo_root), "remote", "get-url", "origin"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    url = result.stdout.strip()
+    if url.startswith("git@github.com:"):
+        return "https://github.com/" + url[len("git@github.com:") :].removesuffix(".git")
+    if url.startswith("https://github.com/"):
+        return url.removesuffix(".git")
+    return None
+
+
+def build_related_identifiers(github_url):
+    """Return the deposit's `related_identifiers`: the preprint, plus the source repo if known.
+
+    `github_url` comes from `github_https_url()` -- falls back to
+    `FALLBACK_GITHUB_URL` (this checkout's actual origin remote, confirmed
+    rather than guessed) if that lookup failed, e.g. no `git` on PATH.
+    """
+    related = [
+        {"identifier": PREPRINT_DOI, "relation": "isSupplementTo", "resource_type": "publication-preprint"},
+    ]
+    related.append(
+        {"identifier": github_url or FALLBACK_GITHUB_URL, "relation": "isSupplementTo", "resource_type": "software"}
+    )
+    return related
+
+
+class ZenodoClient:
+    """Thin wrapper over the Zenodo REST API (legacy `/api/deposit/depositions`)."""
+
+    def __init__(self, host_url, token):
+        self.host_url = host_url.rstrip("/") + "/"
+        self.session = requests.Session()
+        self.session.headers.update({"Authorization": f"Bearer {token}"})
+
+    def _check(self, response, what):
+        if not response.ok:
+            raise click.ClickException(f"{what} failed with {response.status_code}: {response.text}")
+        return response
+
+    def get_public_record(self, record_id, public_host_url="https://zenodo.org/api/"):
+        """GET the *published*, public record for `record_id` -- no auth needed or sent.
+
+        `record_id` may be a concept recid or a specific version's own id --
+        Zenodo's public records API resolves either to the record representing
+        the *current latest* published version (confirmed against production:
+        GET /records/<concept recid> and GET /records/<latest version's own id>
+        both return that latest version's own `id`).
+        """
+        response = requests.get(public_host_url.rstrip("/") + f"/records/{record_id}")
+        self._check(response, f"GET public record {record_id}")
+        return response.json()
+
+    def get_public_metadata(self, record_id, public_host_url="https://zenodo.org/api/"):
+        """GET just the *published*, public metadata for `record_id` (see `get_public_record`).
+
+        Used to seed sandbox test depositions with realistic metadata
+        (creators, affiliations, etc.) without fabricating any of it.
+        """
+        return self.get_public_record(record_id, public_host_url)["metadata"]
+
+    def resolve_latest_record_id(self, record_id, public_host_url="https://zenodo.org/api/"):
+        """Resolve `record_id` (concept recid or any version's own id) to the
+        current latest published version's own id -- the only id
+        `create_new_version` below will accept (Zenodo's `newversion` action
+        requires the specific latest version's id, not the concept id)."""
+        return self.get_public_record(record_id, public_host_url)["id"]
+
+    def create_new_version(self, deposition_id):
+        """Create (or resume) an unpublished new-version draft of `deposition_id`.
+
+        Deliberately uses the newer `POST /records/<id>/versions` endpoint
+        rather than the legacy `POST /deposit/depositions/<id>/actions/newversion`
+        action: the legacy action 400s with {"field": "files.enabled",
+        "messages": ["Please remove all files first."]} whenever an
+        unpublished new-version draft already exists for this record (e.g.
+        left over from a previous run that failed partway through, or just
+        timed out on Zenodo's end after creating it) -- a known issue, not
+        specific to this project. The newer endpoint resumes that existing
+        draft instead of erroring. Its response id is in the same numbering
+        space as the legacy deposit API, so it's re-fetched through
+        `deposit/depositions/<id>` to get the familiar representation
+        (`links.bucket`, `metadata`, etc.) the rest of this script expects.
+        """
+        response = self.session.post(self.host_url + f"records/{deposition_id}/versions", json={})
+        self._check(response, f"POST versions for {deposition_id}")
+        new_id = response.json()["id"]
+        draft = self._check(
+            self.session.get(self.host_url + f"deposit/depositions/{new_id}"), f"GET new draft {new_id}"
+        ).json()
+        if draft.get("submitted") is not False or str(draft["id"]) == str(deposition_id):
+            raise click.ClickException(
+                f"Expected an unpublished new-version draft distinct from {deposition_id}, got: {draft}"
+            )
+        return draft
+
+    def create_new_deposition(self):
+        response = self.session.post(self.host_url + "deposit/depositions", json={})
+        return self._check(response, "POST new deposition").json()
+
+    def update_metadata(self, deposition_id, metadata):
+        response = self.session.put(self.host_url + f"deposit/depositions/{deposition_id}", json={"metadata": metadata})
+        return self._check(response, f"PUT metadata for {deposition_id}").json()
+
+    def list_files(self, deposition_id):
+        response = self.session.get(self.host_url + f"deposit/depositions/{deposition_id}/files")
+        return self._check(response, f"GET files for {deposition_id}").json()
+
+    def delete_file(self, deposition_id, file_id):
+        response = self.session.delete(self.host_url + f"deposit/depositions/{deposition_id}/files/{file_id}")
+        self._check(response, f"DELETE file {file_id} from {deposition_id}")
+
+    def upload_file(self, bucket_url, entry):
+        url = bucket_url.rstrip("/") + "/" + entry.key
+        with open(entry.local_path, "rb") as f:
+            response = self.session.put(url, data=f)
+        self._check(response, f"PUT {url}")
+
+    def publish(self, deposition_id):
+        response = self.session.post(self.host_url + f"deposit/depositions/{deposition_id}/actions/publish")
+        return self._check(response, f"POST publish for {deposition_id}").json()
+
+
+def render_manifest_summary(entries):
+    lines = []
+    total_bytes = 0
+    for entry in entries:
+        size = entry.local_path.stat().st_size
+        total_bytes += size
+        flag = "  [NON-COMMERCIAL RESTRICTED]" if entry.restricted else ""
+        lines.append(f"  {entry.key:<60} {size:>14,} bytes{flag}")
+    lines.append(f"\n  Total: {total_bytes:,} bytes ({total_bytes / 1e9:.2f} GB) across {len(entries)} files")
+    return "\n".join(lines)
+
+
+@click.command(help=__doc__)
+@click.option(
+    "--repo-root",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    default=Path(__file__).resolve().parent.parent,
+    show_default=True,
+    help="Repo checkout to read data/ and docs/ from.",
+)
+@click.option(
+    "--mp2-public-source",
+    default=DEFAULT_MP2_PUBLIC_SOURCE,
+    show_default=True,
+    help=f"Local cache of the public MutPred2 training source (fetch with: curl -s {MP2_PUBLIC_SOURCE_URL} | gzip > <path>).",
+)
+@click.option(
+    "--host",
+    type=click.Choice(sorted(ZENODO_HOSTS)),
+    default="sandbox",
+    show_default=True,
+    help="Which Zenodo environment to talk to.",
+)
+@click.option(
+    "--deposition-id",
+    default=DEFAULT_DEPOSITION_ID,
+    show_default=True,
+    help=(
+        "Concept recid (or any specific version's own id) of the existing record to create a new "
+        "version of -- resolved to the current latest published version automatically, since that's "
+        "the only id Zenodo's newversion action accepts. Ignored with --new."
+    ),
+)
+@click.option(
+    "--new",
+    "create_new",
+    is_flag=True,
+    help=(
+        "Create a brand-new deposition instead of versioning --deposition-id. Required on --host "
+        "sandbox (sandbox has no copy of the production record) -- metadata is seeded from the "
+        "production record's public GET, not fabricated."
+    ),
+)
+@click.option(
+    "--execute",
+    is_flag=True,
+    help="Actually create/update the draft and upload files. Without this, only prints the manifest.",
+)
+@click.option(
+    "--publish",
+    is_flag=True,
+    help="After updating the draft, also publish it. IRREVERSIBLE. Requires --execute.",
+)
+@click.option("--yes", "skip_confirm", is_flag=True, help="Don't ask for interactive confirmation on --host prod.")
+def main(repo_root, mp2_public_source, host, deposition_id, create_new, execute, publish, skip_confirm):
+    if execute and host == "sandbox" and not create_new:
+        raise click.ClickException(
+            "--host sandbox has no copy of the production deposition -- pass --new to create a fresh "
+            "sandbox test deposition instead of trying to version --deposition-id."
+        )
+    if publish and not execute:
+        raise click.ClickException("--publish requires --execute.")
+
+    with tempfile.TemporaryDirectory() as work_dir:
+        try:
+            entries = build_file_manifest(repo_root, mp2_public_source, work_dir)
+        except ValueError as e:
+            raise click.ClickException(str(e)) from e
+
+        click.echo(
+            f"Manifest ({host}" + (", new deposition" if create_new else f", new version of {deposition_id}") + "):"
+        )
+        click.echo(render_manifest_summary(entries))
+
+        if not execute:
+            click.echo("\nDry run only (pass --execute to create/update the draft).")
+            return
+
+        token = os.environ.get("ZENODO_TOKEN")
+        if not token:
+            raise click.ClickException("ZENODO_TOKEN must be set in the environment to --execute.")
+
+        if host == "prod" and not skip_confirm:
+            action = "publish a new version of" if publish else "create/update a draft new version of"
+            click.confirm(
+                f"This will {action} PRODUCTION record {deposition_id} (resolved to its current latest "
+                "version). Continue?",
+                abort=True,
+            )
+
+        client = ZenodoClient(ZENODO_HOSTS[host], token)
+        github_url = github_https_url(repo_root)
+
+        if create_new:
+            click.echo("\nSeeding metadata from the production record's public listing...")
+            base_metadata = client.get_public_metadata(DEFAULT_DEPOSITION_ID)
+            draft = client.create_new_deposition()
+        else:
+            click.echo(f"\nResolving {deposition_id} to its current latest published version...")
+            latest_id = client.resolve_latest_record_id(deposition_id)
+            click.echo(f"Creating new version of {latest_id}...")
+            draft = client.create_new_version(latest_id)
+            base_metadata = draft.get("metadata", {})
+
+        draft_id = draft["id"]
+        bucket_url = draft["links"]["bucket"]
+
+        metadata = {
+            **base_metadata,
+            "title": NEW_TITLE,
+            "description": NEW_DESCRIPTION,
+            "license": LICENSE,
+            "upload_type": UPLOAD_TYPE,
+        }
+        related = list(metadata.get("related_identifiers", []))
+        related.extend(build_related_identifiers(github_url))
+        metadata["related_identifiers"] = related
+        click.echo(f"Updating metadata on draft {draft_id}...")
+        client.update_metadata(draft_id, metadata)
+
+        existing_files = client.list_files(draft_id)
+        manifest_keys = {entry.key for entry in entries}
+        for f in existing_files:
+            if f["filename"] in manifest_keys:
+                click.echo(f"Removing existing {f['filename']} before re-upload...")
+                client.delete_file(draft_id, f["id"])
+
+        for entry in entries:
+            click.echo(f"Uploading {entry.key} ({entry.local_path.stat().st_size:,} bytes)...")
+            client.upload_file(bucket_url, entry)
+
+        if not publish:
+            click.echo(f"\nDraft ready for review: {draft['links']['html']}")
+            click.echo("Not publishing (pass --publish to go live -- irreversible).")
+            return
+
+        click.echo("\nPublishing...")
+        published = client.publish(draft_id)
+        click.echo(f"Published: {published['links']['record_html']}")
+
+
+if __name__ == "__main__":
+    main()

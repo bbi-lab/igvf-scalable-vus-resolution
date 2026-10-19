@@ -68,8 +68,12 @@ read directly. That export is currently unavailable pending a re-export (no
 working download URL as of this writing); once one exists, it'll be
 documented here, and the three figure scripts' `load_biobank_or_table()`
 calls should be swapped back to a plain `read_csv()` against it (each
-script's header comment says so).
+script's header comment says so). IGVF may publish its own re-export as a
+separate, independently citable Zenodo record once it exists -- that would
+be a different deposit from this project's own.
 
 Until then, the All of Us file above is the only available copy of this
 analysis and is checked into the repo rather than treated as something each
-user must separately obtain.
+user must separately obtain. It's also the file this project distributes in
+its own Zenodo data-prerequisites archive, since it's the one actually used
+to produce the published figures.

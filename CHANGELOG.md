@@ -1,5 +1,27 @@
 # Changelog
 
+## v2.0.2 — 2026-10-19
+
+Figure 6b panel cleanup, Zenodo data publishing, and a pipeline
+reproducibility fix. 5 commits.
+
+- **Figure 6b**: dropped the TSC2, GCK, PTEN, and RAD51D gene panels — each
+  has too few carriers to support a reliable odds-ratio estimate (TSC2's
+  AoU cohort is only 50 people, and across all four genes nearly every
+  non-zero carrier count is privacy-censored at "≤ 20").
+- **Zenodo**: added `submit_data_prerequisites_to_zenodo.py` and
+  `submit_results_to_zenodo.py` (shared client in
+  `src/lib/zenodo_client.py`) to publish pipeline input data and result
+  files as new versions of their Zenodo records via the API rather than
+  the web UI — works around two real Zenodo API quirks (a 404 on
+  slash-containing file keys, and a 400 from the legacy new-version action
+  when an unpublished draft already exists) and resolves each record's
+  stable concept DOI to its current latest version automatically. The
+  README's Data Availability section now links both records.
+- **`build_training_variant_files`**: REVEL training-overlap filtering is
+  now optional — if its source file is absent, the pipeline skips that one
+  circularity check and continues, instead of failing.
+
 ## v2.0.1 — 2026-10-16
 
 Small fixes and figure polish since v2.0.0. 7 commits.

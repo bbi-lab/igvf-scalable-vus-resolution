@@ -1,14 +1,9 @@
 # Changelog
 
-## v2.0.2 — 2026-10-19
+## v2.0.3 — 2026-10-19
 
-Figure 6b panel cleanup, Zenodo data publishing, and a pipeline
-reproducibility fix. 5 commits.
+Zenodo data publishing and a pipeline reproducibility fix. 4 commits.
 
-- **Figure 6b**: dropped the TSC2, GCK, PTEN, and RAD51D gene panels — each
-  has too few carriers to support a reliable odds-ratio estimate (TSC2's
-  AoU cohort is only 50 people, and across all four genes nearly every
-  non-zero carrier count is privacy-censored at "≤ 20").
 - **Zenodo**: added `submit_data_prerequisites_to_zenodo.py` and
   `submit_results_to_zenodo.py` (shared client in
   `src/lib/zenodo_client.py`) to publish pipeline input data and result
@@ -21,6 +16,15 @@ reproducibility fix. 5 commits.
 - **`build_training_variant_files`**: REVEL training-overlap filtering is
   now optional — if its source file is absent, the pipeline skips that one
   circularity check and continues, instead of failing.
+
+## v2.0.2 — 2026-10-19
+
+Figure 6b panel cleanup. 1 commit.
+
+- **Figure 6b**: dropped the TSC2, GCK, PTEN, and RAD51D gene panels — each
+  has too few carriers to support a reliable odds-ratio estimate (TSC2's
+  AoU cohort is only 50 people, and across all four genes nearly every
+  non-zero carrier count is privacy-censored at "≤ 20").
 
 ## v2.0.1 — 2026-10-16
 
